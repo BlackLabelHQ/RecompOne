@@ -36,11 +36,13 @@ public static class ModCompiler
         if (_references != null) return _references;
 
         var refs = new List<MetadataReference>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
         foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
         {
             if (a.IsDynamic) continue;
 
-            if (!string.IsNullOrEmpty(a.Location))
+            if (!string.IsNullOrEmpty(a.Location) && seen.Add(a.Location))
             {
                 refs.Add(MetadataReference.CreateFromFile(a.Location));
                 continue;
@@ -48,6 +50,21 @@ public static class ModCompiler
 
            //use the budnled dll instead of trying to find ones that odnt exist, should fix mod on single file publish
             if (a.TryGetRawMetadata(out byte* blob, out int length)) refs.Add(AssemblyMetadata.Create(ModuleMetadata.CreateFromMetadata((IntPtr)blob, length)).GetReference());
+        }
+
+        var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
+        if (!string.IsNullOrEmpty(runtimeDir) && Directory.Exists(runtimeDir))
+        {
+            foreach (var dll in Directory.EnumerateFiles(runtimeDir, "*.dll"))
+            {
+                if (!seen.Add(dll)) continue;
+                try
+                {
+                    AssemblyName.GetAssemblyName(dll); // throws for native (non-managed) dlls
+                    refs.Add(MetadataReference.CreateFromFile(dll));
+                }
+                catch { }
+            }
         }
 
         _references = refs;
