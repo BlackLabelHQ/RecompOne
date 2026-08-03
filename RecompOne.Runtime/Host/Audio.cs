@@ -27,6 +27,7 @@ internal static unsafe class Audio
     const int AlcConnected = 0x313;
     static int _reconnectTick;
     static volatile bool _audioDeviceChanged;
+    static bool _disconnectExtPresent;
     static delegate* unmanaged[Cdecl]<ALDevice*, byte*, int*, byte> _alcReopenDeviceSoft;
 
     internal static void NotifyAudioDeviceChanged() => _audioDeviceChanged = true;
@@ -113,6 +114,7 @@ internal static unsafe class Audio
     static void TryLoadReopenExtension()
     {
         if (_alc == null || _device == null) return;
+        _disconnectExtPresent = _alc.IsExtensionPresent(_device, "ALC_EXT_disconnect");
         if (!_alc.IsExtensionPresent(_device, "ALC_SOFT_reopen_device")) return;
         if (_alc.Context.TryGetProcAddress("alcReopenDeviceSOFT", out nint ptr) && ptr != 0)
             _alcReopenDeviceSoft = (delegate* unmanaged[Cdecl]<ALDevice*, byte*, int*, byte>)(void*)ptr;
@@ -120,7 +122,7 @@ internal static unsafe class Audio
 
     static bool IsDeviceConnected()
     {
-        if (_alc == null || _device == null) return true;
+        if (_alc == null || _device == null || !_disconnectExtPresent) return true;
         int connected = 0;
         _alc.GetContextProperty(_device, (GetContextInteger)AlcConnected, 1, &connected);
         return connected != 0;
@@ -139,8 +141,10 @@ internal static unsafe class Audio
                 _al.SourceUnqueueBuffers(_source, 1, &buf);
             }
             _al.DeleteSource(_source);
+            _source = 0;
             fixed (uint* ptr = _buffers)
                 _al.DeleteBuffers(NumBuffers, ptr);
+            Array.Clear(_buffers);
 
             if (_context != null) { _alc.DestroyContext(_context); _context = null; }
             if (_device != null) { _alc.CloseDevice(_device); _device = null; }
