@@ -63,10 +63,10 @@ internal static unsafe class Audio
 
             TryLoadReopenExtension();
 
+            _audioDeviceChanged = false;
             _running = true;
             _mixerThread = new Thread(MixerLoop) { IsBackground = true, Name = "spu-mixer" };
             _mixerThread.Start();
-            _audioDeviceChanged = false;
         }
         catch (Exception e)
         {
