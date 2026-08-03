@@ -62,7 +62,7 @@ internal static unsafe class InputManager
         {
             _sdl = Sdl.GetApi();
             _sdl.SetHint("SDL_JOYSTICK_RAWINPUT", "0");
-            _sdl.InitSubSystem(Sdl.InitGamecontroller);
+            _sdl.InitSubSystem(Sdl.InitGamecontroller | Sdl.InitAudio);
             Rescan();
         }
         catch { _sdl = null; }
@@ -113,7 +113,7 @@ internal static unsafe class InputManager
     public static void Shutdown()
     {
         CloseControllers();
-        _sdl?.QuitSubSystem(Sdl.InitGamecontroller);
+        _sdl?.QuitSubSystem(Sdl.InitGamecontroller | Sdl.InitAudio);
         _sdl?.Dispose();
         _sdl = null;
     }
@@ -128,6 +128,8 @@ internal static unsafe class InputManager
         {
             if (ev.Type == (uint)EventType.Controllerdeviceadded) changed = true;
             if (ev.Type == (uint)EventType.Controllerdeviceremoved) changed = true;
+            if (ev.Type == (uint)EventType.Audiodeviceadded || ev.Type == (uint)EventType.Audiodeviceremoved)
+                Audio.NotifyAudioDeviceChanged();
             if (!anyCtrl) continue;
             if (ev.Type == (uint)EventType.Controllerbuttondown || ev.Type == (uint)EventType.Controllerbuttonup)
                 EventBus.Dispatch(new ControllerEvent
