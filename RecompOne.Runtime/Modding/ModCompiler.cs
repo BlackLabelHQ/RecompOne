@@ -55,15 +55,23 @@ public static class ModCompiler
         var runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location);
         if (!string.IsNullOrEmpty(runtimeDir) && Directory.Exists(runtimeDir))
         {
+            var inMemoryNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var a in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (!a.IsDynamic && string.IsNullOrEmpty(a.Location) && a.FullName != null)
+                    inMemoryNames.Add(a.FullName);
+            }
+
             foreach (var dll in Directory.EnumerateFiles(runtimeDir, "*.dll"))
             {
                 if (!seen.Add(dll)) continue;
                 try
                 {
-                    AssemblyName.GetAssemblyName(dll); // throws for native (non-managed) dlls
+                    var asmName = AssemblyName.GetAssemblyName(dll); // throws for native (non-managed) dlls
+                    if (asmName.FullName != null && inMemoryNames.Contains(asmName.FullName)) continue;
                     refs.Add(MetadataReference.CreateFromFile(dll));
                 }
-                catch { }
+                catch (Exception) { }
             }
         }
 
