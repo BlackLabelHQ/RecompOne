@@ -131,6 +131,12 @@ public static class LibCd
     internal static int CurrentLba { get { lock (_posGate) return PosToInt(_pos); } }
     internal static double SectorsPerSecond => (_mode & 0x80) != 0 ? 150.0 : 75.0; //cd pacer
 
+    internal static void SetStreamLba(int lba)
+    {
+        lock (_posGate)
+            IntToPos(lba, out _pos[0], out _pos[1], out _pos[2]);
+    }
+
     internal static void Tick()
     {
         bool xaMode = (_mode & 0x40) != 0;
@@ -145,12 +151,14 @@ public static class LibCd
         var snap = c.Snapshot();
         while (_cbData != 0)
         {
+            Dispatcher.LoadByLba(CurrentLba);
             _lastIntr = DataReady;
             if (_cbReady != 0) { c.A0 = DataReady; c.A1 = 0; Dispatcher.Call(c, m, _cbReady); }
-            AdvancePos(1);
-            Dispatcher.LoadByLba(CurrentLba);
             if (_cbData != 0) { c.A0 = DataReady; c.A1 = 0; Dispatcher.Call(c, m, _cbData); }
+            AdvancePos(1);
         }
+        _lastIntr = Complete;
+        _readActive = false;
         c.Restore(snap);
     }
 
@@ -210,6 +218,7 @@ public static class LibCd
     {
         uint madr = c.A0;
         int words = (int)c.A1;
+        if (words == 0) words = 512;
         int lba = CurrentLba;
         byte[] data;
         lock (DiscLock) data = Runtime.Cd!.ReadSectorData(lba);
@@ -254,8 +263,19 @@ public static class LibCd
 
     public static void CdSyncCallback(CpuContext c, IMemory m) { c.V0 = _cbSync; _cbSync = c.A0; }
     public static void CdReadyCallback(CpuContext c, IMemory m) { c.V0 = _cbReady; _cbReady = c.A0; }
-    public static void CdReadCallback(CpuContext c, IMemory m) { c.V0 = _cbData; _cbData = c.A0; }
-    public static void CdDataCallback(CpuContext c, IMemory m) { c.V0 = _cbData; _cbData = c.A0; }
+    public static void CdReadCallback(CpuContext c, IMemory m)
+    {
+        c.V0 = _cbData;
+        _cbData = c.A0;
+    }
+
+    public static void CdDataCallback(CpuContext c, IMemory m)
+    {
+        c.V0 = _cbData;
+        _cbData = c.A0;
+    }
+
+    public static void Poll(CpuContext c, IMemory m) => Tick();
 
     public static void CdStatus(CpuContext c, IMemory m) => c.V0 = _status;
     public static void CdMode(CpuContext c, IMemory m) => c.V0 = _mode;
@@ -344,9 +364,13 @@ public static class LibCd
                     return DiskError;
                 }
                 _xaActive = true;
-                _readActive = false;
+                // ReadS is also used for standalone XA playback.  Without an
+                // STR ring there is no LibCdStream worker, so the normal XA
+                // pump must advance the disc and feed the decoder.
+                _readActive = !LibCdStream.InUse;
                 _status = (byte)(StatMotor | StatRead);
                 LibCdStream.OnReadStream(CurrentLba);
+                if (_readActive) EnsureXaThread();
                 break;
             case Play:
                 _readActive = false;

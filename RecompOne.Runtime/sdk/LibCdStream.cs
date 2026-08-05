@@ -108,6 +108,7 @@ public static class LibCdStream
     {
         if (!InUse) return;
         _pendingLba = lba;
+        _streamLba = -1;
         _reading = true;
         EnsureThread();
     }
@@ -152,20 +153,41 @@ public static class LibCdStream
             {
                 _streamLba = _pendingLba >= 0 ? _pendingLba : LibCd.CurrentLba;
                 _streamStartLba = _streamLba;
+                LibCd.SetStreamLba(_streamLba);
                 _clock.Restart();
+            }
+
+            // ReadS advances at the physical drive rate.  In particular, XA
+            // sectors must not be decoded as quickly as the host can read them:
+            // the game polls GetlocP to decide when a stream has ended.
+            double delivered = _clock.Elapsed.TotalSeconds * LibCd.SectorsPerSecond;
+            if ((_streamLba - _streamStartLba) + 1 > delivered)
+            {
+                Thread.Sleep(1);
+                continue;
             }
 
             byte[] sec;
             try { lock (LibCd.DiscLock) sec = cd.ReadSectorData(_streamLba, 2336); }
             catch { Thread.Sleep(2); continue; }
 
-            if ((sec[2] & 0x04) != 0) { XaAudio.DecodeSector(sec, 8, sec[3]); _streamLba++; continue; }
-            if (Read16(sec, 8) != VideoMagic || Read16(sec, 12) != 0) { _streamLba++; continue; }
+            if ((sec[2] & 0x04) != 0)
+            {
+                XaAudio.DecodeSector(sec, 8, sec[3]);
+                _streamLba++;
+                LibCd.SetStreamLba(_streamLba);
+                continue;
+            }
+            if (Read16(sec, 8) != VideoMagic || Read16(sec, 12) != 0)
+            {
+                _streamLba++;
+                LibCd.SetStreamLba(_streamLba);
+                continue;
+            }
 
             int n = Read16(sec, 14);
             if (n <= 0 || n > _slots) { _streamLba++; continue; }
 
-            double delivered = _clock.Elapsed.TotalSeconds * LibCd.SectorsPerSecond;
             if ((_streamLba - _streamStartLba) + n > delivered) { Thread.Sleep(1); continue; }
 
             int start;
@@ -210,6 +232,7 @@ public static class LibCdStream
             collected++;
         }
         _streamLba = lba;
+        LibCd.SetStreamLba(_streamLba);
         Thread.MemoryBarrier();
         return true;
     }
