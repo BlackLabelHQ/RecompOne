@@ -35,6 +35,7 @@ public static class HostWindow
     static bool _layoutPending = true;
     static bool _closed;
     static DiscPickerPopup? _discPicker;
+    static float _dpiScale = 1f;
 
     public static void Initialize(string title)
     {
@@ -64,6 +65,8 @@ public static class HostWindow
             _headless = true;
         }
     }
+
+    public static float DpiScale => _dpiScale;
 
     public static string Title
     {
@@ -223,6 +226,24 @@ public static class HostWindow
         if (on) SetAutoIconify(false);
     }
 
+    static unsafe float QueryDpiScale()
+    {
+        try
+        {
+            var glfw = Silk.NET.GLFW.Glfw.GetApi();
+            var monitor = glfw.GetPrimaryMonitor();
+            if (monitor == null) return 1f;
+            glfw.GetMonitorContentScale(monitor, out float x, out float y);
+            float s = Math.Max(x, y);
+            return s > 0.1f ? s : 1f;
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"[Host] dpi scale query unavailable: {e.Message}");
+            return 1f;
+        }
+    }
+
     static unsafe void SetAutoIconify(bool on)
     {
         try
@@ -270,6 +291,14 @@ public static class HostWindow
 
     static void OnLoad()
     {
+        _dpiScale = QueryDpiScale();
+        if (_dpiScale > 1.01f && _window!.WindowState != WindowState.Fullscreen)
+        {
+            var scaled = new Vector2D<int>((int)(1280 * _dpiScale), (int)(720 * _dpiScale));
+            _window!.Size = scaled;
+            Console.WriteLine($"[Host] monitor content scale {_dpiScale:0.00}, resizing window to {scaled.X}x{scaled.Y}");
+        }
+
         var input = _window!.CreateInput();
         InputManager.Initialize(input);
 
@@ -328,10 +357,11 @@ public static class HostWindow
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
-        io.FontGlobalScale = Config.ConfigManager.View.UiScale;
+        io.FontGlobalScale = Config.ConfigManager.View.UiScale * _dpiScale;
+        ImGui.GetStyle().ScaleAllSizes(_dpiScale);
         unsafe { io.NativePtr->IniFilename = null; }
 
-        Icons.Load(13f);
+        Icons.Load(13f * _dpiScale);
 
         if (Config.ConfigManager.ApplyImGuiLayout())
             _layoutPending = false;

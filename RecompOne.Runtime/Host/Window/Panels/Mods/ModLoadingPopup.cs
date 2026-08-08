@@ -1,5 +1,6 @@
 using System.Numerics;
 using ImGuiNET;
+using RecompOne.Runtime.Host;
 
 namespace RecompOne.Runtime.Modding;
 
@@ -30,7 +31,7 @@ internal static class ModLoadingPopup
         if (!_active) return;
         var viewport = ImGui.GetMainViewport();
         ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-        ImGui.SetNextWindowSize(new Vector2(380, 0), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(380 * HostWindow.DpiScale, 0), ImGuiCond.Always);
         const ImGuiWindowFlags flags = ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove | ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking | ImGuiWindowFlags.NoSavedSettings;
         if (ImGui.Begin("Loading mods", flags))
         {

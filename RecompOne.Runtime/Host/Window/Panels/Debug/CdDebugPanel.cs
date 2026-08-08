@@ -14,7 +14,7 @@ internal sealed class CdDebugPanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(640, 420), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(640, 420) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open)) { IsOpen = open; ImGui.End(); return; }
 

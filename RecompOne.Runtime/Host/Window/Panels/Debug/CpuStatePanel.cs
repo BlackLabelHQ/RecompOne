@@ -21,7 +21,7 @@ internal sealed class CpuStatePanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(320, 540), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(320, 540) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open))
         {

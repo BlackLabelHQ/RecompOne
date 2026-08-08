@@ -18,7 +18,7 @@ internal sealed class VramViewerPanel : IPanel
     public void Draw()
     {
         var flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.MenuBar;
-        ImGui.SetNextWindowSize(new Vector2(800, 450), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(800, 450) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
 
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open, flags)) { IsOpen = open; ImGui.End(); return; }

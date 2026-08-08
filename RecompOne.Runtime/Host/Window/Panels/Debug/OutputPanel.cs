@@ -18,7 +18,7 @@ internal sealed class OutputPanel : IPanel
     //idea: in the future make this be able to draw images so you can have ornamented backgrounds
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(640, 480) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0f, 0f, 0f, 1f));
 
         if (!ImGui.Begin(Name, ImGuiWindowFlags.NoCollapse))

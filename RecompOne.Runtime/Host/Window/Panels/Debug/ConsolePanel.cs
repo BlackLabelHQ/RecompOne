@@ -18,7 +18,7 @@ internal sealed class ConsolePanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(720, 320), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(720, 320) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open, ImGuiWindowFlags.MenuBar)) { IsOpen = open; ImGui.End(); return; }
 
@@ -50,7 +50,7 @@ internal sealed class ConsolePanel : IPanel
 
         ImGui.Checkbox("Auto-scroll", ref _autoScroll);
 
-        ImGui.SetNextItemWidth(180);
+        ImGui.SetNextItemWidth(180 * HostWindow.DpiScale);
         ImGui.InputTextWithHint("##filter", "filter", ref _filter, 128);
 
         ImGui.EndMenuBar();

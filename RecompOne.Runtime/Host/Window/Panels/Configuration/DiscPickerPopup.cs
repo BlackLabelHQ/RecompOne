@@ -41,7 +41,7 @@ internal sealed class DiscPickerPopup : IPanel
 
         var vp = ImGui.GetMainViewport();
         ImGui.SetNextWindowPos(vp.GetCenter(), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-        ImGui.SetNextWindowSize(new Vector2(520, 0), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(520 * HostWindow.DpiScale, 0), ImGuiCond.Always);
 
         bool open = true;
         if (!ImGui.BeginPopupModal(PopupId, ref open,
@@ -60,7 +60,7 @@ internal sealed class DiscPickerPopup : IPanel
         ImGui.TextWrapped("Please provide the path to the game's disc file.");
         ImGui.Spacing();
 
-        float browseW = 80;
+        float browseW = 80 * HostWindow.DpiScale;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - browseW - spacing);
         ImGui.InputText("##discpath", _pathBuf, (uint)BufSize);
@@ -80,7 +80,7 @@ internal sealed class DiscPickerPopup : IPanel
         ImGui.Separator();
         ImGui.Spacing();
 
-        float btnW = 100;
+        float btnW = 100 * HostWindow.DpiScale;
         float total = btnW * 2 + spacing;
         ImGui.SetCursorPosX((ImGui.GetContentRegionAvail().X - total) * 0.5f + ImGui.GetStyle().WindowPadding.X);
 

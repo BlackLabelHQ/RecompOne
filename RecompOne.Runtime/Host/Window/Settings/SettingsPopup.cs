@@ -14,7 +14,7 @@ internal sealed class SettingsPopup : IPanel
     public void Draw()
     {
         var vp = ImGui.GetMainViewport();
-        ImGui.SetNextWindowSize(new Vector2(760, 470), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(760, 470) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowPos(vp.GetCenter(), ImGuiCond.FirstUseEver, new Vector2(0.5f, 0.5f));
 
         bool open = IsOpen;
@@ -48,7 +48,7 @@ internal sealed class SettingsPopup : IPanel
 
     void DrawSidebar(IReadOnlyList<ISettingsSection> sections, ISettingsSection? current)
     {
-        ImGui.BeginChild("##settings-sidebar", new Vector2(SidebarWidth, 0), ImGuiChildFlags.Border);
+        ImGui.BeginChild("##settings-sidebar", new Vector2(SidebarWidth * HostWindow.DpiScale, 0), ImGuiChildFlags.Border);
 
         ImGui.PushStyleColor(ImGuiCol.Text, ImGui.GetStyle().Colors[(int)ImGuiCol.TextDisabled]);
         ImGui.TextUnformatted("SETTINGS");

@@ -25,7 +25,7 @@ internal sealed class ModsPopup : IPanel
     public void Draw()
     {
         var vp = ImGui.GetMainViewport();
-        ImGui.SetNextWindowSize(new Vector2(560, 520), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(560, 520) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         ImGui.SetNextWindowPos(vp.GetCenter(), ImGuiCond.FirstUseEver, new Vector2(0.5f, 0.5f));
 
         bool open = IsOpen;

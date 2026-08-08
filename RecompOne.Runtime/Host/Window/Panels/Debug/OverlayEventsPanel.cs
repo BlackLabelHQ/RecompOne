@@ -22,7 +22,7 @@ internal sealed class OverlayEventsPanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(600, 340), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(600, 340) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open, ImGuiWindowFlags.MenuBar))
         {

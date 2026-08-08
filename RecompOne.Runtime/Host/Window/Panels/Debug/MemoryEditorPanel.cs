@@ -39,7 +39,7 @@ internal sealed class MemoryEditorPanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(640, 480) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open)) { IsOpen = open; ImGui.End(); return; }
 
@@ -56,7 +56,7 @@ internal sealed class MemoryEditorPanel : IPanel
 
     void DrawToolbar()
     {
-        ImGui.SetNextItemWidth(160);
+        ImGui.SetNextItemWidth(160 * HostWindow.DpiScale);
         if (ImGui.InputText("##addr", ref _addrInput, 10,
             ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.EnterReturnsTrue))
         {

@@ -26,7 +26,7 @@ internal static class StartupNotice
 
         var vp = ImGui.GetMainViewport();
         ImGui.SetNextWindowPos(vp.GetCenter(), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-        ImGui.SetNextWindowSize(new Vector2(460, 0), ImGuiCond.Always);
+        ImGui.SetNextWindowSize(new Vector2(460 * HostWindow.DpiScale, 0), ImGuiCond.Always);
 
         if (ImGui.Begin(_title, ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
                 ImGuiWindowFlags.NoCollapse | ImGuiWindowFlags.NoDocking |

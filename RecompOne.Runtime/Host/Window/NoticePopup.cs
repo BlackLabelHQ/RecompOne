@@ -28,7 +28,7 @@ internal static class NoticePopup
 
         var vp = ImGui.GetMainViewport();
         ImGui.SetNextWindowPos(vp.GetCenter(), ImGuiCond.Appearing, new Vector2(0.5f, 0.5f));
-        ImGui.SetNextWindowSize(new Vector2(420, 0), ImGuiCond.Appearing);
+        ImGui.SetNextWindowSize(new Vector2(420 * HostWindow.DpiScale, 0), ImGuiCond.Appearing);
 
         bool open = _open;
         if (ImGui.BeginPopupModal(PopupId, ref open,
@@ -39,7 +39,7 @@ internal static class NoticePopup
             ImGui.Spacing();
             ImGui.Separator();
             ImGui.Spacing();
-            if (ImGui.Button("OK", new Vector2(120, 0)))
+            if (ImGui.Button("OK", new Vector2(120 * HostWindow.DpiScale, 0)))
             {
                 ImGui.CloseCurrentPopup();
                 _open = false;

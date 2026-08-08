@@ -18,7 +18,7 @@ internal sealed class RamMapPanel : IPanel
     public void Draw()
     {
         var flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.MenuBar;
-        ImGui.SetNextWindowSize(new Vector2(820, 300), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(820, 300) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
 
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open, flags)) { IsOpen = open; ImGui.End(); return; }

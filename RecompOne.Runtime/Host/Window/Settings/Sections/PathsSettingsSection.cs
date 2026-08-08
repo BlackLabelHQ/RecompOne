@@ -71,7 +71,7 @@ internal sealed class PathsSettingsSection : ISettingsSection
     {
         result = "";
 
-        float browse = 80;
+        float browse = 80 * HostWindow.DpiScale;
         float spacing = ImGui.GetStyle().ItemSpacing.X;
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - browse - spacing);
 

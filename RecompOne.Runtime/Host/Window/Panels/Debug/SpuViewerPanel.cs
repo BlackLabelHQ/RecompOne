@@ -15,7 +15,7 @@ internal sealed class SpuViewerPanel : IPanel
 
     public void Draw()
     {
-        ImGui.SetNextWindowSize(new Vector2(860, 520), ImGuiCond.FirstUseEver);
+        ImGui.SetNextWindowSize(new Vector2(860, 520) * HostWindow.DpiScale, ImGuiCond.FirstUseEver);
         bool open = IsOpen;
         if (!ImGui.Begin(Name, ref open)) { IsOpen = open; ImGui.End(); return; }
 
