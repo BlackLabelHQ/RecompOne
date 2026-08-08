@@ -357,10 +357,11 @@ public static class HostWindow
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
-        io.FontGlobalScale = Config.ConfigManager.View.UiScale * _dpiScale;
+        io.FontGlobalScale = Config.ConfigManager.View.UiScale;
         ImGui.GetStyle().ScaleAllSizes(_dpiScale);
         unsafe { io.NativePtr->IniFilename = null; }
 
+        Fonts.LoadBody(13f * _dpiScale);
         Icons.Load(13f * _dpiScale);
 
         if (Config.ConfigManager.ApplyImGuiLayout())

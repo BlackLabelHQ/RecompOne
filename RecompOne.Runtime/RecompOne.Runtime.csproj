@@ -17,6 +17,7 @@
       <EmbeddedResource Include="Bios\Fonts\font1.raw" />
       <EmbeddedResource Include="Bios\Fonts\font2.raw" />
       <EmbeddedResource Include="Host\Window\Assets\fa-solid-900.ttf" />
+      <EmbeddedResource Include="Host\Window\Assets\Inter-Regular.ttf" />
     </ItemGroup>
 
     <ItemGroup>

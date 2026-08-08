@@ -58,7 +58,6 @@ public static class Icons
             cfg->GlyphOffset = new System.Numerics.Vector2(0f, 1f);
 
             var io = ImGui.GetIO();
-            io.Fonts.AddFontDefault();
             io.Fonts.AddFontFromMemoryTTF(_data, bytes.Length, sizePixels, cfg, _range.AddrOfPinnedObject());
             io.Fonts.Build();
             Loaded = true;
