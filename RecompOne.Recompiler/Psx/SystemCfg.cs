@@ -10,7 +10,7 @@ public sealed class SystemCfg
     public int Event = 16;
     public uint Stack = 0x801FFF00;
 
-    public static SystemCfg Parse(CueFs fs)
+    public static SystemCfg Parse(DiscFs fs)
     {
         var cfg = new SystemCfg();
         var text = Encoding.ASCII.GetString(fs.ReadFile("SYSTEM.CNF"));

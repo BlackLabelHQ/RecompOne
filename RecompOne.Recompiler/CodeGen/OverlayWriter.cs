@@ -15,7 +15,7 @@ public static class OverlayWriter
 {
     record OverlayResult(string Name, List<MipsFunction> Functions, int LbaStart, uint Base, uint Size, MipsInstruction[] Instructions);
 
-    public static void Write(RecompOneConfig config, CueFs fs, string outDir)
+    public static void Write(RecompOneConfig config, DiscFs fs, string outDir)
     {
         string className = SafeIdentifier(config.Game.Name);
 
@@ -130,7 +130,7 @@ public static class OverlayWriter
 
     public sealed record OverlayAnalysis(List<MipsFunction> Functions, MipsInstruction[] Instructions, FunctionInfo ElfInfo, byte[] DiscBin, int Lba, uint Base);
 
-    public static OverlayAnalysis? AnalyzeOverlay(RecompOneConfig config, OverlayConfig overlayConfig, CueFs fs)
+    public static OverlayAnalysis? AnalyzeOverlay(RecompOneConfig config, OverlayConfig overlayConfig, DiscFs fs)
     {
         {
             bool noSymbols = overlayConfig.Elf == null && overlayConfig.Map == null && overlayConfig.FuncMap == null;
@@ -364,7 +364,7 @@ public static class OverlayWriter
 
     static string SafeFuncName(string s) => Regex.Replace(s, @"[^A-Za-z0-9_]", "_");
 
-    static (byte[]? data, int lba) ResolveOverlay(CueFs fs, Config.OverlayConfig cfg)
+    static (byte[]? data, int lba) ResolveOverlay(DiscFs fs, Config.OverlayConfig cfg)
     {
         try
         {

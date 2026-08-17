@@ -72,7 +72,7 @@ public sealed class Dma
         uint sync = (chcr >> 9) & 3u;
         if (sync == 2)
         {
-            uint addr = madr & 0x1FFFFCu;
+            uint addr = madr & Runtime.RamWordMask;
             for (int guard = 0; guard < 0x100000; guard++)
             {
                 uint header = _mem.ReadU32(addr);
@@ -81,7 +81,7 @@ public sealed class Dma
                     _gpu.WriteGp0(_mem.ReadU32(addr + 4u + i * 4u));
                 uint next = header & 0xFFFFFFu;
                 if (next == 0xFFFFFFu || (next & 0x800000u) != 0) break;
-                addr = next & 0x1FFFFCu;
+                addr = next & Runtime.RamWordMask;
             }
         }
         else if ((chcr & 1u) != 0)

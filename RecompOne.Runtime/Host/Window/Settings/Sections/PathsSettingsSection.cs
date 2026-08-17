@@ -19,7 +19,7 @@ internal sealed class PathsSettingsSection : ISettingsSection
 
         ImGui.SeparatorText(Localization.T("settings.paths.disc"));
 
-        if (PathRow("##disc", game.CdPath, "cue", false, out string disc))
+        if (PathRow("##disc", game.CdPath, "cue,chd", false, out string disc))
         {
             var problem = Runtime.ValidateDisc(disc);
             if (problem != null)

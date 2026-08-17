@@ -48,7 +48,7 @@ if (!File.Exists(cuePath))
 Console.WriteLine($"[RecompOne] Game: {config.Game.Name} ({config.Game.Id})");
 Console.WriteLine($"[RecompOne] Disc file: {cuePath}");
 
-var fs = CueFs.Open(cuePath);
+var fs = DiscFs.Open(cuePath);
 string outDir = Path.GetFullPath(Path.Combine(configDir, config.Game.Output));
 Directory.CreateDirectory(outDir);
 
@@ -187,7 +187,7 @@ static int GenerateFromLinearSweep(string discPath, string? discFile, string bas
 
     Console.WriteLine($"[RecompOne] sweeping {discFile ?? $"lba {lba}"} from {discPath}");
 
-    var fs = CueFs.Open(discPath);
+    var fs = DiscFs.Open(discPath);
     var analysis = OverlayWriter.AnalyzeOverlay(new RecompOneConfig(), overlay, fs);
     if (analysis == null)
     {

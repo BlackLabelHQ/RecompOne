@@ -1,15 +1,41 @@
 namespace RecompOne.Runtime.Cdrom;
 
-//it it
-public sealed class CueFs : IDisposable
+//better disc handling
+public sealed class DiscFs : IDisposable
 {
     private record Entry(int Lba, uint Size, bool IsDir, string Name);
 
-    private readonly CueBin _bin;
+    private readonly IDiscImage _image;
 
-    private CueFs(CueBin bin) => _bin = bin;
+    private DiscFs(IDiscImage image) => _image = image;
 
-    public static CueFs Open(string cuePath) => new(CueBin.Open(cuePath));
+    public static DiscFs Open(string path) => new(DiscImage.Open(path));
+
+    public static DiscFs FromImage(IDiscImage image) => new(image);
+
+    public IDiscImage Image => _image;
+
+    public string Format => _image.Format;
+
+    public int FirstTrack => _image.FirstTrack;
+
+    public int LastTrack => _image.LastTrack;
+
+    public bool HasTracks => _image.HasTracks;
+
+    public int LeadoutLba => _image.LeadoutLba;
+
+    public int DataSectors => _image.DataSectors;
+
+    public IReadOnlyList<DiscTrack> Tracks => _image.Tracks;
+
+    public bool TrackStartLba(int track, out int lba) => _image.TrackStartLba(track, out lba);
+
+    public byte[] ReadSector(int lba) => _image.ReadSectorData(lba, 2048);
+
+    public byte[] ReadSectorData(int lba, int size) => _image.ReadSectorData(lba, size);
+
+    public byte[] ReadSectors(int lba, int size) => ReadExtent(lba, size);
 
     public byte[] ReadFile(string path)
     {
@@ -22,16 +48,17 @@ public sealed class CueFs : IDisposable
         return ReadExtent(file.Lba, (int)file.Size);
     }
 
-    private static string StripVersion(string name)
-    {
-        int semi = name.IndexOf(';');
-        return semi >= 0 ? name[..semi] : name;
-    }
-
     public bool Exists(string path)
     {
-        try { ReadFile(path); return true; }
-        catch { return false; }
+        try
+        {
+            ReadFile(path);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     public string? FindFile(string name) => Search(Root(), "", name.ToUpperInvariant());
@@ -80,19 +107,6 @@ public sealed class CueFs : IDisposable
         return null;
     }
 
-    public int FirstTrack => _bin.FirstTrack;
-    public int LastTrack => _bin.LastTrack;
-    public bool HasTracks => _bin.HasTracks;
-    public int LeadoutLba => _bin.LeadoutLba;
-    public int DataSectors => _bin.DataSectors;
-    public bool TrackStartLba(int track, out int lba) => _bin.TrackStartLba(track, out lba);
-
-    public byte[] ReadSector(int lba) => _bin.ReadSector(lba);
-
-    public byte[] ReadSectorData(int lba, int size) => _bin.ReadSectorData(lba, size);
-
-    public byte[] ReadSectors(int lba, int size) => ReadExtent(lba, size);
-
     private string? Search(Entry dir, string basePath, string name)
     {
         foreach (var e in Entries(dir))
@@ -111,7 +125,7 @@ public sealed class CueFs : IDisposable
 
     private Entry Root()
     {
-        var pvd = _bin.ReadSector(16);
+        var pvd = ReadSector(16);
         return ParseEntry(pvd, 156);
     }
 
@@ -121,7 +135,7 @@ public sealed class CueFs : IDisposable
         foreach (var e in Entries(dir))
             if (e.IsDir == wantDir && e.Name.Equals(upper, StringComparison.OrdinalIgnoreCase))
                 return e;
-        throw new FileNotFoundException($"{(wantDir ? "directory" : "File")} not found: {name}");
+        throw new FileNotFoundException($"{(wantDir ? "directory" : "file")} not found: {name}");
     }
 
     private IEnumerable<Entry> Entries(Entry dir)
@@ -131,7 +145,11 @@ public sealed class CueFs : IDisposable
         while (i < data.Length)
         {
             byte len = data[i];
-            if (len == 0) { i = (i / 2048 + 1) * 2048; continue; }
+            if (len == 0)
+            {
+                i = (i / 2048 + 1) * 2048;
+                continue;
+            }
             var e = ParseEntry(data, i);
             if (e.Name is not ("\x00" or "\x01"))
                 yield return e;
@@ -146,12 +164,18 @@ public sealed class CueFs : IDisposable
         int cur = lba;
         while (done < size)
         {
-            var sector = _bin.ReadSector(cur++);
+            var sector = ReadSector(cur++);
             int n = Math.Min(2048, size - done);
             sector.AsSpan(0, n).CopyTo(result.AsSpan(done));
             done += n;
         }
         return result;
+    }
+
+    private static string StripVersion(string name)
+    {
+        int semi = name.IndexOf(';');
+        return semi >= 0 ? name[..semi] : name;
     }
 
     private static Entry ParseEntry(byte[] data, int off)
@@ -165,5 +189,5 @@ public sealed class CueFs : IDisposable
         return new Entry(lba, size, isDir, semi >= 0 ? raw[..semi] : raw);
     }
 
-    public void Dispose() => _bin.Dispose();
+    public void Dispose() => _image.Dispose();
 }

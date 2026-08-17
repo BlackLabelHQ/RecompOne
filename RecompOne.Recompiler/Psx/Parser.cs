@@ -6,7 +6,7 @@ public static class Parser
 {
     private static readonly byte[] Magic = "PS-X EXE"u8.ToArray();
 
-    public static PsxExe ParseExe(CueFs fs, string cdPath)
+    public static PsxExe ParseExe(DiscFs fs, string cdPath)
     {
         var data = fs.ReadFile(cdPath);
         if (!data.AsSpan(0, 8).SequenceEqual(Magic))
@@ -38,7 +38,7 @@ public static class Parser
         return exe;
     }
 
-    public static PsxExe ParseBin(CueFs fs, string cdPath)
+    public static PsxExe ParseBin(DiscFs fs, string cdPath)
     {
         var code = fs.ReadFile(cdPath);
         return new PsxExe { TextSize = (uint)code.Length, Code = code };

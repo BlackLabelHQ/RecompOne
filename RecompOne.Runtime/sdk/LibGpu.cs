@@ -15,9 +15,9 @@ public static class LibGpu
         var gpu = Runtime.Gpu;
         if (gpu == null) return;
 
-        uint addr = c.A0 & 0x1FFFFCu;
+        uint addr = c.A0 & Runtime.RamWordMask;
         bool custom = GpuPrims.Any && GpuPrims.OtLength > 0;
-        uint otBase = GpuPrims.OtBase & 0x1FFFFCu;
+        uint otBase = GpuPrims.OtBase & Runtime.RamWordMask;
         uint otEnd = otBase + (uint)GpuPrims.OtLength * 4u;
 
         for (int guard = 0; guard < 0x100000; guard++)
@@ -31,7 +31,7 @@ public static class LibGpu
                 gpu.WriteGp0(m.ReadU32(addr + 4u + i * 4u));
             uint next = header & 0xFFFFFFu;
             if (next == 0xFFFFFFu || (next & 0x800000u) != 0) break;
-            addr = next & 0x1FFFFCu;
+            addr = next & Runtime.RamWordMask;
         }
 
         if (custom) GpuPrims.Clear();

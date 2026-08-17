@@ -6,7 +6,7 @@ namespace RecompOne.Runtime.Memory;
 
 public sealed class PSMemory : IMemory
 {
-    private readonly byte[] _ram = new byte[Runtime.Mode == RunMode.Devkit ? MemoryMap.DevkitRamSize : MemoryMap.RetailRamSize]; //should i make it able to increase psx mem?
+    private readonly byte[] _ram;
     private readonly byte[] _scratchpad = new byte[MemoryMap.ScratchpadSize];
     private readonly byte[] _hwregs = new byte[MemoryMap.HwRegsSize];
     private readonly byte[] _bios = new byte[MemoryMap.BiosSize];
@@ -22,11 +22,21 @@ public sealed class PSMemory : IMemory
     internal byte[] RamBuffer => _ram;
     
     //memory can be frozen for debuging reasons
-    private readonly bool[] _frozen = new bool[Runtime.Mode == RunMode.Devkit ? MemoryMap.DevkitRamSize : MemoryMap.RetailRamSize];
+    private readonly bool[] _frozen;
     private int _frozenCount;
 
-    public PSMemory()
+    public PSMemory(uint ramSize = 0)
     {
+        uint size = ramSize != 0 ? ramSize
+            : (Runtime.Mode == RunMode.Devkit ? MemoryMap.DevkitRamSize : MemoryMap.RetailRamSize);
+        if (size < MemoryMap.RetailRamSize) size = MemoryMap.RetailRamSize;
+        if (size > MemoryMap.RamWindow) size = MemoryMap.RamWindow;
+        if ((size & (size - 1)) != 0) throw new ArgumentException("ram size must be a power of two", nameof(ramSize));
+
+        _ram = new byte[size];
+        _frozen = new bool[size];
+        Runtime.RamSize = size;
+
         _dma = new Dma(this, _gpu, _spu, _mdec, () => Runtime.DispatchIrq(3));
         Runtime.Gpu = _gpu;
         Runtime.Spu = _spu;

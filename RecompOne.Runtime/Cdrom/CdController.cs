@@ -6,7 +6,7 @@ namespace RecompOne.Runtime.Cdrom;
 
 public sealed class CdController
 {
-    private readonly CueFs _fs;
+    private readonly DiscFs _fs;
     private readonly IMemory _m;
 
     private byte _index;
@@ -157,7 +157,7 @@ public sealed class CdController
         _ => $"0x{cmd:X2}"
     };
 
-    public CdController(CueFs fs, IMemory m)
+    public CdController(DiscFs fs, IMemory m)
     {
         _fs = fs;
         _m = m;
@@ -471,7 +471,7 @@ public sealed class CdController
         }
     }
 
-    public CueFs Fs => _fs;
+    public DiscFs Fs => _fs;
     public byte DriveStatusByte() => DriveStatus();
 
     public byte[] ReadSectorData(int lba)

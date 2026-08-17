@@ -22,7 +22,7 @@ public static class EntryWriter
         entry.AppendLine("    {");
         entry.AppendLine($"        RecompOne.Runtime.Runtime.Initialize(title ?? \"{className}\");");
         entry.AppendLine("        RecompOne.Runtime.Runtime.WaitForValidDisc();");
-        entry.AppendLine("        using var fs = CueFs.Open(cuePath ?? RecompOne.Runtime.Runtime.CdPath);");
+        entry.AppendLine("        using var fs = DiscFs.Open(cuePath ?? RecompOne.Runtime.Runtime.CdPath);");
         entry.AppendLine("        var cd = new CdController(fs, m);");
         entry.AppendLine("        m.SetCd(cd);");
         foreach (var name in overlays)

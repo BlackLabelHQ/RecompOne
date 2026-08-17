@@ -58,7 +58,7 @@ public sealed class DiscPickerPopup : Popup
             if (_path.Length > 0 && File.Exists(_path)) directory = Path.GetDirectoryName(Path.GetFullPath(_path));
             else if (_path.Length > 0 && Directory.Exists(_path)) directory = Path.GetFullPath(_path);
 
-            using var dialog = new NativeFileDialog().SelectFile().AddFilter(Localization.T("disc.filter"), "cue");
+            using var dialog = new NativeFileDialog().SelectFile().AddFilter(Localization.T("disc.filter"), "cue,chd");
             if (dialog.Open(out string? picked, directory) == DialogResult.Okay && !string.IsNullOrWhiteSpace(picked))
             {
                 _path = picked;
