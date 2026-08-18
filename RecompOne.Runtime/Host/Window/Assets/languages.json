@@ -592,7 +592,7 @@
           "en": "Saved controller not connected",
           "pt-BR": "Controle salvo não conectado",
           "es-419": "Control guardado no conectado",
-          "ja-jp": "ゲームパッド が接続されていません"
+          "ja-jp": "ゲームパッドが接続されていません"
         },
         "settings.input.device.refresh": {
           "en": "Refresh",
