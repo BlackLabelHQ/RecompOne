@@ -72,5 +72,7 @@ public class GameConfig
     public KeyBindings Keys2 { get; set; } = KeyBindings.Empty();
     public GamepadBindings Pad { get; set; } = new();
     public GamepadBindings Pad2 { get; set; } = GamepadBindings.Empty();
+    public string PadDevice { get; set; } = "";
+    public string PadDevice2 { get; set; } = "";
     public List<string> ActiveMods { get; set; } = [];
 }

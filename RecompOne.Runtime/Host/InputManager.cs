@@ -153,19 +153,79 @@ internal static unsafe class InputManager
         if (_pad1 != null) { _sdl?.GameControllerClose(_pad1); _pad1 = null; }
     }
 
+    public readonly record struct PadDevice(string Id, string Name);
+
+    static readonly List<PadDevice> _devices = [];
+
+    public static IReadOnlyList<PadDevice> Devices
+    {
+        get { lock (_devices) return _devices.ToArray(); }
+    }
+
+    public static void RefreshDevices() => Rescan();
+
+    static string DeviceId(int joystickIndex)
+    {
+        if (_sdl == null) return "";
+        var guid = _sdl.JoystickGetDeviceGUID(joystickIndex);
+        var text = new byte[33];
+        fixed (byte* p = text) _sdl.JoystickGetGUIDString(guid, p, text.Length);
+        int len = Array.IndexOf(text, (byte)0);
+        return System.Text.Encoding.ASCII.GetString(text, 0, len < 0 ? text.Length : len);
+    }
+
+    static string DeviceName(int joystickIndex)
+    {
+        if (_sdl == null) return "";
+        var name = _sdl.GameControllerNameForIndexS(joystickIndex);
+        return string.IsNullOrWhiteSpace(name) ? $"Controller {joystickIndex}" : name;
+    }
+
     static void Rescan()
     {
         if (_sdl == null) return;
         CloseControllers();
+
+        var found = new List<(int Index, string Id, string Name)>();
         int n = _sdl.NumJoysticks();
         for (int i = 0; i < n; i++)
         {
             if (_sdl.IsGameController(i) != SdlBool.True) continue;
-            var ctrl = _sdl.GameControllerOpen(i);
-            if (ctrl == null) continue;
-            if (_pad0 == null) _pad0 = ctrl;
-            else { _pad1 = ctrl; break; }
+            found.Add((i, DeviceId(i), DeviceName(i)));
         }
+
+        lock (_devices)
+        {
+            _devices.Clear();
+            foreach (var f in found) _devices.Add(new PadDevice(f.Id, f.Name));
+        }
+
+        var used = new HashSet<int>();
+        _pad0 = OpenFor(found, ConfigManager.Game.PadDevice, used);
+        _pad1 = OpenFor(found, ConfigManager.Game.PadDevice2, used);
+    }
+
+    static GameController* OpenFor(List<(int Index, string Id, string Name)> found, string wanted, HashSet<int> used)
+    {
+        if (_sdl == null) return null;
+
+        int pick = -1;
+        if (!string.IsNullOrEmpty(wanted))
+        {
+            foreach (var f in found)
+                if (f.Id == wanted && used.Add(f.Index)) { pick = f.Index; break; }
+            if (pick < 0) return null;
+        }
+        else
+        {
+            foreach (var f in found)
+                if (used.Add(f.Index)) { pick = f.Index; break; }
+            if (pick < 0) return null;
+        }
+
+        var ctrl = _sdl.GameControllerOpen(pick);
+        if (ctrl == null) used.Remove(pick);
+        return ctrl;
     }
 
     static void PollKeyboard()

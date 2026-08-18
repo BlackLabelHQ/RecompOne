@@ -43,6 +43,12 @@ internal sealed class InputSettingsSection : ISettingsSection
         DrawPadSelector();
         ImGui.Spacing();
 
+        if (_gamepadMode)
+        {
+            DrawDeviceCombo();
+            ImGui.Spacing();
+        }
+
         if (_gamepadMode && !InputManager.IsPadConnected(_padIndex))
         {
             ImGuiEx.TextColored(new Vector4(1f, 0.75f, 0.3f, 1f), Localization.T("settings.input.no_gamepad"));
@@ -107,6 +113,46 @@ internal sealed class InputSettingsSection : ISettingsSection
             }
             ImGui.EndTabBar();
         }
+    }
+
+    void DrawDeviceCombo()
+    {
+        var devices = InputManager.Devices;
+        string current = _padIndex == 0 ? ConfigManager.Game.PadDevice : ConfigManager.Game.PadDevice2;
+
+        string preview = Localization.T("settings.input.device.auto");
+        foreach (var d in devices)
+            if (d.Id == current) { preview = d.Name; break; }
+        if (!string.IsNullOrEmpty(current) && preview == Localization.T("settings.input.device.auto"))
+            preview = Localization.T("settings.input.device.missing");
+
+        ImGui.TextUnformatted(Localization.T("settings.input.device"));
+        ImGui.SameLine();
+        ImGui.SetNextItemWidth(-70);
+
+        if (ImGui.BeginCombo("##input-device-pick", preview))
+        {
+            if (ImGui.Selectable(Localization.T("settings.input.device.auto"), string.IsNullOrEmpty(current)))
+                SetDevice("");
+
+            foreach (var d in devices)
+                if (ImGui.Selectable(d.Name, d.Id == current))
+                    SetDevice(d.Id);
+
+            ImGui.EndCombo();
+        }
+
+        ImGui.SameLine();
+        if (ImGui.Button(Localization.T("settings.input.device.refresh")))
+            InputManager.RefreshDevices();
+    }
+
+    void SetDevice(string id)
+    {
+        if (_padIndex == 0) ConfigManager.Game.PadDevice = id;
+        else ConfigManager.Game.PadDevice2 = id;
+        ConfigManager.SaveGame();
+        InputManager.RefreshDevices();
     }
 
     void DrawBindings()
