@@ -3,680 +3,794 @@
         "en": "English",
         "pt-BR": "Português (Brasil)",
         "es-419": "Español (Latinoamérica)",
-        "ja-jp": "日本語"
+        "ja-jp": "日本語",
+        "cn-zh": "简体中文"
     },
     "strings": {
         "menu.system": {
             "en": "System",
             "pt-BR": "Sistema",
             "es-419": "Sistema",
-            "ja-jp": "システム"
+            "ja-jp": "システム",
+            "cn-zh": "系统"
         },
         "menu.system.settings": {
             "en": "Settings",
             "pt-BR": "Configurações",
             "es-419": "Configuración",
-            "ja-jp": "設定"
+            "ja-jp": "設定",
+            "cn-zh": "设定"
         },
         "menu.system.show_menu_bar": {
             "en": "Show Menu Bar",
             "pt-BR": "Mostrar Barra de Menu",
             "es-419": "Mostrar Barra de Menú",
-            "ja-jp": "メニューバーを表示"
+            "ja-jp": "メニューバーを表示",
+            "cn-zh": "显示菜单栏"
         },
         "menu.system.autohide_menu_bar": {
             "en": "Autohide Menu Bar",
             "pt-BR": "Ocultar Barra Automaticamente",
             "es-419": "Ocultar Barra Automáticamente",
-            "ja-jp": "メニューバーを自動的に隠す"
+            "ja-jp": "メニューバーを自動的に隠す",
+            "cn-zh": "自动隐藏菜单栏"
         },
         "menu.system.fullscreen": {
             "en": "Fullscreen",
             "pt-BR": "Tela Cheia",
             "es-419": "Pantalla Completa",
-            "ja-jp": "全画面"
+            "ja-jp": "全画面",
+            "cn-zh": "全屏模式"
         },
         "menu.system.hard_reset": {
             "en": "Hard Reset",
             "pt-BR": "Hard Reset",
             "es-419": "Hard Reset",
-            "ja-jp": "ハードリセット"
+            "ja-jp": "ハードリセット",
+            "cn-zh": "重新启动"
         },
         "menu.system.quit": {
             "en": "Quit Application",
             "pt-BR": "Sair Aplicação",
             "es-419": "Salir Aplicación",
-            "ja-jp": "アプリケーションを終了する (Quit / Exit)"
+            "ja-jp": "アプリケーションを終了する",
+            "cn-zh": "退出程序"
+            
         },
         "menu.mods": {
             "en": "Mods",
             "pt-BR": "Mods",
             "es-419": "Mods",
-            "ja-jp": "Mod"
+            "ja-jp": "Mod",
+            "cn-zh": "模组"
         },
         "menu.mods.manage": {
             "en": "Manage Mods",
             "pt-BR": "Gerenciar Mods",
             "es-419": "Administrar Mods",
-            "ja-jp": "Modマネージャ"
+            "ja-jp": "Modマネージャ",
+            "cn-zh": "模组管理器"
         },
         "menu.mods.hub": {
             "en": "Explore Mod Hub",
             "pt-BR": "Explorar Mod Hub",
             "es-419": "Explorar Mod Hub",
-            "ja-jp": "Mod Hubを閲覧"
+            "ja-jp": "Mod Hubを閲覧",
+            "cn-zh": "浏览Mod Hub"
         },
         "menu.debug": {
             "en": "Debug",
             "pt-BR": "Depuração",
             "es-419": "Depuración",
-            "ja-jp": "デバッグ"
+            "ja-jp": "デバッグ",
+            "cn-zh": "Debug"
         },
         "menu.debug.gpu": {
             "en": "GPU",
             "pt-BR": "GPU",
             "es-419": "GPU",
-            "ja-jp": "GPU"
+            "ja-jp": "GPU",
+            "cn-zh": "GPU"
         },
         "menu.debug.dump_textures": {
             "en": "Dump textures",
             "pt-BR": "Extrair texturas",
             "es-419": "Extraer texturas",
-            "ja-jp": "テクスチャをダンプ"
+            "ja-jp": "テクスチャをダンプ",
+            "cn-zh": "提取当前纹理"
         },
         "menu.debug.dump_pages": {
             "en": "Dump texture pages",
             "pt-BR": "Extrair páginas de textura",
             "es-419": "Extraer páginas de textura",
-            "ja-jp": "テクスチャページをダンプ"
+            "ja-jp": "テクスチャページをダンプ",
+            "cn-zh": "提取纹理页面"
         },
         "menu.debug.dump_pages.tooltip": {
             "en": "Write the whole 256x256 texture page each tile comes from to dump/<game>/pages",
             "pt-BR": "Grava a página de textura inteira (256x256) de onde cada tile vem em dump/<jogo>/pages",
             "es-419": "Guarda la página de textura completa (256x256) de cada tile en dump/<juego>/pages",
-            "ja-jp": "各タイルの元となる256x256のテクスチャページ全体を `dump/<game>/pages` に書き出します"
+            "ja-jp": "各タイルの元となる256x256のテクスチャページ全体を `dump/<game>/pages` に書き出します",
+            "cn-zh": "将每个图块所对应的整个 256x256 纹理页面写入 dump/<game>/pages 目录"
         },
         "menu.debug.dump_textures.tooltip": {
             "en": "Write every newly seen texture to dump/<game>/textures as PNG + raw data + hash json",
             "pt-BR": "Grava cada textura nova em dump/<jogo>/textures como PNG + dados crus + json do hash",
             "es-419": "Guarda cada textura nueva en dump/<juego>/textures como PNG + datos crudos + json del hash",
-            "ja-jp": "新しく検出されたすべてのテクスチャを、PNG、RAWデータ、ハッシュJSONとして `dump/<game>/textures` に書き出します"
+            "ja-jp": "新しく検出されたすべてのテクスチャを、PNG、RAWデータ、ハッシュJSONとして `dump/<game>/textures` に書き出します",
+            "cn-zh": "将所有新发现的纹理以 PNG、原始数据和哈希 JSON 格式写入 dump/<game>/textures 目录"
         },
         "menu.debug.cpu": {
             "en": "CPU",
             "pt-BR": "CPU",
             "es-419": "CPU",
-            "ja-jp": "CPU"
+            "ja-jp": "CPU",
+            "cn-zh": "CPU"
         },
         "menu.debug.memory": {
             "en": "Memory",
             "pt-BR": "Memória",
             "es-419": "Memoria",
-            "ja-jp": "メモリ"
+            "ja-jp": "メモリ",
+            "cn-zh": "内存"
         },
         "menu.debug.audio": {
             "en": "Audio",
             "pt-BR": "Áudio",
             "es-419": "Audio",
-            "ja-jp": "オーディオ"
+            "ja-jp": "オーディオ",
+            "cn-zh": "声音"
         },
         "menu.debug.cd": {
             "en": "CD",
             "pt-BR": "CD",
             "es-419": "CD",
-            "ja-jp": "CD"
+            "ja-jp": "CD",
+            "cn-zh": "CD"
         },
         "menu.debug.system": {
             "en": "System",
             "pt-BR": "Sistema",
             "es-419": "Sistema",
-            "ja-jp": "システム"
+            "ja-jp": "システム",
+            "cn-zh": "系统"
         },
         "menu.debug.reset_view": {
             "en": "Reset View",
             "pt-BR": "Redefinir Layout",
             "es-419": "Restablecer Vista",
-            "ja-jp": "ビューをリセット"
+            "ja-jp": "ビューをリセット",
+            "cn-zh": "重置镜头"
         },
         "panel.output": {
             "en": "Output",
             "pt-BR": "Saída",
             "es-419": "Salida",
-            "ja-jp": "出力"
+            "ja-jp": "出力",
+            "cn-zh": "输出"
         },
         "panel.vram_viewer": {
             "en": "VRAM Viewer",
             "pt-BR": "Visualizador de VRAM",
             "es-419": "Visor de VRAM",
-            "ja-jp": "VRAMビューア"
+            "ja-jp": "VRAMビューア",
+            "cn-zh": "VRAM查看器"
         },
         "panel.texture_inspector": {
             "en": "Texture Inspector",
             "pt-BR": "Inspetor de Texturas",
             "es-419": "Inspector de Texturas",
-            "ja-jp": "テクスチャインスペクター"
+            "ja-jp": "テクスチャインスペクター",
+            "cn-zh": "纹理检查器"
         },
         "panel.cpu_state": {
             "en": "CPU State",
             "pt-BR": "Estado da CPU",
             "es-419": "Estado de la CPU",
-            "ja-jp": "CPU状態"
+            "ja-jp": "CPU状態",
+            "cn-zh": "CPU状态"
         },
         "panel.ram_map": {
             "en": "RAM Map",
             "pt-BR": "Mapa da RAM",
             "es-419": "Mapa de la RAM",
-            "ja-jp": "RAMマップ"
+            "ja-jp": "RAMマップ",
+            "cn-zh": "RAM查看器"
         },
         "panel.memory_editor": {
             "en": "Memory Editor",
             "pt-BR": "Editor de Memória",
             "es-419": "Editor de Memoria",
-            "ja-jp": "メモリエディター"
+            "ja-jp": "メモリエディター",
+            "cn-zh": "内存编辑器"
         },
         "panel.spu_viewer": {
             "en": "SPU Viewer",
             "pt-BR": "Visualizador do SPU",
             "es-419": "Visor del SPU",
-            "ja-jp": "SPUビューアー"
+            "ja-jp": "SPUビューアー",
+            "cn-zh": "SCP查看器"
         },
         "panel.cd_debug": {
             "en": "CD Debug",
             "pt-BR": "Depuração do CD",
             "es-419": "Depuración del CD",
-            "ja-jp": "CDデバッグ"
+            "ja-jp": "CDデバッグ",
+            "cn-zh": "CD Debug"
         },
         "panel.console": {
             "en": "Console",
             "pt-BR": "Console",
             "es-419": "Consola",
-            "ja-jp": "コンソール"
+            "ja-jp": "コンソール",
+            "cn-zh": "Console"
         },
         "panel.overlay_events": {
             "en": "Overlay Events",
             "pt-BR": "Eventos de Overlay",
             "es-419": "Eventos de Overlay",
-            "ja-jp": "オーバーレイイベント"
+            "ja-jp": "オーバーレイイベント",
+            "cn-zh": "叠加层事件"
         },
         "common.ok": {
             "en": "OK",
             "pt-BR": "OK",
             "es-419": "Aceptar",
-            "ja-jp": "OK"
+            "ja-jp": "OK",
+            "cn-zh": "OK"
         },
         "common.cancel": {
             "en": "Cancel",
             "pt-BR": "Cancelar",
             "es-419": "Cancelar",
-            "ja-jp": "キャンセル"
+            "ja-jp": "キャンセル",
+            "cn-zh": "取消"
         },
         "common.confirm": {
             "en": "Confirm",
             "pt-BR": "Confirmar",
             "es-419": "Confirmar",
-            "ja-jp": "確認"
+            "ja-jp": "確認",
+            "cn-zh": "确定"
         },
         "common.close": {
             "en": "Close",
             "pt-BR": "Fechar",
             "es-419": "Cerrar",
-            "ja-jp": "閉じる"
+            "ja-jp": "閉じる",
+            "cn-zh": "关闭"
         },
         "common.browse": {
             "en": "Browse...",
             "pt-BR": "Procurar...",
             "es-419": "Buscar...",
-            "ja-jp": "参照..."
+            "ja-jp": "参照...",
+            "cn-zh": "浏览..."
         },
         "common.understood": {
             "en": "I understand",
             "pt-BR": "Eu entendo",
             "es-419": "Entiendo",
-            "ja-jp": "理解しました"
+            "ja-jp": "理解しました",
+            "cn-zh": "我理解"
         },
         "common.restart_required": {
             "en": "You need to restart the application to apply this configuration",
             "pt-BR": "Você precisa reiniciar o aplicativo para aplicar esta configuração",
             "es-419": "Debes reiniciar la aplicación para aplicar esta configuración",
-            "ja-jp": "この設定を適用するには、アプリケーションを再起動する必要があります"
+            "ja-jp": "この設定を適用するには、アプリケーションを再起動する必要があります",
+            "cn-zh": "要使本设定生效，需要重新启动主程序"
         },
         "common.notice": {
             "en": "Notice",
             "pt-BR": "Aviso",
             "es-419": "Aviso",
-            "ja-jp": "お知らせ"
+            "ja-jp": "お知らせ",
+            "cn-zh": "Notice"
         },
         "settings.title": {
             "en": "Settings",
             "pt-BR": "Configurações",
             "es-419": "Configuración",
-            "ja-jp": " 設定"
+            "ja-jp": " 設定",
+            "cn-zh": " 设定"
         },
         "settings.empty": {
             "en": "No settings available.",
             "pt-BR": "Nenhuma configuração disponível.",
             "es-419": "No hay opciones disponibles.",
-            "ja-jp": "利用可能な設定はありません。"
+            "ja-jp": "利用可能な設定はありません。",
+            "cn-zh": "没有可用的设置"
         },
         "settings.interface": {
             "en": "Interface",
             "pt-BR": "Interface",
             "es-419": "Interfaz",
-            "ja-jp": "インタフェース"
+            "ja-jp": "インタフェース",
+            "cn-zh": "界面"
         },
         "settings.interface.language": {
             "en": "Language",
             "pt-BR": "Idioma",
             "es-419": "Idioma",
-            "ja-jp": "言語"
+            "ja-jp": "言語",
+            "cn-zh": "语言"
         },
         "settings.interface.language_hint": {
             "en": "Some texts only change after restarting",
             "pt-BR": "Alguns textos só mudam após reiniciar",
             "es-419": "Algunos textos solo cambian al reiniciar",
-            "ja-jp": "一部のテキストは再起動後に反映されます"
+            "ja-jp": "一部のテキストは再起動後に反映されます",
+            "cn-zh": "一部分文本的变更只在重新启动程序后生效"
         },
         "settings.interface.accent": {
             "en": "Accent color",
             "pt-BR": "Cor de destaque",
             "es-419": "Color de acento",
-            "ja-jp": "アクセントカラー"
+            "ja-jp": "アクセントカラー",
+            "cn-zh": "强调色"
         },
         "settings.interface.background": {
             "en": "Background color",
             "pt-BR": "Cor de fundo",
             "es-419": "Color de fondo",
-            "ja-jp": "背景色"
+            "ja-jp": "背景色",
+            "cn-zh": "背景色"
         },
         "background.dark": {
             "en": "Dark",
             "pt-BR": "Escuro",
             "es-419": "Oscuro",
-            "ja-jp": "ダークテーマ"
+            "ja-jp": "ダークテーマ",
+            "cn-zh": "暗色"
         },
         "background.black": {
             "en": "Black",
             "pt-BR": "Preto",
             "es-419": "Negro",
-            "ja-jp": "ブラックテーマ"
+            "ja-jp": "ブラックテーマ",
+            "cn-zh": "黑色"
         },
         "background.gray": {
             "en": "Gray",
             "pt-BR": "Cinza",
             "es-419": "Gris",
-            "ja-jp": "グレーテーマ"
+            "ja-jp": "グレーテーマ",
+            "cn-zh": "灰色"
         },
         "background.light": {
             "en": "Light",
             "pt-BR": "Claro",
             "es-419": "Claro",
-            "ja-jp": "ライトテーマ"
+            "ja-jp": "ライトテーマ",
+            "cn-zh": "亮色"
         },
         "settings.interface.custom": {
             "en": "Custom",
             "pt-BR": "Personalizada",
             "es-419": "Personalizado",
-            "ja-jp": "カスタム"
+            "ja-jp": "カスタム",
+            "cn-zh": "自选设定"
         },
         "settings.interface.ui_scale": {
             "en": "UI scale",
             "pt-BR": "Escala da interface",
             "es-419": "Escala de la interfaz",
-            "ja-jp": "UIスケール"
+            "ja-jp": "UIスケール",
+            "cn-zh": "UI缩放"
         },
         "settings.interface.ui_scale_hint": {
             "en": "Scales the whole interface",
             "pt-BR": "Redimensiona toda a interface",
             "es-419": "Escala toda la interfaz",
-            "ja-jp": "インターフェース全体を拡大・縮小します"
+            "ja-jp": "インターフェース全体を拡大・縮小します",
+            "cn-zh": "将可视界面全部放大或缩小"
         },
         "theme.blue": {
             "en": "Blue",
             "pt-BR": "Azul",
             "es-419": "Azul",
-            "ja-jp": "青テーマ"
+            "ja-jp": "青テーマ",
+            "cn-zh": "蓝色"
         },
         "theme.purple": {
             "en": "Purple",
             "pt-BR": "Roxo",
             "es-419": "Morado",
-            "ja-jp": "紫テーマ"
+            "ja-jp": "紫テーマ",
+            "cn-zh": "紫色"
         },
         "theme.crimson": {
             "en": "Crimson",
             "pt-BR": "Carmesim",
             "es-419": "Carmesí",
-            "ja-jp": "深紅テーマ"
+            "ja-jp": "深紅テーマ",
+            "cn-zh": "红色"
         },
         "theme.emerald": {
             "en": "Emerald",
             "pt-BR": "Esmeralda",
             "es-419": "Esmeralda",
-            "ja-jp": "エメラルドテーマ"
+            "ja-jp": "エメラルドテーマ",
+            "cn-zh": "绿色"
         },
         "theme.amber": {
             "en": "Amber",
             "pt-BR": "Âmbar",
             "es-419": "Ámbar",
-            "ja-jp": "アンバーテーマ"
+            "ja-jp": "アンバーテーマ",
+            "cn-zh": "琥珀色"
         },
         "theme.teal": {
             "en": "Teal",
             "pt-BR": "Turquesa",
             "es-419": "Turquesa",
-            "ja-jp": "ティールテーマ"
+            "ja-jp": "ティールテーマ",
+            "cn-zh": "青色"
         },
         "theme.slate": {
             "en": "Slate",
             "pt-BR": "Grafite",
             "es-419": "Pizarra",
-            "ja-jp": "スレートテーマ"
+            "ja-jp": "スレートテーマ",
+            "cn-zh": "板岩色"
         },
         "settings.display": {
             "en": "Display",
             "pt-BR": "Vídeo",
             "es-419": "Video",
-            "ja-jp": "ディスプレイ"
+            "ja-jp": "ディスプレイ",
+            "cn-zh": "显示模式"
         },
         "settings.display.fullscreen": {
             "en": "Fullscreen",
             "pt-BR": "Tela cheia",
             "es-419": "Pantalla completa",
-            "ja-jp": "全画面"
+            "ja-jp": "全画面",
+            "cn-zh": "全屏模式"
         },
         "settings.display.vsync": {
             "en": "VSync",
             "pt-BR": "VSync",
             "es-419": "VSync",
-            "ja-jp": "VSync"
+            "ja-jp": "VSync",
+            "cn-zh": "垂直同步"
         },
         "settings.display.vsync_hint": {
             "en": "Syncs with the monitor refresh rate",
             "pt-BR": "Sincroniza com a taxa de atualização do monitor",
             "es-419": "Se sincroniza con la tasa de refresco del monitor",
-            "ja-jp": "モニターのリフレッシュレートと同期します"
+            "ja-jp": "モニターのリフレッシュレートと同期します",
+            "cn-zh": "使游戏刷新率与显示器的刷新率同步"
         },
         "settings.display.render_scale": {
             "en": "Render scale",
             "pt-BR": "Escala de renderização",
             "es-419": "Escala de renderizado",
-            "ja-jp": "レンダリングスケール"
+            "ja-jp": "レンダリングスケール",
+            "cn-zh": "渲染比例"
         },
         "settings.display.render_scale_hint": {
             "en": "Internal resolution multiplier. 1x is the original PSX output.",
             "pt-BR": "Multiplicador da resolução interna. 1x é a saída original do PSX.",
             "es-419": "Multiplicador de la resolución interna. 1x es la salida original de PSX.",
-            "ja-jp": "内部解像度の倍率。1xがPSX本来の出力です。"
+            "ja-jp": "内部解像度の倍率。1xがPSX本来の出力です。",
+            "cn-zh": "内部分辨率的倍率。1x为原作PSX版本来的输出比率。"
         },
         "settings.display.render_scale_lines": {
             "en": "{1} lines in the current context, {3} after scale ({4}x)",
             "pt-BR": "{1} linhas no contexto atual, {3} após a escala ({4}x)",
             "es-419": "{1} líneas en el contexto actual, {3} tras la escala ({4}x)",
-            "ja-jp": "現在のコンテキストでは{1}ライン、スケール後は{3}ライン（{4}x)"
+            "ja-jp": "現在のコンテキストでは{1}ライン、スケール後は{3}ライン（{4}x)",
+            "cn-zh": "当前状态下为 {1} 行数, 缩放后为 {3} 行数 ({4}x)"
         },
         "settings.display.restart_pending": {
             "en": "restart is required",
             "pt-BR": "é necessário reiniciar",
             "es-419": "se requiere reiniciar",
-            "ja-jp": "再起動が必要です"
+            "ja-jp": "再起動が必要です",
+            "cn-zh": "需要重新启动"
         },
         "settings.display.backend": {
             "en": "Graphics backend",
             "pt-BR": "Backend gráfico",
             "es-419": "Backend gráfico",
-            "ja-jp": "グラフィックバックエンド"
+            "ja-jp": "グラフィックバックエンド",
+            "cn-zh": "图形后端"
         },
         "settings.display.backend_running": {
             "en": "running: {0}",
             "pt-BR": "em uso: {0}",
             "es-419": "en uso: {0}",
-            "ja-jp": "使用中: {0}"
+            "ja-jp": "使用中: {0}",
+            "cn-zh": "使用中: {0}"
         },
         "settings.audio": {
             "en": "Audio",
             "pt-BR": "Áudio",
             "es-419": "Audio",
-            "ja-jp": "オーディオ"
+            "ja-jp": "オーディオ",
+            "cn-zh": "声音"
         },
         "settings.audio.master": {
             "en": "Master",
             "pt-BR": "Geral",
             "es-419": "General",
-            "ja-jp": "マスター"
+            "ja-jp": "マスター",
+            "cn-zh": "主音量"
         },
         "settings.audio.spu": {
             "en": "SPU",
             "pt-BR": "SPU",
             "es-419": "SPU",
-            "ja-jp": "SPU"
+            "ja-jp": "SPU",
+            "cn-zh": "SPU"
         },
         "settings.audio.spu_hint": {
             "en": "Sound effects and sequenced music",
             "pt-BR": "Efeitos sonoros e música sequenciada",
             "es-419": "Efectos de sonido y música secuenciada",
-            "ja-jp": "効果音とシーケンス音楽"
+            "ja-jp": "効果音とシーケンス音楽",
+            "cn-zh": "效果音与序列乐曲"
         },
         "settings.audio.xa": {
             "en": "XA",
             "pt-BR": "XA",
             "es-419": "XA",
-            "ja-jp": "XA"
+            "ja-jp": "XA",
+            "cn-zh": "XA"
         },
         "settings.audio.xa_hint": {
             "en": "Streamed audio from the disc",
             "pt-BR": "Áudio transmitido direto do disco",
             "es-419": "Audio transmitido desde el disco",
-            "ja-jp": "ディスクからストリーミング再生される音声"
+            "ja-jp": "ディスクからストリーミング再生される音声",
+            "cn-zh": "碟片镜像中预录制的声音"
         },
         "settings.audio.mute": {
             "en": "Mute",
             "pt-BR": "Mudo",
             "es-419": "Silenciar",
-            "ja-jp": "ミュート"
+            "ja-jp": "ミュート",
+            "cn-zh": "静音"
         },
         "settings.input": {
             "en": "Input",
             "pt-BR": "Controles",
             "es-419": "Controles",
-            "ja-jp": "入力 / インプット"
+            "ja-jp": "入力 / インプット",
+            "cn-zh": "按键设定"
         },
         "settings.input.keyboard": {
             "en": "Keyboard",
             "pt-BR": "Teclado",
             "es-419": "Teclado",
-            "ja-jp": "キーボード"
+            "ja-jp": "キーボード",
+            "cn-zh": "键盘"
         },
         "settings.input.gamepad": {
             "en": "Gamepad",
             "pt-BR": "Controle",
             "es-419": "Control",
-            "ja-jp": "ゲームパッド"
+            "ja-jp": "ゲームパッド",
+            "cn-zh": "游戏控制器"
         },
         "settings.input.pad": {
             "en": "Pad {0}",
             "pt-BR": "Controle {0}",
             "es-419": "Control {0}",
-            "ja-jp": "パッド {0}"
+            "ja-jp": "パッド {0}",
+            "cn-zh": "Pad {0}"
         },
         "settings.input.button": {
             "en": "Button",
             "pt-BR": "Botão",
             "es-419": "Botón",
-            "ja-jp": "ボタン"
+            "ja-jp": "ボタン",
+            "cn-zh": "按键"
         },
         "settings.input.no_gamepad": {
             "en": "No gamepad connected.",
             "pt-BR": "Nenhum controle conectado.",
             "es-419": "No hay ningún control conectado.",
-            "ja-jp": "ゲームパッドが接続されていません。"
+            "ja-jp": "ゲームパッドが接続されていません。",
+            "cn-zh": "未检测到游戏控制器"
         },
         "settings.input.unbound": {
             "en": "unbound",
             "pt-BR": "sem atalho",
             "es-419": "sin asignar",
-            "ja-jp": "未割り当て"
+            "ja-jp": "未割り当て",
+            "cn-zh": "未设定"
         },
         "settings.input.press_key": {
             "en": "[press key...]",
             "pt-BR": "[pressione uma tecla...]",
             "es-419": "[presiona una tecla...]",
-            "ja-jp": "[キーを押してください...]"
+            "ja-jp": "[キーを押してください...]",
+            "cn-zh": "[请按下键盘按键...]"
         },
         "settings.input.press_button": {
             "en": "[press button...]",
             "pt-BR": "[pressione um botão...]",
             "es-419": "[presiona un botón...]",
-            "ja-jp": "[ボタンを押してください...]"
+            "ja-jp": "[ボタンを押してください...]",
+            "cn-zh": "[请按下游戏控制器按键...]"
         },
         "settings.input.press_button_add": {
             "en": "[press button to add...]",
             "pt-BR": "[pressione um botão para adicionar...]",
             "es-419": "[presiona un botón para agregar...]",
-            "ja-jp": "[追加するボタンを押してください...]"
+            "ja-jp": "[追加するボタンを押してください...]",
+            "cn-zh": "[按下按键来追加...]"
         },
         "settings.input.reset_defaults": {
             "en": "Reset to Defaults",
             "pt-BR": "Restaurar Padrões",
             "es-419": "Restaurar Predeterminados",
-            "ja-jp": "デフォルトに戻す"
+            "ja-jp": "デフォルトに戻す",
+            "cn-zh": "恢复默认设定"
         },
         "settings.paths": {
             "en": "Paths",
             "pt-BR": "Caminhos",
             "es-419": "Rutas",
-            "ja-jp": "パス"
+            "ja-jp": "パス",
+            "cn-zh": "路径设定"
         },
         "settings.paths.disc": {
             "en": "Disc",
             "pt-BR": "Disco",
             "es-419": "Disco",
-            "ja-jp": "ディスク"
+            "ja-jp": "ディスク",
+            "cn-zh": "碟片镜像"
         },
         "settings.paths.memory_cards": {
             "en": "Memory cards",
             "pt-BR": "Memory cards",
             "es-419": "Memory cards",
-            "ja-jp": "メモリーカード"
+            "ja-jp": "メモリーカード",
+            "cn-zh": "虚拟记忆卡"
         },
         "settings.paths.card_a": {
             "en": "Card A",
             "pt-BR": "Card A",
             "es-419": "Card A",
-            "ja-jp": "カードA"
+            "ja-jp": "カードA",
+            "cn-zh": "记忆卡A"
         },
         "settings.paths.card_b": {
             "en": "Card B",
             "pt-BR": "Card B",
             "es-419": "Card B",
-            "ja-jp": "カードB"
+            "ja-jp": "カードB",
+            "cn-zh": "记忆卡B"
         },
         "mods.title": {
             "en": "Mods",
             "pt-BR": "Mods",
             "es-419": "Mods",
-            "ja-jp": "Mod"
+            "ja-jp": "Mod",
+            "cn-zh": "模组"
         },
         "mods.count": {
             "en": "{0} mods",
             "pt-BR": "{0} mods",
             "es-419": "{0} mods",
-            "ja-jp": "{0}個のMod"
+            "ja-jp": "{0}個のMod",
+            "cn-zh": "{0} 个模组"
         },
         "mods.count_one": {
             "en": "1 mod",
             "pt-BR": "1 mod",
             "es-419": "1 mod",
-            "ja-jp": "1個のMod"
+            "ja-jp": "1個のMod",
+            "cn-zh": "1 个模组"
         },
         "mods.active": {
             "en": "{0} active",
             "pt-BR": "{0} ativo(s)",
             "es-419": "{0} activo(s)",
-            "ja-jp": "{0}個が有効"
+            "ja-jp": "{0}個が有効",
+            "cn-zh": "{0}个模组当前生效"
         },
         "mods.empty": {
             "en": "No mods found.",
             "pt-BR": "Nenhum mod encontrado.",
             "es-419": "No se encontraron mods.",
-            "ja-jp": "Modが見つかりません。"
+            "ja-jp": "Modが見つかりません。",
+            "cn-zh": "未检测到模组"
         },
         "mods.empty_hint": {
             "en": "Drop a mod folder or zip into the mods folder and restart.",
             "pt-BR": "Coloque a pasta ou o zip do mod na pasta mods e reinicie.",
             "es-419": "Pon la carpeta o el zip del mod en la carpeta mods y reinicia.",
-            "ja-jp": "ModのフォルダーまたはZIPファイルをmodsフォルダーに入れて、再起動してください。"
+            "ja-jp": "ModのフォルダーまたはZIPファイルをmodsフォルダーに入れて、再起動してください。",
+            "cn-zh": "把模组所在的zip压缩包或文件夹放到 mod目录后，重新启动。"
         },
         "mods.enable": {
             "en": "Enable",
             "pt-BR": "Ativar",
             "es-419": "Activar",
-            "ja-jp": "有効化"
+            "ja-jp": "有効化",
+            "cn-zh": "启用"
         },
         "mods.disable": {
             "en": "Disable",
             "pt-BR": "Desativar",
             "es-419": "Desactivar",
-            "ja-jp": "無効化"
+            "ja-jp": "無効化",
+            "cn-zh": "禁用"
         },
         "mods.settings": {
             "en": "Settings",
             "pt-BR": "Configurações",
             "es-419": "Configuración",
-            "ja-jp": "設定"
+            "ja-jp": "設定",
+            "cn-zh": "设置"
         },
         "mods.reload": {
             "en": "Reload",
             "pt-BR": "Recarregar",
             "es-419": "Recargar",
-            "ja-jp": "再読み込み"
+            "ja-jp": "再読み込み",
+            "cn-zh": "重新读取"
         },
         "mods.hooks": {
             "en": "{0} hook(s)",
             "pt-BR": "{0} hook(s)",
             "es-419": "{0} hook(s)",
-            "ja-jp": "{0}個のフック"
+            "ja-jp": "{0}個のフック",
+            "cn-zh": "{0} hook(s)"
         },
         "mods.load_failed": {
             "en": "failed to load, check the console",
             "pt-BR": "falha ao carregar, verifique o console",
             "es-419": "no se pudo cargar, revisa la consola",
-            "ja-jp": "読み込みに失敗しました。コンソールを確認してください。"
+            "ja-jp": "読み込みに失敗しました。コンソールを確認してください。",
+            "cn-zh": "读取失败，请重新检查console项目。 "
         },
         "mods.loading": {
             "en": "Loading mods",
             "pt-BR": "Carregando mods",
             "es-419": "Cargando mods",
-            "ja-jp": "Modを読み込み中"
+            "ja-jp": "Modを読み込み中",
+            "cn-zh": "正在读取模组"
         },
         "disc.title": {
             "en": "Disc image not found",
             "pt-BR": "Imagem do disco não encontrada",
             "es-419": "Imagen del disco no encontrada",
-            "ja-jp": "ディスクイメージが見つかりません"
+            "ja-jp": "ディスクイメージが見つかりません",
+            "cn-zh": "未读取到碟片镜像"
         },
         "disc.description": {
             "en": "Please provide the path to the game's disc file.",
             "pt-BR": "Informe o caminho do arquivo de disco do jogo.",
             "es-419": "Ingresa la ruta del archivo de disco del juego.",
-            "ja-jp": "ゲームのディスクファイルのパスを指定してください。"
+            "ja-jp": "ゲームのディスクファイルのパスを指定してください。",
+            "cn-zh": "请指定原版游戏碟片镜像的所在路径"
         },
         "disc.filter": {
             "en": "Disc image",
             "pt-BR": "Imagem de disco",
             "es-419": "Imagen de disco",
-            "ja-jp": "ディスクイメージ"
+            "ja-jp": "ディスクイメージ",
+            "cn-zh": "碟片镜像"
         },
         "disc.error.not_found": {
             "en": "File was not found, please check the path and try again",
             "pt-BR": "Arquivo não encontrado, verifique o caminho e tente novamente",
             "es-419": "No se encontró el archivo, revisa la ruta e inténtalo otra vez",
-            "ja-jp": "ファイルが見つかりません。パスを確認して、もう一度お試しください。"
+            "ja-jp": "ファイルが見つかりません。パスを確認して、もう一度お試しください。",
+            "cn-zh": "未读取到recomp前端支持的游戏镜像。请重新检查碟片镜像所在路径并再次尝试。"
         },
         "disc.error.dialog": {
             "en": "Failed to open the native picker: {0}",
             "pt-BR": "Falha ao abrir o seletor nativo: {0}",
             "es-419": "No se pudo abrir el selector nativo: {0}",
-            "ja-jp": "ネイティブのファイル選択ダイアログを開けませんでした: {0}"
+            "ja-jp": "ネイティブのファイル選択ダイアログを開けませんでした: {0}",
+            "cn-zh": "无法打开native picker"
         }
     }
 }
