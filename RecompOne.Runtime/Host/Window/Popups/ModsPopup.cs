@@ -24,6 +24,8 @@ public sealed class ModsPopup : Popup
 
     protected override void DrawContent()
     {
+        ModLoader.PollChanges();
+
         var mods = ModLoader.Mods;
         int active = 0;
         foreach (var mod in mods) if (mod.Loaded) active++;

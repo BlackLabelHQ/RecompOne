@@ -57,6 +57,9 @@ public static class ModLoader
     public static string Root { get; private set; } = "";
 
     static bool _loaded;
+    static FileSystemWatcher? _watcher;
+    static int _dirty;
+    static DateTime _dirtyAt;
 
     public static void LoadAll(string? root = null)
     {
@@ -71,6 +74,8 @@ public static class ModLoader
         var discovered = Order(Discover(root));
         lock (_mods) { _mods.Clear(); _mods.AddRange(discovered); }
         foreach (var e in discovered) e.Enabled = IsEnabled(e.Info.Id);
+
+        StartWatching();
 
         var toLoad = discovered.Where(e => e.Enabled).ToList();
         if (toLoad.Count == 0) return;
@@ -97,6 +102,90 @@ public static class ModLoader
         ModLoadingPopup.End();
 
         Console.WriteLine($"[Mods] loaded {toLoad.Count(e => e.Loaded)}/{toLoad.Count} mod(s), {HookManager.HookedFunctionCount} function(s) hooked");
+    }
+
+    static void StartWatching()
+    {
+        if (_watcher != null || string.IsNullOrEmpty(Root)) return;
+
+        try
+        {
+            _watcher = new FileSystemWatcher(Root)
+            {
+                IncludeSubdirectories = true,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite,
+            };
+            _watcher.Created += OnFolderChanged;
+            _watcher.Deleted += OnFolderChanged;
+            _watcher.Renamed += OnFolderChanged;
+            _watcher.Changed += OnFolderChanged;
+            _watcher.EnableRaisingEvents = true;
+        }
+        catch (Exception ex)
+        {
+            _watcher = null;
+            Console.Error.WriteLine($"[mods] could not watch mod s folder: {ex.Message}");
+        }
+    }
+
+    static void OnFolderChanged(object sender, FileSystemEventArgs e)
+    {
+        if (!string.IsNullOrEmpty(_cacheDir) && e.FullPath.StartsWith(_cacheDir, StringComparison.OrdinalIgnoreCase))
+            return;
+
+        Interlocked.Exchange(ref _dirty, 1);
+        _dirtyAt = DateTime.UtcNow;
+    }
+
+    public static bool PollChanges()
+    {
+        if (Volatile.Read(ref _dirty) == 0) return false;
+        if (DateTime.UtcNow - _dirtyAt < TimeSpan.FromMilliseconds(750)) return false;
+
+        Interlocked.Exchange(ref _dirty, 0);
+        return Rescan();
+    }
+
+    public static bool Rescan()
+    {
+        if (!_loaded || string.IsNullOrEmpty(Root)) return false;
+
+        List<ModEntry> found;
+        try { found = Order(Discover(Root)); }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Mods] rescan failed: {ex.Message}");
+            return false;
+        }
+
+        bool changed = false;
+
+        lock (_mods)
+        {
+            var known = new HashSet<string>(_mods.Select(m => m.Info.Id), StringComparer.OrdinalIgnoreCase);
+            var present = new HashSet<string>(found.Select(m => m.Info.Id), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in found)
+            {
+                if (known.Contains(entry.Info.Id)) continue;
+                entry.Enabled = IsEnabled(entry.Info.Id);
+                _mods.Add(entry);
+                changed = true;
+                Console.WriteLine($"[Mods] got {entry.Info.Name}");
+            }
+
+            for (int i = _mods.Count - 1; i >= 0; i--)
+            {
+                if (present.Contains(_mods[i].Info.Id)) continue;
+                var gone = _mods[i];
+                if (gone.Loaded) UnloadEntry(gone); //unload it also
+                _mods.RemoveAt(i);
+                changed = true;
+                Console.WriteLine($"[Mods] removed {gone.Info.Name}");
+            }
+        }
+
+        return changed;
     }
 
     public static void SetEnabled(string id, bool enabled)
