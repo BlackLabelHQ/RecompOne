@@ -578,22 +578,27 @@
          "settings.input.device": {
             "en": "Controller",
             "pt-BR": "Controle",
-            "es-419": "Control"
+            "es-419": "Control",
+            "ja-jp": "ゲームパッド",
+            "cn-zh": "游戏控制器"
         },
         "settings.input.device.auto": {
           "en": "Automatic",
           "pt-BR": "Automático",
-          "es-419": "Automático"
+          "es-419": "Automático",
+          "ja-jp": "ゲームパッド"
         },
         "settings.input.device.missing": {
           "en": "Saved controller not connected",
           "pt-BR": "Controle salvo não conectado",
-          "es-419": "Control guardado no conectado"
+          "es-419": "Control guardado no conectado",
+          "ja-jp": "ゲームパッド が接続されていません"
         },
         "settings.input.device.refresh": {
           "en": "Refresh",
           "pt-BR": "Atualizar",
-          "es-419": "Actualizar"
+          "es-419": "Actualizar",
+          "ja-jp": "再読み込み"
         },
         "settings.input.pad": {
             "en": "Pad {0}",
