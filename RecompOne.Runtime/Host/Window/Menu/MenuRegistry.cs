@@ -4,47 +4,62 @@ namespace RecompOne.Runtime.Host.Window;
 
 public static class MenuRegistry
 {
-    public const int OrderSystem = 0;
-    public const int OrderMods = 100;
-    public const int OrderGame = 200;
-    public const int OrderDebug = 400;
-    public const int OrderDefault = 500;
-    public const int OrderHelp = 600;
-
     static readonly List<MenuNode> _roots = [];
-    static int _sequence;
+    static List<MenuNode> _draw = [];
+    static bool _dirty = true;
 
-    public static MenuBuilder Menu(string labelKey, int order = OrderDefault)
+    public static MenuBuilder Menu(string labelKey)
     {
         var node = Find(labelKey);
         if (node == null)
         {
-            node = new MenuNode(labelKey) { Order = order, Sequence = _sequence++ };
+            node = new MenuNode(labelKey);
             _roots.Add(node);
-        }
-        else if (order < node.Order)
-        {
-            node.Order = order;
+            _dirty = true;
         }
 
         return new MenuBuilder(node, null);
     }
 
-    public static void BarItem(string labelKey, Action onClick, int order = OrderDefault)
+    public static MenuBuilder BarItem(string labelKey, Action onClick)
     {
-        var node = Find(labelKey) ?? new MenuNode(labelKey) { Order = order, Sequence = _sequence++ };
+        var node = Find(labelKey);
+        if (node == null)
+        {
+            node = new MenuNode(labelKey);
+            _roots.Add(node);
+            _dirty = true;
+        }
         node.OnClick = onClick;
-        if (!_roots.Contains(node)) _roots.Add(node);
+        return new MenuBuilder(node, null);
     }
 
-    public static bool Remove(string labelKey) => _roots.RemoveAll(m => m.LabelKey == labelKey) > 0;
+    public static bool Remove(string labelKey)
+    {
+        if (_roots.RemoveAll(m => m.LabelKey == labelKey) > 0)
+        {
+            _dirty = true;
+            return true;
+        }
+
+        foreach (var root in _roots)
+            if (root.RemoveByKey(labelKey)) return true;
+
+        return false;
+    }
+
+    internal static void Invalidate() => _dirty = true;
 
     internal static void Draw()
     {
         if (!ImGui.BeginMainMenuBar()) return;
 
-        _roots.Sort((a, b) => a.Order != b.Order ? a.Order.CompareTo(b.Order) : a.Sequence.CompareTo(b.Sequence));
-        foreach (var menu in _roots) menu.Draw();
+        if (_dirty)
+        {
+            _draw = MenuOrder.Arrange(_roots);
+            _dirty = false;
+        }
+        foreach (var menu in _draw) menu.Draw();
 
         ImGui.EndMainMenuBar();
     }

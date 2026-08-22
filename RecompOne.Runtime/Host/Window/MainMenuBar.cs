@@ -4,17 +4,6 @@ namespace RecompOne.Runtime.Host.Window;
 
 public static class MainMenuBar
 {
-    public const int SystemSettings = 10;
-    public const int SystemViewSeparator = 20;
-    public const int SystemShowMenuBar = 30;
-    public const int SystemAutoHide = 40;
-    public const int SystemFullscreen = 50;
-    public const int SystemResetSeparator = 60;
-    public const int SystemSoftReset = 70;
-    public const int SystemHardReset = 80;
-    public const int SystemQuitSeparator = 90;
-    public const int SystemQuit = 100;
-
     static bool _registered;
 
     public static void RegisterBuiltins()
@@ -22,22 +11,22 @@ public static class MainMenuBar
         if (_registered) return;
         _registered = true;
 
-        MenuRegistry.Menu("menu.system", MenuRegistry.OrderSystem)
-            .Popup<SettingsPopup>("menu.system.settings").Order(SystemSettings)
-            .Separator().Order(SystemViewSeparator)
-            .Check("menu.system.show_menu_bar", () => !ConfigManager.View.HideTopBar, ShowMenuBar, "F1").Order(SystemShowMenuBar)
-            .Check("menu.system.autohide_menu_bar", () => ConfigManager.View.AutoHideMenuBar, AutoHideMenuBar).Order(SystemAutoHide).Disabled()
-            .Check("menu.system.fullscreen", () => ConfigManager.View.Fullscreen, Fullscreen, "F11").Order(SystemFullscreen)
-            .Separator().Order(SystemResetSeparator)
-            .Item("menu.system.hard_reset", Runtime.HardReset).Order(SystemHardReset)
-            .Separator().Order(SystemQuitSeparator)
-            .Item("menu.system.quit", static () => Environment.Exit(0)).Order(SystemQuit);
+        MenuRegistry.Menu("menu.system")
+            .Popup<SettingsPopup>("menu.system.settings")
+            .Separator("menu.system.view_separator")
+            .Check("menu.system.show_menu_bar", () => !ConfigManager.View.HideTopBar, ShowMenuBar, "F1")
+            .Check("menu.system.autohide_menu_bar", () => ConfigManager.View.AutoHideMenuBar, AutoHideMenuBar).Disabled()
+            .Check("menu.system.fullscreen", () => ConfigManager.View.Fullscreen, Fullscreen, "F11")
+            .Separator("menu.system.reset_separator")
+            .Item("menu.system.hard_reset", Runtime.HardReset)
+            .Separator("menu.system.quit_separator")
+            .Item("menu.system.quit", static () => Environment.Exit(0));
 
-        MenuRegistry.Menu("menu.mods", MenuRegistry.OrderMods)
+        MenuRegistry.Menu("menu.mods").After("menu.system")
             .Popup<ModsPopup>("menu.mods.manage")
             .Item("menu.mods.hub", static () => { }).Disabled();
 
-        MenuRegistry.Menu("menu.debug", MenuRegistry.OrderDebug)
+        MenuRegistry.Menu("menu.debug")
             .Submenu("menu.debug.gpu")
                 .Panel<OutputPanel>("panel.output")
                 .Panel<VramViewerPanel>("panel.vram_viewer")

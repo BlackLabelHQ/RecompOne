@@ -5,6 +5,7 @@ public static class PanelManager
     static readonly List<IPanel> _panels = [];
 
     public static void Register(IPanel panel) => _panels.Add(panel);
+    public static bool Unregister(IPanel panel) => _panels.Remove(panel);
     public static IReadOnlyList<IPanel> Panels => _panels;
 
     public static T? Get<T>() where T : class, IPanel

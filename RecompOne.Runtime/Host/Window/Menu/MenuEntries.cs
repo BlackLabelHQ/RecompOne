@@ -4,25 +4,36 @@ namespace RecompOne.Runtime.Host.Window;
 
 abstract class MenuEntry
 {
-    public int Order;
-    public int Sequence;
+    public string? Key;
+    public string? AnchorKey;
+    public bool AnchorBefore;
 
     public abstract void Draw();
 }
 
-sealed class MenuItemEntry(string labelKey, Action onClick) : MenuEntry
+sealed class MenuItemEntry : MenuEntry
 {
+    readonly string _labelKey;
+    readonly Action _onClick;
+
     public string? Shortcut;
     public Func<bool>? Selected;
     public Func<bool>? Enabled;
     public string? TooltipKey;
+
+    public MenuItemEntry(string labelKey, Action onClick)
+    {
+        _labelKey = labelKey;
+        _onClick = onClick;
+        Key = labelKey;
+    }
 
     public override void Draw()
     {
         bool selected = Selected?.Invoke() ?? false;
         bool enabled = Enabled?.Invoke() ?? true;
 
-        if (ImGui.MenuItem(Localization.T(labelKey), Shortcut, selected, enabled)) onClick();
+        if (ImGui.MenuItem(Localization.T(_labelKey), Shortcut, selected, enabled)) _onClick();
         MenuTooltip.Draw(TooltipKey);
     }
 }
@@ -42,33 +53,45 @@ sealed class MenuCustomEntry(Action draw) : MenuEntry
     public override void Draw() => draw();
 }
 
-sealed class MenuNode(string labelKey) : MenuEntry
+sealed class MenuNode : MenuEntry
 {
-    public readonly string LabelKey = labelKey;
+    public readonly string LabelKey;
 
     readonly List<MenuEntry> _entries = [];
-    bool _sorted = true;
-    int _nextOrder;
+    List<MenuEntry> _draw = [];
+    bool _dirty = true;
 
     public Action? OnClick;
     public Func<bool>? Enabled;
     public string? TooltipKey;
 
-    public int NextOrder() => _nextOrder += MenuBuilder.OrderStep;
+    public MenuNode(string labelKey)
+    {
+        LabelKey = labelKey;
+        Key = labelKey;
+    }
 
     public void Add(MenuEntry entry)
     {
-        entry.Sequence = _entries.Count;
         _entries.Add(entry);
-        _sorted = false;
-        if (entry.Order > _nextOrder) _nextOrder = entry.Order;
+        _dirty = true;
     }
 
-    public void Reorder(MenuEntry entry, int order)
+    public void Invalidate() => _dirty = true;
+
+    public bool RemoveByKey(string key)
     {
-        entry.Order = order;
-        if (order > _nextOrder) _nextOrder = order;
-        _sorted = false;
+        for (int i = 0; i < _entries.Count; i++)
+        {
+            if (_entries[i].Key == key)
+            {
+                _entries.RemoveAt(i);
+                _dirty = true;
+                return true;
+            }
+            if (_entries[i] is MenuNode child && child.RemoveByKey(key)) return true;
+        }
+        return false;
     }
 
     public MenuNode Submenu(string key)
@@ -76,7 +99,7 @@ sealed class MenuNode(string labelKey) : MenuEntry
         foreach (var entry in _entries)
             if (entry is MenuNode node && node.LabelKey == key) return node;
 
-        var created = new MenuNode(key) { Order = NextOrder() };
+        var created = new MenuNode(key);
         Add(created);
         return created;
     }
@@ -100,16 +123,13 @@ sealed class MenuNode(string labelKey) : MenuEntry
         }
 
         MenuTooltip.Draw(TooltipKey);
-        Sort();
-        foreach (var entry in _entries) entry.Draw();
+        if (_dirty)
+        {
+            _draw = MenuOrder.Arrange(_entries);
+            _dirty = false;
+        }
+        foreach (var entry in _draw) entry.Draw();
         ImGui.EndMenu();
-    }
-
-    void Sort()
-    {
-        if (_sorted) return;
-        _entries.Sort((a, b) => a.Order != b.Order ? a.Order.CompareTo(b.Order) : a.Sequence.CompareTo(b.Sequence));
-        _sorted = true;
     }
 }
 

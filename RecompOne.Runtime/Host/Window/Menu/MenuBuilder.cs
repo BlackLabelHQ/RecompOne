@@ -2,8 +2,6 @@ namespace RecompOne.Runtime.Host.Window;
 
 public sealed class MenuBuilder
 {
-    public const int OrderStep = 10;
-
     readonly MenuNode _node;
     readonly MenuBuilder? _parent;
 
@@ -27,7 +25,7 @@ public sealed class MenuBuilder
         _lastItem = new MenuItemEntry(labelKey, onClick) { Shortcut = shortcut };
         _lastNode = null;
         _last = _lastItem;
-        Add(_lastItem);
+        _node.Add(_lastItem);
         return this;
     }
 
@@ -58,9 +56,9 @@ public sealed class MenuBuilder
         return this;
     }
 
-    public MenuBuilder Separator()
+    public MenuBuilder Separator(string? key = null)
     {
-        Track(new MenuSeparatorEntry());
+        Track(new MenuSeparatorEntry { Key = key });
         return this;
     }
 
@@ -72,25 +70,25 @@ public sealed class MenuBuilder
 
     public MenuBuilder Submenu(string labelKey) => new(_node.Submenu(labelKey), this);
 
-    void Track(MenuEntry entry)
-    {
-        _lastItem = null;
-        _lastNode = null;
-        _last = entry;
-        Add(entry);
-    }
+    //the idea is, you can render this before or after a menu label, its better than weird indexing by id
+    public MenuBuilder After(string labelKey) => Anchor(labelKey, false);
 
-    public MenuBuilder End() => _parent ?? this;
+    public MenuBuilder Before(string labelKey) => Anchor(labelKey, true);
 
-    public MenuBuilder Order(int order)
+    MenuBuilder Anchor(string labelKey, bool before) //places the ancho on it
     {
-        if (_last == null) return this;
-        if (_last == _node) _parent?.ReorderChild(_node, order);
-        else _node.Reorder(_last, order);
+        var target = _last ?? _node;
+        target.AnchorKey = labelKey;
+        target.AnchorBefore = before;
+
+        if (target != _node) _node.Invalidate();
+        else if (_parent != null) _parent.Invalidate();
+        else MenuRegistry.Invalidate();
+
         return this;
     }
 
-    internal void ReorderChild(MenuNode child, int order) => _node.Reorder(child, order);
+    public MenuBuilder End() => _parent ?? this;
 
     public MenuBuilder Enabled(Func<bool> predicate)
     {
@@ -108,9 +106,13 @@ public sealed class MenuBuilder
         return this;
     }
 
-    void Add(MenuEntry entry)
+    internal void Invalidate() => _node.Invalidate();
+
+    void Track(MenuEntry entry)
     {
-        entry.Order = _node.NextOrder();
+        _lastItem = null;
+        _lastNode = null;
+        _last = entry;
         _node.Add(entry);
     }
 }
