@@ -5,7 +5,7 @@
         "es-419": "Español (Latinoamérica)",
         "ja-jp": "日本語",
         "cn-zh": "简体中文",
-		    "fr-fr": "Français"
+		"fr-fr": "Français"
     },
     "strings": {
         "menu.system": {
@@ -14,7 +14,7 @@
             "es-419": "Sistema",
             "ja-jp": "システム",
             "cn-zh": "系统",
-			      "fr-fr": "Système"
+			"fr-fr": "Système"
         },
         "menu.system.settings": {
             "en": "Settings",
@@ -22,7 +22,7 @@
             "es-419": "Configuración",
             "ja-jp": "設定",
             "cn-zh": "设定",
-			      "fr-fr": "Paramètres"
+			"fr-fr": "Paramètres"
         },
         "menu.system.show_menu_bar": {
             "en": "Show Menu Bar",
@@ -30,7 +30,7 @@
             "es-419": "Mostrar Barra de Menú",
             "ja-jp": "メニューバーを表示",
             "cn-zh": "显示菜单栏",
-			      "fr-fr": "Afficher la barre de menu"
+			"fr-fr": "Afficher la barre de menu"
         },
         "menu.system.autohide_menu_bar": {
             "en": "Autohide Menu Bar",
@@ -38,7 +38,7 @@
             "es-419": "Ocultar Barra Automáticamente",
             "ja-jp": "メニューバーを自動的に隠す",
             "cn-zh": "自动隐藏菜单栏",
-			      "fr-fr": "Cacher automatiquement la barre de menu"
+			"fr-fr": "Cacher automatiquement la barre de menu"
         },
         "menu.system.fullscreen": {
             "en": "Fullscreen",
@@ -46,7 +46,7 @@
             "es-419": "Pantalla Completa",
             "ja-jp": "全画面",
             "cn-zh": "全屏模式",
-			      "fr-fr": "Plein Ecran"
+			"fr-fr": "Plein Ecran"
         },
         "menu.system.hard_reset": {
             "en": "Hard Reset",
@@ -54,7 +54,7 @@
             "es-419": "Hard Reset",
             "ja-jp": "ハードリセット",
             "cn-zh": "重新启动",
-			      "fr-fr": "Hard Reset"
+			"fr-fr": "Hard Reset"
         },
         "menu.system.quit": {
             "en": "Quit Application",
@@ -70,7 +70,7 @@
             "es-419": "Mods",
             "ja-jp": "Mod",
             "cn-zh": "模组",
-			      "fr-fr": "Mods"
+			"fr-fr": "Mods"
         },
         "menu.mods.manage": {
             "en": "Manage Mods",
@@ -78,7 +78,7 @@
             "es-419": "Administrar Mods",
             "ja-jp": "Modマネージャ",
             "cn-zh": "模组管理器",
-			      "fr-fr": "Gestion des Mods"
+			"fr-fr": "Gestion des Mods"
         },
         "menu.mods.hub": {
             "en": "Explore Mod Hub",
@@ -86,7 +86,7 @@
             "es-419": "Explorar Mod Hub",
             "ja-jp": "Mod Hubを閲覧",
             "cn-zh": "浏览Mod Hub",
-			      "fr-fr": "Hub des Mods"
+			"fr-fr": "Hub des Mods"
         },
         "menu.debug": {
             "en": "Debug",
@@ -94,7 +94,7 @@
             "es-419": "Depuración",
             "ja-jp": "デバッグ",
             "cn-zh": "Debug",
-			      "fr-fr": "Debug"
+			"fr-fr": "Debug"
         },
         "menu.debug.gpu": {
             "en": "GPU",
