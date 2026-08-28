@@ -105,6 +105,8 @@ public static class Runtime
 
     public static void Run(Action boot)
     {
+        InputRecorder.ParseCommandLine(Environment.GetCommandLineArgs());
+
         while (true)
         {
             try
@@ -114,7 +116,7 @@ public static class Runtime
             }
             catch (HardResetSignal)
             {
-                Console.WriteLine("[Runtime] hard reset,game booting again");
+                Console.WriteLine("[Runtime] hard reset, game restarting");
                 ResetForBoot();
             }
         }
@@ -154,11 +156,12 @@ public static class Runtime
         }
 
         HostWindow.Present(Gpu);
+        InputRecorder.Tick();
         Audio.Attach(Spu);
         FrameClock.Throttle();
         Sdk.LibCd.Tick();
         if (Mem != null) { Bios.BiosB.RefreshPad(Mem); Sdk.LibPad.Refresh(Mem); } //is this correct?
-        DispatchIrq(0); //using this to dispatch irqs too if necessary, probably not needed after the rest of stuff is reimplemented
+        Interrupts.Raise(0);
     }
 
     public static void DispatchIrq(int irq)

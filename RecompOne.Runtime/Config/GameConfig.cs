@@ -29,6 +29,12 @@ public class KeyBindings
     };
 }
 
+public enum PadKind
+{
+    Digital,
+    Analog,
+}
+
 public class GamepadBindings
 {
     public int[] Cross { get; set; } = [0];
@@ -47,6 +53,16 @@ public class GamepadBindings
     public int[] Down { get; set; } = [12, 105];
     public int[] Left { get; set; } = [13, 102];
     public int[] Right { get; set; } = [14, 103];
+
+    public int LeftStickX { get; set; } = 0;
+    public int LeftStickY { get; set; } = 1;
+    public int RightStickX { get; set; } = 2;
+    public int RightStickY { get; set; } = 3;
+    
+    public static GamepadBindings DefaultAnalog() => new()
+    {
+        Up = [11], Down = [12], Left = [13], Right = [14],
+    };
 
     public static GamepadBindings Empty() => new()
     {
@@ -74,5 +90,13 @@ public class GameConfig
     public GamepadBindings Pad2 { get; set; } = GamepadBindings.Empty();
     public string PadDevice { get; set; } = "";
     public string PadDevice2 { get; set; } = "";
+    public GamepadBindings PadAnalog { get; set; } = GamepadBindings.DefaultAnalog();
+    public GamepadBindings PadAnalog2 { get; set; } = GamepadBindings.Empty();
+    public PadKind PadKind { get; set; } = PadKind.Digital;
+    public PadKind PadKind2 { get; set; } = PadKind.Digital;
+    public PadKind KindFor(int port) => port == 0 ? PadKind : PadKind2;
+    public GamepadBindings PadFor(int port) => port == 0
+        ? (PadKind == PadKind.Analog ? PadAnalog : Pad)
+        : (PadKind2 == PadKind.Analog ? PadAnalog2 : Pad2);
     public List<string> ActiveMods { get; set; } = [];
 }

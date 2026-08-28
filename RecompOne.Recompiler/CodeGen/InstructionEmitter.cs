@@ -317,6 +317,7 @@ public sealed class FunctionContext
     public uint FuncEnd;
     public Dictionary<uint, string> KnownFunctions = [];
     public HashSet<uint> Labels = [];
+    public HashSet<uint> BackEdges = []; //fpr irq
     public bool Debug;
     public bool AddressComments;
     public bool DisasmComments;

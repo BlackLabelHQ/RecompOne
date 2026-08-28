@@ -80,6 +80,8 @@ internal static unsafe class Audio
         if (_al != null && _source != 0)
             _al.SetSourceProperty(_source, SourceFloat.Gain, _masterVolume);
     }
+    
+    static readonly int BufferMs = Math.Max(1, FramesPerBuffer * 1000 / 44100);
 
     static void MixerLoop()
     {
@@ -87,7 +89,7 @@ internal static unsafe class Audio
         {
             var spu = _spu;
             if (spu != null) FillBuffers(spu);
-            Thread.Sleep(3);
+            Thread.Sleep(spu != null ? BufferMs : 20);
         }
     }
 

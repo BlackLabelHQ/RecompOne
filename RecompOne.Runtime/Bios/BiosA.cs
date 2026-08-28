@@ -31,6 +31,10 @@ public static class BiosA
     }
     static string CardName(string path) { int i = path.IndexOf(':'); return i >= 0 ? path[(i + 1)..] : path; }
 
+    static void CardIoDone(CpuContext c, IMemory m, MemoryCard card) => CardIoDone(card);
+
+    static void CardIoDone(MemoryCard card) => BiosB.CardComplete(ReferenceEquals(card, Runtime.CardB) ? 0x10u : 0x00u);
+
     static void WriteDirEntry(IMemory m, uint ptr, string name, int size)
     {
         for (int i = 0; i < 20; i++) m.WriteU8(ptr + (uint)i, i < name.Length ? (byte)name[i] : (byte)0);
@@ -48,10 +52,18 @@ public static class BiosA
         if (card == null) return 0u;
         _ff = card.Match(CardName(wild));
         _ffIdx = 0;
+        _ffCard = card;
+        CardIoDone(card);
         return NextFileEntry(m, dirPtr);
     }
 
-    public static uint NextFile(IMemory m, uint dirPtr) => NextFileEntry(m, dirPtr);
+    static MemoryCard? _ffCard;
+
+    public static uint NextFile(IMemory m, uint dirPtr)
+    {
+        if (_ffCard != null) CardIoDone(_ffCard);
+        return NextFileEntry(m, dirPtr);
+    }
 
     static uint NextFileEntry(IMemory m, uint dirPtr)
     {
@@ -67,6 +79,7 @@ public static class BiosA
         var card = CardFor(path);
         if (card == null) return 0u;
         card.Delete(CardName(path));
+        CardIoDone(card);
         return 1u;
     }
 
@@ -111,6 +124,7 @@ public static class BiosA
                     if (first == 0) { c.V0 = 0xFFFFFFFFu; LastErrno = 2; break; }
                     uint cfd = _nextHandle++;
                     _cardFiles[cfd] = (card, card.Chain(first), card.FileSize(first), 0);
+                    CardIoDone(c, m, card);
                     c.V0 = cfd; LastErrno = 0;
                     break;
                 }
@@ -162,7 +176,7 @@ public static class BiosA
                     int n = (int)Math.Min(c.A2, (uint)(cre.size - cre.pos));
                     for (int i = 0; i < n; i++) m.WriteU8(c.A1 + (uint)i, cre.card.ReadByte(cre.chain, cre.pos + i));
                     _cardFiles[fd] = (cre.card, cre.chain, cre.size, cre.pos + n);
-                    BiosB.DeliverEvent(0xF4000001u, 0x0004u);
+                    CardIoDone(c, m, cre.card);
                     c.V0 = (uint)n; LastErrno = 0; break;
                 }
                 if (!_openFiles.TryGetValue(fd, out var re)) { c.V0 = 0xFFFFFFFFu; LastErrno = 9; break; }
@@ -192,13 +206,14 @@ public static class BiosA
                     for (int i = 0; i < n; i++) cwe.card.WriteByte(cwe.chain, cwe.pos + i, m.ReadU8(c.A1 + (uint)i));
                     cwe.card.Flush();
                     _cardFiles[fd] = (cwe.card, cwe.chain, cwe.size, cwe.pos + n);
-                    BiosB.DeliverEvent(0xF4000001u, 0x0004u);
+                    CardIoDone(c, m, cwe.card);
                     c.V0 = (uint)n; LastErrno = 0; break;
                 }
                 c.V0 = 0xFFFFFFFFu; LastErrno = 9; break;
             }
             case 0x04:
             {
+                if (_cardFiles.TryGetValue(c.A0, out var ccl)) CardIoDone(c, m, ccl.card);
                 _openFiles.Remove(c.A0);
                 _cardFiles.Remove(c.A0);
                 c.V0 = c.A0;

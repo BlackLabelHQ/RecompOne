@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 using RecompOne.Runtime.Cdrom;
 using RecompOne.Runtime.Dispatch;
 using RecompOne.Runtime.Hardware;
@@ -25,6 +27,8 @@ public sealed class PSMemory : IMemory
     private readonly bool[] _frozen;
     private int _frozenCount;
 
+    private readonly uint _ramMask;
+
     public PSMemory(uint ramSize = 0)
     {
         uint size = ramSize != 0 ? ramSize
@@ -34,6 +38,7 @@ public sealed class PSMemory : IMemory
         if ((size & (size - 1)) != 0) throw new ArgumentException("ram size must be a power of two", nameof(ramSize));
 
         _ram = new byte[size];
+        _ramMask = size - 1u;
         _frozen = new bool[size];
         Runtime.RamSize = size;
 
@@ -66,8 +71,8 @@ public sealed class PSMemory : IMemory
     {
         if (phys < MemoryMap.RamWindow)
         {
-            uint off = phys % (uint)_ram.Length;
-            Runtime.RamLog.RecordWrite(phys % (uint)_ram.Length, size);
+            uint off = phys & _ramMask;
+            if (RamLogger.TrackWrites) Runtime.RamLog.RecordWrite(off, size);
             Dispatcher.NotifyWrite(off);
         }
 
@@ -76,7 +81,7 @@ public sealed class PSMemory : IMemory
     private void TrackRead(uint phys, int size)
     {
         if (RamLogger.TrackReads && phys < MemoryMap.RamWindow)
-            Runtime.RamLog.RecordRead(phys % (uint)_ram.Length, size);
+            Runtime.RamLog.RecordRead(phys & _ramMask, size);
     }
 
     private Span<byte> Resolve(uint address, int size)
@@ -84,7 +89,7 @@ public sealed class PSMemory : IMemory
         uint phys = MemoryMap.ToPhysical(address);
 
         if (phys < MemoryMap.RamWindow)
-            return _ram.AsSpan((int)(phys % (uint)_ram.Length), size);
+            return _ram.AsSpan((int)(phys & _ramMask), size);
 
         if (phys >= MemoryMap.ScratchpadBase && phys < MemoryMap.ScratchpadBase + MemoryMap.ScratchpadSize)
             return _scratchpad.AsSpan((int)(phys - MemoryMap.ScratchpadBase), size);
@@ -98,23 +103,46 @@ public sealed class PSMemory : IMemory
         throw new InvalidOperationException($"unmapped address: 0x{address:X8}");
     }
 
+    private readonly Sio0 _sio = new();
+
     private static bool IsCd(uint phys) => phys >= 0x1F801800u && phys <= 0x1F801803u;
     private static bool IsSpu(uint phys) => phys >= 0x1F801C00u && phys < 0x1F801E80u;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool InRam(uint phys, int size, out uint off)
+    {
+        off = phys & _ramMask;
+        return phys < MemoryMap.RamWindow && off + (uint)size <= (uint)_ram.Length;
+    }
 
     public byte ReadU8(uint address)
     {
         uint phys = MemoryMap.ToPhysical(address);
+        if (InRam(phys, 1, out uint fast))
+        {
+            if (RamLogger.TrackReads) Runtime.RamLog.RecordRead(fast, 1);
+            return _ram[fast];
+        }
         TrackRead(phys, 1);
         if (_cd != null && IsCd(phys)) return _cd.Read(phys);
+        if (Sio0.InRange(phys)) return (byte)_sio.Read(phys);
         return Resolve(address, 1)[0];
     }
 
     public ushort ReadU16(uint address)
     {
         uint phys = MemoryMap.ToPhysical(address);
+        if (InRam(phys, 2, out uint fast))
+        {
+            if (RamLogger.TrackReads) Runtime.RamLog.RecordRead(fast, 2);
+            return BinaryPrimitives.ReadUInt16LittleEndian(_ram.AsSpan((int)fast));
+        }
         TrackRead(phys, 2);
         if (_cd != null && IsCd(phys)) return _cd.Read(phys);
         if (IsSpu(phys)) return _spu.ReadReg16(phys);
+        if (Sio0.InRange(phys)) return (ushort)_sio.Read(phys);
+        if (phys == 0x1F801070u) return (ushort)Interrupts.ReadStat();
+        if (phys == 0x1F801074u) return (ushort)Interrupts.ReadMask();
         if (Timers.InRange(phys) && _timers.TryRead(phys, out uint tv)) return (ushort)tv;
         var s = Resolve(address, 2);
         return (ushort)(s[0] | (s[1] << 8));
@@ -123,12 +151,20 @@ public sealed class PSMemory : IMemory
     public uint ReadU32(uint address)
     {
         uint phys = MemoryMap.ToPhysical(address);
+        if (InRam(phys, 4, out uint fast))
+        {
+            if (RamLogger.TrackReads) Runtime.RamLog.RecordRead(fast, 4);
+            return BinaryPrimitives.ReadUInt32LittleEndian(_ram.AsSpan((int)fast));
+        }
         TrackRead(phys, 4);
         if (phys == 0x1F801810u) return _gpu.ReadData();
         if (phys == 0x1F801814u) return _gpu.ReadStat();
         if (phys == 0x1F801820u) return _mdec.ReadData();
         if (phys == 0x1F801824u) return _mdec.ReadStatus();
         if (phys == 0x1F8010F4u) return _dma.ReadDicr();
+        if (Sio0.InRange(phys)) return _sio.Read(phys);
+        if (phys == 0x1F801070u) return Interrupts.ReadStat();
+        if (phys == 0x1F801074u) return Interrupts.ReadMask();
         if (_cd != null && IsCd(phys)) return _cd.Read(phys);
         if (IsSpu(phys)) return (uint)(_spu.ReadReg16(phys) | (_spu.ReadReg16(phys + 2) << 16));
         if (Timers.InRange(phys) && _timers.TryRead(phys, out uint tv)) return tv;
@@ -139,25 +175,43 @@ public sealed class PSMemory : IMemory
     public void WriteU8(uint address, byte value)
     {
         uint phys = MemoryMap.ToPhysical(address);
+        if (_frozenCount == 0 && InRam(phys, 1, out uint fast))
+        {
+            if (RamLogger.TrackWrites) Runtime.RamLog.RecordWrite(fast, 1);
+            Dispatcher.NotifyWrite(fast);
+            _ram[fast] = value;
+            return;
+        }
         TrackWrite(phys, 1);
         if (_cd != null && IsCd(phys)) { _cd.Write(phys, value); return; }
+        if (Hardware.Sio0.InRange(phys)) { _sio.Write(phys, value); return; }
 
-        if (_frozenCount > 0 && phys < MemoryMap.RamWindow && _frozen[phys % (uint)_ram.Length]) return;
+        if (_frozenCount > 0 && phys < MemoryMap.RamWindow && _frozen[phys & _ramMask]) return;
         Resolve(address, 1)[0] = value;
     }
 
     public void WriteU16(uint address, ushort value)
     {
         uint phys = MemoryMap.ToPhysical(address);
+        if (_frozenCount == 0 && InRam(phys, 2, out uint fast))
+        {
+            if (RamLogger.TrackWrites) Runtime.RamLog.RecordWrite(fast, 2);
+            Dispatcher.NotifyWrite(fast);
+            BinaryPrimitives.WriteUInt16LittleEndian(_ram.AsSpan((int)fast), value);
+            return;
+        }
         TrackWrite(phys, 2);
         if (_cd != null && IsCd(phys)) { _cd.Write(phys, (byte)value); return; }
         if (IsSpu(phys)) { _spu.WriteReg16(phys, value); return; }
+        if (Sio0.InRange(phys)) { _sio.Write(phys, value); return; }
+        if (phys == 0x1F801070u) { Interrupts.WriteStat(value); return; }
+        if (phys == 0x1F801074u) { Interrupts.WriteMask(value); return; }
         if (_timers.TryWrite(phys, value)) return;
         var s = Resolve(address, 2);
 
         if (_frozenCount > 0 && phys < MemoryMap.RamWindow)
         {
-            uint b = phys % (uint)_ram.Length;
+            uint b = phys & _ramMask;
             if(!_frozen[b])   s[0] = (byte)value;
             if(!_frozen[b+1]) s[1] = (byte)(value >> 8);
             return;
@@ -169,12 +223,21 @@ public sealed class PSMemory : IMemory
     public void WriteU32(uint address, uint value)
     {
         uint phys = MemoryMap.ToPhysical(address);
+        if (_frozenCount == 0 && InRam(phys, 4, out uint fast))
+        {
+            if (RamLogger.TrackWrites) Runtime.RamLog.RecordWrite(fast, 4);
+            Dispatcher.NotifyWrite(fast);
+            BinaryPrimitives.WriteUInt32LittleEndian(_ram.AsSpan((int)fast), value);
+            return;
+        }
         TrackWrite(phys, 4);
         if (phys == 0x1F801810u) { _gpu.WriteGp0(value); return; }
         if (phys == 0x1F801814u) { _gpu.WriteGp1(value); return; }
         if (phys == 0x1F801820u) { _mdec.Write0(value); return; }
         if (phys == 0x1F801824u) { _mdec.WriteControl(value); return; }
         if (phys == 0x1F8010F4u) { _dma.WriteDicr(value); return; }
+        if (phys == 0x1F801070u) { Interrupts.WriteStat(value); return; }
+        if (phys == 0x1F801074u) { Interrupts.WriteMask(value); return; }
         if (IsDmaChcr(phys) && (value & 0x01000000u) != 0)
         {
             Hw32(phys, value & ~0x01000000u);
@@ -182,12 +245,13 @@ public sealed class PSMemory : IMemory
             return;
         }
         if (_cd != null && IsCd(phys)) { _cd.Write(phys, (byte)value); return; }
+        if (Hardware.Sio0.InRange(phys)) { _sio.Write(phys, value); return; }
         if (IsSpu(phys)) { _spu.WriteReg16(phys, (ushort)value); _spu.WriteReg16(phys + 2, (ushort)(value >> 16)); return; }
         if (_timers.TryWrite(phys, value)) return;
         var s = Resolve(address, 4);
         if (_frozenCount > 0 && phys < MemoryMap.RamWindow)
         {
-            uint b = phys % (uint)_ram.Length;
+            uint b = phys & _ramMask;
             if(!_frozen[b])   s[0] = (byte)value;
             if(!_frozen[b+1]) s[1] = (byte)(value >> 8);
             if(!_frozen[b+2]) s[2] = (byte)(value >> 16);
@@ -276,6 +340,6 @@ public sealed class PSMemory : IMemory
         _frozenCount = 0;
     }
 
-    public void Poke(uint off, byte val) => _ram[off % (uint)_ram.Length] = val;
+    public void Poke(uint off, byte val) => _ram[off & _ramMask] = val;
     
 }

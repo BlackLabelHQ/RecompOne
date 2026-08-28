@@ -168,6 +168,84 @@
             "zh-CN": "CD",
             "fr-FR": "CD"
         },
+        "menu.debug.input": {
+            "en": "Input",
+            "pt-BR": "Controle",
+            "es-419": "Control",
+            "ja-jp": "入力"
+        },
+        "menu.debug.input.record": {
+            "en": "Record",
+            "pt-BR": "Gravar",
+            "es-419": "Grabar",
+            "ja-jp": "録画"
+        },
+        "menu.debug.input.stop_record": {
+            "en": "Stop Recording",
+            "pt-BR": "Parar Gravação",
+            "es-419": "Detener Grabación",
+            "ja-jp": "録画を停止"
+        },
+        "menu.debug.input.play": {
+            "en": "Play",
+            "pt-BR": "Reproduzir",
+            "es-419": "Reproducir",
+            "ja-jp": "再生"
+        },
+        "menu.debug.input.empty": {
+            "en": "no recordings",
+            "pt-BR": "nenhuma gravação",
+            "es-419": "sin grabaciones",
+            "ja-jp": "録画なし"
+        },
+        "menu.debug.input.idle": {
+            "en": "idle",
+            "pt-BR": "parado",
+            "es-419": "inactivo",
+            "ja-jp": "待機中"
+        },
+        "menu.debug.input.recording": {
+            "en": "recording {0} - {1} frames",
+            "pt-BR": "gravando {0} - {1} frames",
+            "es-419": "grabando {0} - {1} frames",
+            "ja-jp": "録画中 {0} - {1} フレーム"
+        },
+        "menu.debug.input.playing": {
+            "en": "playing {0} - {1}/{2}",
+            "pt-BR": "reproduzindo {0} - {1}/{2}",
+            "es-419": "reproduciendo {0} - {1}/{2}",
+            "ja-jp": "再生中 {0} - {1}/{2}"
+        },
+        "panel.input_roll": {
+            "en": "Input Roll",
+            "pt-BR": "Rolo de Input",
+            "es-419": "Rollo de Entrada",
+            "ja-jp": "入力ロール"
+        },
+        "panel.input_roll.stop": {
+            "en": "Stop",
+            "pt-BR": "Parar",
+            "es-419": "Detener",
+            "ja-jp": "停止"
+        },
+        "panel.input_roll.window": {
+            "en": "%d frames",
+            "pt-BR": "%d frames",
+            "es-419": "%d frames",
+            "ja-jp": "%d フレーム"
+        },
+        "panel.input_roll.follow": {
+            "en": "Follow",
+            "pt-BR": "Seguir",
+            "es-419": "Seguir",
+            "ja-jp": "追従"
+        },
+        "panel.input_roll.pad2": {
+            "en": "Pad 2",
+            "pt-BR": "Pad 2",
+            "es-419": "Pad 2",
+            "ja-jp": "パッド2"
+        },
         "menu.debug.system": {
             "en": "System",
             "pt-BR": "Sistema",
@@ -440,6 +518,12 @@
             "zh-CN": "将可视界面全部放大或缩小",
             "fr-FR": "Modifie la taille de l'interface"
         },
+        "settings.interface.show_fps": {
+            "en": "Show FPS",
+            "pt-BR": "Mostrar FPS",
+            "es-419": "Mostrar FPS",
+            "ja-jp": "FPSを表示"
+        },
         "theme.blue": {
             "en": "Blue",
             "pt-BR": "Azul",
@@ -639,6 +723,36 @@
             "ja-JP": "入力 / インプット",
             "zh-CN": "按键设定",
             "fr-FR": "Contrôles"
+        },
+        "settings.input.kind": {
+            "en": "Controller type",
+            "pt-BR": "Tipo de controle",
+            "es-419": "Tipo de control",
+            "ja-jp": "コントローラの種類"
+        },
+        "settings.input.kind.digital": {
+            "en": "Digital Pad",
+            "pt-BR": "Digital Pad",
+            "es-419": "Digital Pad",
+            "ja-jp": "デジタルパッド"
+        },
+        "settings.input.kind.analog": {
+            "en": "DualShock (Analog)",
+            "pt-BR": "DualShock (Analógico)",
+            "es-419": "DualShock (Analógico)",
+            "ja-jp": "DualShock (アナログ)"
+        },
+        "settings.input.kind.digital.hint": {
+            "en": "ID 41h, buttons only",
+            "pt-BR": "ID 41h, apenas botões",
+            "es-419": "ID 41h, solo botones",
+            "ja-jp": "ID 41h、ボタンのみ"
+        },
+        "settings.input.kind.analog.hint": {
+            "en": "ID 73h, adds both sticks and L3/R3",
+            "pt-BR": "ID 73h, adiciona os dois analógicos e L3/R3",
+            "es-419": "ID 73h, añade ambos sticks y L3/R3",
+            "ja-jp": "ID 73h、両スティックとL3/R3を追加"
         },
         "settings.input.keyboard": {
             "en": "Keyboard",
@@ -929,9 +1043,15 @@
             "en": "Failed to open the native picker: {0}",
             "pt-BR": "Falha ao abrir o seletor nativo: {0}",
             "es-419": "No se pudo abrir el selector nativo: {0}",
-            "ja-JP": "ネイティブのファイル選択ダイアログを開けませんでした: {0}",
-            "zh-CN": "无法打开native picker",
+            "ja-jp": "ネイティブのファイル選択ダイアログを開けませんでした: {0}",
+            "cn-zh": "无法打开native picker",
             "fr-FR": "Impossible d'ouvrir le sélecteur natif: {0}"
+        },
+        "settings.input.sticks": {
+          "en": "Analog sticks",
+          "pt-BR": "Analógicos",
+          "es-419": "Sticks analógicos",
+          "ja-jp": "アナログスティック"
         }
     }
 }

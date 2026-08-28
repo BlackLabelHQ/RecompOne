@@ -45,7 +45,7 @@ public sealed class CueBinImage : IDiscImage
             var seen = new HashSet<string>();
             foreach (var t in _tracks)
                 if (seen.Add(t.BinPath) && File.Exists(t.BinPath))
-                    total += new FileInfo(t.BinPath).Length / 2352;
+                    total += FileLength(t.BinPath) / 2352;
             return (int)total;
         }
     }
@@ -116,8 +116,7 @@ public sealed class CueBinImage : IDiscImage
             {
                 int a = line.IndexOf('"') + 1;
                 int b = line.LastIndexOf('"');
-                if (currentFile != null && File.Exists(currentFile))
-                    fileBaseSectors += new FileInfo(currentFile).Length / 2352;
+                if (currentFile != null && File.Exists(currentFile)) fileBaseSectors += FileLength(currentFile) / 2352;
                 currentFile = Path.Combine(dir, line[a..b]);
             }
             else if (line.StartsWith("TRACK ", StringComparison.OrdinalIgnoreCase))
@@ -143,18 +142,26 @@ public sealed class CueBinImage : IDiscImage
         }
     }
 
+    private static long FileLength(string path)
+    {
+        using var fs = File.OpenRead(path);
+        return fs.Length;
+    }
+
     private Track DataTrack() =>
         _tracks.Find(t => KindOf(t.Mode) == DiscTrackKind.Data)
         ?? throw new InvalidOperationException("no data track was found in cue sheet");
 
     private int DataTrackSectors(Track dataTrack, FileStream stream)
     {
+        int byFile = (int)((stream.Length - dataTrack.FileOffset) / dataTrack.SectorSize);
+
         int next = int.MaxValue;
         foreach (var t in _tracks)
-            if (t.StartLba > dataTrack.StartLba && t.StartLba < next) next = t.StartLba;
-        return next != int.MaxValue
-            ? next - dataTrack.StartLba
-            : (int)((stream.Length - dataTrack.FileOffset) / dataTrack.SectorSize);
+            if (t.BinPath == dataTrack.BinPath && t.StartLba > dataTrack.StartLba && t.StartLba < next)
+                next = t.StartLba;
+
+        return next != int.MaxValue ? Math.Min(next - dataTrack.StartLba, byFile) : byFile;
     }
 
     private FileStream GetStream(string path)

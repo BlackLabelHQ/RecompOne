@@ -71,7 +71,11 @@ public static class FunctionEmitter
             var instr = instrs[i];
 
             if (ctx.Labels.Contains(instr.Vram))
+            {
                 sb.AppendLine($"        L{instr.Vram:X8}: ;");
+                if (ctx.BackEdges.Contains(instr.Vram))
+                    sb.AppendLine("        RecompOne.Runtime.Interrupts.Poll(c, m);");
+            }
 
             if (instr.HasDelaySlot)
             {

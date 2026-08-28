@@ -44,6 +44,7 @@ internal sealed class ConsolePanel : IPanel
             ImGui.MenuItem("CD", null, ref Log.CdOn);
             ImGui.MenuItem("SDK", null, ref Log.SdkOn);
             ImGui.MenuItem("MDEC", null, ref Log.MdecOn);
+            ImGui.MenuItem("IRQ", null, ref Log.IrqOn);
             ImGui.EndMenu();
         }
 

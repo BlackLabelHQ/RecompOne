@@ -76,6 +76,10 @@ internal static unsafe class InputManager
 
     public static void Poll()
     {
+        Controller.Analog = ConfigManager.Game.PadKind == PadKind.Analog;
+        Controller.Analog2 = ConfigManager.Game.PadKind2 == PadKind.Analog;
+
+        
         PollGamepadEvents();
         PollKeyboard();
         PollGamepads();
@@ -282,25 +286,33 @@ internal static unsafe class InputManager
 
         if (_pad0 != null)
         {
-            Controller.State = PadState(_pad0, ConfigManager.Game.Pad, Controller.State);
-            Controller.LeftX = AxisToByte(_sdl.GameControllerGetAxis(_pad0, GameControllerAxis.Leftx));
-            Controller.LeftY = AxisToByte(_sdl.GameControllerGetAxis(_pad0, GameControllerAxis.Lefty));
-            Controller.RightX = AxisToByte(_sdl.GameControllerGetAxis(_pad0, GameControllerAxis.Rightx));
-            Controller.RightY = AxisToByte(_sdl.GameControllerGetAxis(_pad0, GameControllerAxis.Righty));
+            var bind = ConfigManager.Game.PadFor(0);
+            Controller.State = PadState(_pad0, bind, Controller.State);
+            Controller.LeftX = Axis(_pad0, bind.LeftStickX);
+            Controller.LeftY = Axis(_pad0, bind.LeftStickY);
+            Controller.RightX = Axis(_pad0, bind.RightStickX);
+            Controller.RightY = Axis(_pad0, bind.RightStickY);
         }
 
         if (_pad1 != null)
         {
-            Controller.State2 = PadState(_pad1, ConfigManager.Game.Pad2, Controller.State2);
-            Controller.LeftX2 = AxisToByte(_sdl.GameControllerGetAxis(_pad1, GameControllerAxis.Leftx));
-            Controller.LeftY2 = AxisToByte(_sdl.GameControllerGetAxis(_pad1, GameControllerAxis.Lefty));
-            Controller.RightX2 = AxisToByte(_sdl.GameControllerGetAxis(_pad1, GameControllerAxis.Rightx));
-            Controller.RightY2 = AxisToByte(_sdl.GameControllerGetAxis(_pad1, GameControllerAxis.Righty));
+            var bind = ConfigManager.Game.PadFor(1);
+            Controller.State2 = PadState(_pad1, bind, Controller.State2);
+            Controller.LeftX2 = Axis(_pad1, bind.LeftStickX);
+            Controller.LeftY2 = Axis(_pad1, bind.LeftStickY);
+            Controller.RightX2 = Axis(_pad1, bind.RightStickX);
+            Controller.RightY2 = Axis(_pad1, bind.RightStickY);
         }
         else
         {
             Controller.LeftX2 = Controller.LeftY2 = Controller.RightX2 = Controller.RightY2 = 0x80;
         }
+    }
+
+    static byte Axis(GameController* ctrl, int index)
+    {
+        if (_sdl == null || index < 0) return 0x80;
+        return AxisToByte(_sdl.GameControllerGetAxis(ctrl, (GameControllerAxis)index));
     }
 
     static ushort PadState(GameController* ctrl, GamepadBindings pad, ushort s)

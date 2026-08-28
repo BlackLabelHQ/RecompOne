@@ -10,6 +10,8 @@ public interface IGlVram
 
     uint BeginDestRead(uint targetTex, int targetW, int targetH, int x, int y, int w, int h);
 
+    void SampleBarrier();
+
     void Fill(int x, int y, int w, int h, ushort color15);
     void CopyRect(int sx, int sy, int dx, int dy, int w, int h);
     void WriteRect(int x, int y, int w, int h, ReadOnlySpan<ushort> px);

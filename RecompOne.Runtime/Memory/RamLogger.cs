@@ -13,6 +13,7 @@ public sealed class RamLogger
     uint _cycle;
 
     public static bool TrackReads;
+    public static bool TrackWrites;
 
     public float DecayFrames = 90f;
     public Vector4 BackdropColor = new(0.25f, 0.15f, 0.15f, 1f);

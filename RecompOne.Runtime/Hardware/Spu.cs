@@ -134,6 +134,99 @@ public sealed class Spu
     short _mainCurL, _mainCurR;
     int _mainCycL, _mainCycR;
     ushort _reverbVolL, _reverbVolR;
+
+    readonly ushort[] _rev = new ushort[0x20]; //revcopied from duckstation
+    uint _revCur;
+    bool _revRight;
+    int _revInL, _revInR, _revOutL, _revOutR;
+
+    const int dAPF1 = 0, dAPF2 = 1, vIIR = 2, vCOMB1 = 3, vCOMB2 = 4, vCOMB3 = 5, vCOMB4 = 6,
+              vWALL = 7, vAPF1 = 8, vAPF2 = 9, mLSAME = 10, mRSAME = 11, mLCOMB1 = 12,
+              mRCOMB1 = 13, mLCOMB2 = 14, mRCOMB2 = 15, dLSAME = 16, dRSAME = 17,
+              mLDIFF = 18, mRDIFF = 19, mLCOMB3 = 20, mRCOMB3 = 21, mLCOMB4 = 22,
+              mRCOMB4 = 23, dLDIFF = 24, dRDIFF = 25, mLAPF1 = 26, mRAPF1 = 27,
+              mLAPF2 = 28, mRAPF2 = 29, vLIN = 30, vRIN = 31;
+
+    short R(int i) => (short)_rev[i];
+
+    uint RevBase => (uint)_reverbStartAddr << 3;
+
+    uint RevAddr(long byteOffset)
+    {
+        int b = (int)RevBase;
+        int size = RamSize - b;
+        if (size <= 0) return 0;
+        
+        int a = (int)_revCur - b + (int)byteOffset;
+        if ((uint)a >= (uint)size)
+        {
+            a %= size;
+            if (a < 0) a += size;
+        }
+        return (uint)(b + a) & (uint)(RamSize - 2);
+    }
+
+    short RevReadAt(int reg, long extra = 0)
+    {
+        uint a = RevAddr(((long)_rev[reg] << 3) + extra);
+        return (short)(Ram[a] | (Ram[a + 1] << 8));
+    }
+
+    void RevWriteAt(int reg, int value)
+    {
+        if ((_spucnt & 0x80) == 0) return;
+        uint a = RevAddr((long)_rev[reg] << 3);
+        short v = (short)Math.Clamp(value, -0x8000, 0x7FFF);
+        Ram[a] = (byte)v;
+        Ram[a + 1] = (byte)(v >> 8);
+    }
+
+    static int RevMul(int sample, short vol) => sample * vol >> 15;
+
+    void ReverbStep(int lin, int rin)
+    {
+        lin = RevMul(lin, R(vLIN));
+        rin = RevMul(rin, R(vRIN));
+
+        int sameL = RevMul(lin + RevMul(RevReadAt(dLSAME), R(vWALL)) - RevReadAt(mLSAME, -2), R(vIIR)) + RevReadAt(mLSAME, -2);
+        int sameR = RevMul(rin + RevMul(RevReadAt(dRSAME), R(vWALL)) - RevReadAt(mRSAME, -2), R(vIIR)) + RevReadAt(mRSAME, -2);
+        RevWriteAt(mLSAME, sameL);
+        RevWriteAt(mRSAME, sameR);
+
+        int diffL = RevMul(lin + RevMul(RevReadAt(dRDIFF), R(vWALL)) - RevReadAt(mLDIFF, -2), R(vIIR)) + RevReadAt(mLDIFF, -2);
+        int diffR = RevMul(rin + RevMul(RevReadAt(dLDIFF), R(vWALL)) - RevReadAt(mRDIFF, -2), R(vIIR)) + RevReadAt(mRDIFF, -2);
+        RevWriteAt(mLDIFF, diffL);
+        RevWriteAt(mRDIFF, diffR);
+
+        int outL = RevMul(RevReadAt(mLCOMB1), R(vCOMB1)) + RevMul(RevReadAt(mLCOMB2), R(vCOMB2)) + RevMul(RevReadAt(mLCOMB3), R(vCOMB3)) + RevMul(RevReadAt(mLCOMB4), R(vCOMB4));
+        int outR = RevMul(RevReadAt(mRCOMB1), R(vCOMB1)) + RevMul(RevReadAt(mRCOMB2), R(vCOMB2)) + RevMul(RevReadAt(mRCOMB3), R(vCOMB3)) + RevMul(RevReadAt(mRCOMB4), R(vCOMB4));
+
+        int tapL = RevReadAt(mLAPF1, -((long)_rev[dAPF1] << 3));
+        int tapR = RevReadAt(mRAPF1, -((long)_rev[dAPF1] << 3));
+        outL -= RevMul(tapL, R(vAPF1));
+        outR -= RevMul(tapR, R(vAPF1));
+        RevWriteAt(mLAPF1, outL);
+        RevWriteAt(mRAPF1, outR);
+        outL = RevMul(outL, R(vAPF1)) + tapL;
+        outR = RevMul(outR, R(vAPF1)) + tapR;
+
+        tapL = RevReadAt(mLAPF2, -((long)_rev[dAPF2] << 3));
+        tapR = RevReadAt(mRAPF2, -((long)_rev[dAPF2] << 3));
+        outL -= RevMul(tapL, R(vAPF2));
+        outR -= RevMul(tapR, R(vAPF2));
+        RevWriteAt(mLAPF2, outL);
+        RevWriteAt(mRAPF2, outR);
+        outL = RevMul(outL, R(vAPF2)) + tapL;
+        outR = RevMul(outR, R(vAPF2)) + tapR;
+
+        _revOutL = Math.Clamp(outL, -0x8000, 0x7FFF);
+        _revOutR = Math.Clamp(outR, -0x8000, 0x7FFF);
+
+        uint b = RevBase;
+        long size = RamSize - b;
+        if (size <= 0) { _revCur = 0; return; }
+        _revCur = _revCur + 2 >= RamSize ? b : Math.Max(b, _revCur + 2);
+    }
     ushort _kon, _konHi;
     ushort _koff, _koffHi;
     ushort _pmon, _pmonHi;
@@ -218,6 +311,7 @@ public sealed class Spu
             0x19C => (ushort)(_endx & 0xFFFF),
             0x19E => (ushort)(_endx >> 16),
             0x1A2 => _reverbStartAddr,
+            >= 0x1C0 and <= 0x1FE => _rev[(off - 0x1C0) >> 1],
             0x1A6 => _transferAddr,
             0x1AA => _spucnt,
             0x1AC => _transferCtrl,
@@ -282,6 +376,9 @@ public sealed class Spu
             case 0x1B2: _cdVolR = val; break;
             case 0x1B4: _extVolL = val; break;
             case 0x1B6: _extVolR = val; break;
+            default:
+                if (off >= 0x1C0 && off <= 0x1FE) _rev[(off - 0x1C0) >> 1] = val;
+                break;
         }
     }
 
@@ -389,6 +486,17 @@ public sealed class Spu
         }
     }
 
+    public void CdInitVolume()
+    {
+        lock (_sync)
+        {
+            if (_mainCurL == 0 && _mainCurR == 0)
+                _mainVolL = _mainVolR = 0x3FFF;
+            _cdVolL = _cdVolR = 0x3FFF;
+            _spucnt = 0xC001;
+        }
+    }
+
     //CdlATV order: val0 = L to L, val1 = L to R, val2 = R to R, val3 = R to L
     public void SetCdMix(byte ltol, byte ltor, byte rtor, byte rtol)
     {
@@ -401,8 +509,13 @@ public sealed class Spu
         }
     }
 
+    short[] _xaL = [], _xaR = [];
+
     public void Mix(short[] dst, int frames)
     {
+        if (_xaL.Length < frames) { _xaL = new short[frames]; _xaR = new short[frames]; }
+        int xaCount = XaAudio.NextBlock(_xaL, _xaR, frames);
+
         lock (_sync)
         {
             for (int n = 0; n < frames; n++)
@@ -412,13 +525,22 @@ public sealed class Spu
 
                 var (l, r) = Tick();
                 int mixL = l * _voiceGain >> 15, mixR = r * _voiceGain >> 15;
-                if (XaAudio.Next(out short xl, out short xr))
+                if (n < xaCount)
                 {
+                    short xl = _xaL[n], xr = _xaR[n];
                     int aL = Math.Clamp((xl * _cdMixLL + xr * _cdMixRL) >> 7, -32768, 32767);
                     int aR = Math.Clamp((xl * _cdMixLR + xr * _cdMixRR) >> 7, -32768, 32767);
-                    mixL += ((aL * (short)_cdVolL >> 15) * _xaGain) >> 15;
-                    mixR += ((aR * (short)_cdVolR >> 15) * _xaGain) >> 15;
+                    int cL = (aL * (short)_cdVolL >> 15) * _xaGain >> 15;
+                    int cR = (aR * (short)_cdVolR >> 15) * _xaGain >> 15;
+                    mixL += cL;
+                    mixR += cR;
+                    if ((_spucnt & 0x04) != 0) { _revInL += cL; _revInR += cR; }
                 }
+
+                _revRight = !_revRight;
+                if (_revRight) ReverbStep(_revInL, _revInR);
+                mixL += RevMul(_revOutL, (short)_reverbVolL);
+                mixR += RevMul(_revOutR, (short)_reverbVolR);
                 mixL = Math.Clamp(mixL, -32768, 32767) * _mainCurL >> 15;
                 mixR = Math.Clamp(mixR, -32768, 32767) * _mainCurR >> 15;
                 dst[n * 2] = (short)mixL;
@@ -432,6 +554,9 @@ public sealed class Spu
         ResolveKeys();
         TickNoise();
         int sumL = 0, sumR = 0;
+        _revInL = 0;
+        _revInR = 0;
+        uint eonMask = (uint)(_eon | (_eonHi << 16));
 
         uint nonMask = (uint)(_non  | (_nonHi  << 16));
         uint pmonMask = (uint)(_pmon | (_pmonHi << 16));
@@ -487,8 +612,11 @@ public sealed class Spu
 
             prevOutx = amp;
 
-            sumL += (amp * v.CurVolL) >> 15;
-            sumR += (amp * v.CurVolR) >> 15;
+            int vl = (amp * v.CurVolL) >> 15;
+            int vr = (amp * v.CurVolR) >> 15;
+            sumL += vl;
+            sumR += vr;
+            if ((eonMask & (1u << i)) != 0) { _revInL += vl; _revInR += vr; }
         }
 
         sumL = Math.Clamp(sumL, -32768, 32767);

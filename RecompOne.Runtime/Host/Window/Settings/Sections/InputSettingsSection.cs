@@ -42,6 +42,8 @@ internal sealed class InputSettingsSection : ISettingsSection
         ImGui.Spacing();
         DrawPadSelector();
         ImGui.Spacing();
+        DrawPadKind();
+        ImGui.Spacing();
 
         if (_gamepadMode)
         {
@@ -57,6 +59,12 @@ internal sealed class InputSettingsSection : ISettingsSection
 
         DrawBindings();
 
+        if (_gamepadMode && ConfigManager.Game.KindFor(_padIndex) == PadKind.Analog)
+        {
+            ImGui.Spacing();
+            DrawStickAxes();
+        }
+
         ImGui.Spacing();
         if (ImGui.Button(Localization.T("settings.input.reset_defaults")))
         {
@@ -67,12 +75,81 @@ internal sealed class InputSettingsSection : ISettingsSection
             }
             else
             {
-                if (_padIndex == 0) ConfigManager.Game.Pad = new GamepadBindings();
-                else ConfigManager.Game.Pad2 = GamepadBindings.Empty();
+                bool analog = ConfigManager.Game.KindFor(_padIndex) == PadKind.Analog;
+                if (_padIndex == 0)
+                {
+                    if (analog) ConfigManager.Game.PadAnalog = GamepadBindings.DefaultAnalog();
+                    else ConfigManager.Game.Pad = new GamepadBindings();
+                }
+                else
+                {
+                    if (analog) ConfigManager.Game.PadAnalog2 = GamepadBindings.Empty();
+                    else ConfigManager.Game.Pad2 = GamepadBindings.Empty();
+                }
             }
             _remapRow = -1;
             ConfigManager.SaveGame();
         }
+    }
+
+    static readonly (string Label, Func<GamepadBindings, int> Get, Action<GamepadBindings, int> Set)[] _axisRows =
+    [
+        ("L Stick X", p => p.LeftStickX,  (p, v) => p.LeftStickX = v),
+        ("L Stick Y", p => p.LeftStickY,  (p, v) => p.LeftStickY = v),
+        ("R Stick X", p => p.RightStickX, (p, v) => p.RightStickX = v),
+        ("R Stick Y", p => p.RightStickY, (p, v) => p.RightStickY = v),
+    ];
+
+    static readonly string[] AxisNames = ["Left X", "Left Y", "Right X", "Right Y", "Trigger L", "Trigger R"];
+
+    void DrawStickAxes()
+    {
+        var pad = ConfigManager.Game.PadFor(_padIndex);
+        ImGuiEx.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f), Localization.T("settings.input.sticks"));
+
+        foreach (var (label, get, set) in _axisRows)
+        {
+            int cur = get(pad);
+            string name = cur >= 0 && cur < AxisNames.Length ? AxisNames[cur] : $"axis {cur}";
+
+            ImGui.SetNextItemWidth(160f);
+            if (ImGui.BeginCombo(label, name))
+            {
+                for (int i = 0; i < AxisNames.Length; i++)
+                    if (ImGui.Selectable(AxisNames[i], i == cur))
+                    {
+                        set(pad, i);
+                        ConfigManager.SaveGame();
+                    }
+                ImGui.EndCombo();
+            }
+        }
+    }
+
+    static readonly string[] PadKindKeys = ["settings.input.kind.digital", "settings.input.kind.analog"];
+
+    void DrawPadKind()
+    {
+        var cfg = ConfigManager.Game;
+        var kind = _padIndex == 0 ? cfg.PadKind : cfg.PadKind2;
+        int index = (int)kind;
+
+        ImGui.SetNextItemWidth(220f);
+        if (ImGui.BeginCombo(Localization.T("settings.input.kind"), Localization.T(PadKindKeys[index])))
+        {
+            for (int i = 0; i < PadKindKeys.Length; i++)
+                if (ImGui.Selectable(Localization.T(PadKindKeys[i]), i == index))
+                {
+                    if (_padIndex == 0) cfg.PadKind = (PadKind)i;
+                    else cfg.PadKind2 = (PadKind)i;
+                    ConfigManager.SaveGame();
+                }
+            ImGui.EndCombo();
+        }
+
+        ImGui.SameLine();
+        ImGuiEx.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f),
+            Localization.T(index == 1 ? "settings.input.kind.analog.hint" : "settings.input.kind.digital.hint"));
     }
 
     void DrawDeviceSelector()
@@ -167,7 +244,7 @@ internal sealed class InputSettingsSection : ISettingsSection
         ImGui.TableHeadersRow();
 
         var keys = _padIndex == 0 ? ConfigManager.Game.Keys : ConfigManager.Game.Keys2;
-        var pad = _padIndex == 0 ? ConfigManager.Game.Pad : ConfigManager.Game.Pad2;
+        var pad = ConfigManager.Game.PadFor(_padIndex);
 
         for (int i = 0; i < _rows.Length; i++)
         {

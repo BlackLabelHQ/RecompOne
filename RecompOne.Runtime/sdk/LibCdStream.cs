@@ -29,6 +29,7 @@ public static class LibCdStream
     static readonly Queue<(int start, int n)> _ready = new();
     static int _prevStart = -1, _prevN;
 
+    static readonly ManualResetEventSlim _wake = new(false);
     static Thread? _thread;
     static volatile bool _run;
     static readonly object _lock = new();
@@ -71,6 +72,7 @@ public static class LibCdStream
         }
         _active = true;
         EnsureThread();
+        _wake.Set();
         Log.Sdk("StSetStream");
     }
 
@@ -112,6 +114,7 @@ public static class LibCdStream
         _pendingLba = lba;
         _reading = true;
         EnsureThread();
+        _wake.Set();
     }
 
     internal static void OnStopStream()
@@ -172,7 +175,8 @@ public static class LibCdStream
             var m = Runtime.Mem;
             if (cd == null || m == null || !_active || !_reading || _slots <= 0)
             {
-                Thread.Sleep(2);
+                _wake.Reset();
+                _wake.Wait(50);
                 continue;
             }
 
@@ -182,6 +186,8 @@ public static class LibCdStream
                 _streamStartLba = _streamLba;
                 _clock.Restart();
             }
+
+            if (_streamLba >= cd.Fs.DataSectors) { _reading = false; continue; }
 
             byte[] sec;
             try { lock (LibCd.DiscLock) sec = cd.ReadSectorData(_streamLba, 2336); }

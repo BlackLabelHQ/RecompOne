@@ -33,4 +33,25 @@ public static class LabelManager
 
         return labels;
     }
+    //back edge is branch that goes backward, usually for loop, this will be used to dispatch some of the irqs that cant be properly hled
+    public static HashSet<uint> CollectBackEdges(MipsFunction func)
+    {
+        var heads = new HashSet<uint>();
+
+        foreach (var instr in func.Instructions)
+        {
+            if (!instr.HasDelaySlot) continue;
+
+            uint op = instr.Word >> 26;
+            uint t;
+
+            if (op is 1 or 4 or 5 or 6 or 7) t = instr.BranchTarget;
+            else if (op == 2) t = instr.JumpTarget;
+            else continue;
+
+            if (t >= func.Start && t < func.End && t <= instr.Vram) heads.Add(t);
+        }
+
+        return heads;
+    }
 }

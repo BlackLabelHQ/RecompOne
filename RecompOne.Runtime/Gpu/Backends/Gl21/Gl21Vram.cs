@@ -163,6 +163,8 @@ public sealed class Gl21Vram : IGlVram
         _destRtH = h;
     }
 
+    public void SampleBarrier() { }
+
     public void WriteRect(int x, int y, int w, int h, ReadOnlySpan<ushort> px)
     {
         _gl.ActiveTexture(TextureUnit.Texture7);

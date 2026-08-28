@@ -117,13 +117,35 @@ public static class XaAudio
 
     public static int BufferedSamples { get { lock (_gate) return _count; } }
 
+    const int LowWater = 8192;
+
     public static bool Playing { get { lock (_gate) return _playing; } }
 
     public static int SourceRate { get { lock (_gate) return _srcRate; } }
+    
+    public static int NextBlock(short[] left, short[] right, int frames)
+    {
+        int produced;
+        bool low;
+        lock (_gate)
+        {
+            produced = frames;
+            for (int i = 0; i < frames; i++)
+                if (!NextLocked(out left[i], out right[i])) { produced = i; break; }
+            low = _count < LowWater;
+        }
+
+        if (low) Sdk.LibCd.WakeXa();
+        return produced;
+    }
 
     public static bool Next(out short left, out short right)
     {
-        lock (_gate)
+        lock (_gate) return NextLocked(out left, out right);
+    }
+
+    static bool NextLocked(out short left, out short right)
+    {
         {
             if (!_playing) { left = right = 0; return false; }
 

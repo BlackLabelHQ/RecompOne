@@ -29,6 +29,7 @@ public static class LibGpu
             uint count = header >> 24;
             for (uint i = 0; i < count; i++)
                 gpu.WriteGp0(m.ReadU32(addr + 4u + i * 4u));
+
             uint next = header & 0xFFFFFFu;
             if (next == 0xFFFFFFu || (next & 0x800000u) != 0) break;
             addr = next & Runtime.RamWordMask;
@@ -56,19 +57,21 @@ public static class LibGpu
         byte isbg = m.ReadU8(env + 0x18);
         byte r0 = m.ReadU8(env + 0x19), g0 = m.ReadU8(env + 0x1A), b0 = m.ReadU8(env + 0x1B);
 
-        gpu.WriteGp0(GetCs(clipX, clipY));
-        gpu.WriteGp0(GetCe((short)(clipX + clipW - 1), (short)(clipY + clipH - 1)));
-        gpu.WriteGp0(GetOfs(ofsX, ofsY));
+        _curCs = GetCs(clipX, clipY);
+        _curCe = GetCe((short)(clipX + clipW - 1), (short)(clipY + clipH - 1));
+        _curOfs = GetOfs(ofsX, ofsY);
+        gpu.WriteGp0(_curCs);
+        gpu.WriteGp0(_curCe);
+        gpu.WriteGp0(_curOfs);
         gpu.WriteGp0(GetMode(dfe, dtd, tpage));
         gpu.WriteGp0(GetTw(twX, twY, twW, twH));
         gpu.WriteGp0(0xE6000000u);
 
         if (isbg != 0)
         {
-            int margin = GpuHle.WideMargin(clipW);
-            int w = Math.Clamp(clipW + margin * 2, 0, VramShadow.Width - 1);
+            int w = Math.Clamp((int)clipW, 0, VramShadow.Width - 1);
             int h = Math.Clamp((int)clipH, 0, VramShadow.Height - 1);
-            int x = clipX - margin - ofsX, y = clipY - ofsY;
+            int x = clipX - ofsX, y = clipY - ofsY;
             gpu.WriteGp0(0x60000000u | ((uint)b0 << 16) | ((uint)g0 << 8) | r0);
             gpu.WriteGp0(((uint)(ushort)y << 16) | (ushort)x);
             gpu.WriteGp0(((uint)(ushort)h << 16) | (ushort)w);
@@ -154,23 +157,33 @@ public static class LibGpu
         return 0xE4000000u | (((uint)y & 0x3FF) << 10) | ((uint)x & 0x3FF);
     }
 
+    static uint _curCs = 0xE3000000u, _curCe = 0xE4000000u, _curOfs = 0xE5000000u;
+
+    static (short X, short Y, short W, short H) ReadRect(IMemory m, uint p) => (S16(m, p), S16(m, p + 2), S16(m, p + 4), S16(m, p + 6));
+
+    
+    static short ClampW(short w) => (short)((((w - 1) & 0x3FF) + 1));
+    static short ClampH(short h) => (short)((((h - 1) & 0x1FF) + 1));
+
+    static uint Pack(short lo, short hi) => ((uint)(ushort)hi << 16) | (ushort)lo;
+
     public static void LoadImage(CpuContext c, IMemory m)
     {
         var gpu = Runtime.Gpu;
-        if (gpu == null) { c.V0 = 0u; return; }
+        if (gpu == null) { c.V0 = 0xFFFFFFFFu; return; }
 
-        uint rect = c.A0, src = c.A1;
-        ushort x = m.ReadU16(rect), y = m.ReadU16(rect + 2);
-        ushort w = m.ReadU16(rect + 4), h = m.ReadU16(rect + 6);
-        if (w == 0 || h == 0) { c.V0 = 0u; return; }
+        var r = ReadRect(m, c.A0);
+        uint src = c.A1;
+        short w = ClampW(r.W), h = ClampH(r.H);
+        int words = (w * h + 1) / 2;
+        if (words <= 0) { c.V0 = 0xFFFFFFFFu; return; }
 
+        gpu.WriteGp0(0x01000000u);
         gpu.WriteGp0(0xA0000000u);
-        gpu.WriteGp0(((uint)y << 16) | x);
-        gpu.WriteGp0(((uint)h << 16) | w);
-
-        uint words = ((uint)w * h + 1u) >> 1;
-        for (uint i = 0; i < words; i++)
-            gpu.WriteGp0(m.ReadU32(src + i * 4u));
+        gpu.WriteGp0(Pack(r.X, r.Y));
+        gpu.WriteGp0(Pack(w, h));
+        for (int i = 0; i < words; i++)
+            gpu.WriteGp0(m.ReadU32(src + (uint)i * 4u));
 
         c.V0 = 0u;
     }
@@ -178,20 +191,20 @@ public static class LibGpu
     public static void StoreImage(CpuContext c, IMemory m)
     {
         var gpu = Runtime.Gpu;
-        if (gpu == null) { c.V0 = 0u; return; }
+        if (gpu == null) { c.V0 = 0xFFFFFFFFu; return; }
 
-        uint rect = c.A0, dst = c.A1;
-        ushort x = m.ReadU16(rect), y = m.ReadU16(rect + 2);
-        ushort w = m.ReadU16(rect + 4), h = m.ReadU16(rect + 6);
-        if (w == 0 || h == 0) { c.V0 = 0u; return; }
+        var r = ReadRect(m, c.A0);
+        uint dst = c.A1;
+        short w = ClampW(r.W), h = ClampH(r.H);
+        int words = (w * h + 1) / 2;
+        if (words <= 0) { c.V0 = 0xFFFFFFFFu; return; }
 
+        gpu.WriteGp0(0x01000000u);
         gpu.WriteGp0(0xC0000000u);
-        gpu.WriteGp0(((uint)y << 16) | x);
-        gpu.WriteGp0(((uint)h << 16) | w);
-
-        uint words = ((uint)w * h + 1u) >> 1;
-        for (uint i = 0; i < words; i++)
-            m.WriteU32(dst + i * 4u, gpu.ReadData());
+        gpu.WriteGp0(Pack(r.X, r.Y));
+        gpu.WriteGp0(Pack(w, h));
+        for (int i = 0; i < words; i++)
+            m.WriteU32(dst + (uint)i * 4u, gpu.ReadData());
 
         c.V0 = 0u;
     }
@@ -199,17 +212,13 @@ public static class LibGpu
     public static void MoveImage(CpuContext c, IMemory m)
     {
         var gpu = Runtime.Gpu;
-        if (gpu == null) { c.V0 = 0u; return; }
+        if (gpu == null) { c.V0 = 0xFFFFFFFFu; return; }
 
-        uint rect = c.A0;
-        ushort sx = m.ReadU16(rect), sy = m.ReadU16(rect + 2);
-        ushort w = m.ReadU16(rect + 4), h = m.ReadU16(rect + 6);
-        if (w == 0 || h == 0) { c.V0 = 0u; return; }
-
+        var r = ReadRect(m, c.A0);
         gpu.WriteGp0(0x80000000u);
-        gpu.WriteGp0(((uint)sy << 16) | sx);
-        gpu.WriteGp0(((c.A3 & 0xFFFFu) << 16) | (c.A2 & 0xFFFFu));
-        gpu.WriteGp0(((uint)h << 16) | w);
+        gpu.WriteGp0(Pack(r.X, r.Y));
+        gpu.WriteGp0(Pack((short)c.A1, (short)c.A2));
+        gpu.WriteGp0(Pack(r.W, r.H));
 
         c.V0 = 0u;
     }
@@ -217,16 +226,32 @@ public static class LibGpu
     public static void ClearImage(CpuContext c, IMemory m)
     {
         var gpu = Runtime.Gpu;
-        if (gpu == null) { c.V0 = 0u; return; }
+        if (gpu == null) { c.V0 = 0xFFFFFFFFu; return; }
 
-        uint rect = c.A0;
-        ushort x = m.ReadU16(rect), y = m.ReadU16(rect + 2);
-        ushort w = m.ReadU16(rect + 4), h = m.ReadU16(rect + 6);
-        if (w == 0 || h == 0) { c.V0 = 0u; return; }
+        var r = ReadRect(m, c.A0);
+        short w = ClampW(r.W), h = ClampH(r.H);
+        uint color = ((c.A3 & 0xFFu) << 16) | ((c.A2 & 0xFFu) << 8) | (c.A1 & 0xFFu);
 
-        gpu.WriteGp0(0x02000000u | ((c.A3 & 0xFFu) << 16) | ((c.A2 & 0xFFu) << 8) | (c.A1 & 0xFFu));
-        gpu.WriteGp0(((uint)y << 16) | x);
-        gpu.WriteGp0(((uint)h << 16) | w);
+        if ((r.X & 0x3F) != 0 || (w & 0x3F) != 0)
+        {
+            gpu.WriteGp0(0xE3000000u);
+            gpu.WriteGp0(0xE4FFFFFFu);
+            gpu.WriteGp0(0xE5000000u);
+            gpu.WriteGp0(0xE6000000u);
+            gpu.WriteGp0(0x60000000u | color);
+            gpu.WriteGp0(Pack(r.X, r.Y));
+            gpu.WriteGp0(Pack(w, h));
+            gpu.WriteGp0(_curCs);
+            gpu.WriteGp0(_curCe);
+            gpu.WriteGp0(_curOfs);
+        }
+        else
+        {
+            gpu.WriteGp0(0xE6000000u);
+            gpu.WriteGp0(0x02000000u | color);
+            gpu.WriteGp0(Pack(r.X, r.Y));
+            gpu.WriteGp0(Pack(w, h));
+        }
 
         c.V0 = 0u;
     }

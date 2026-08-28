@@ -32,7 +32,10 @@ public static class GpuHle
                 if (!_rects[i].Valid || _rects[i].Stamp < _rects[slot].Stamp) slot = i;
         }
         _rects[slot] = new DispRect { X = x, Y = y, W = w, H = h, Stamp = ++_stamp, Valid = true };
+        RectVersion++;
     }
+
+    public static long RectVersion { get; private set; }
 
     public static int RectCount => _rects.Length;
 

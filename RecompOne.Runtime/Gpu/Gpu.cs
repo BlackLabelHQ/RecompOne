@@ -115,12 +115,23 @@ public sealed partial class Gpu
         return (uint)(lo | (hi << 16));
     }
 
+    bool _polylineShaded;
+
     public void WriteGp0(uint word)
     {
         if (_loadImage) { StoreImageHalfword((ushort)word); StoreImageHalfword((ushort)(word >> 16)); return; }
         if (_polyline)
         {
-            if ((word & 0xF000F000u) == 0x50005000u) { _polyline = false; ExecutePolyline(); _fifo.Clear(); }
+            //the terminator only sits where a vertex /colour pair start and the first pair is aways consumed untesting, psx_spx was unclear about dat, the implementation on pcsx redux is broken(somehow worse than mine), duckstation was the one that correctly implemented this, thanks duckstaion!!!!
+            int data = _fifo.Count - 1;
+            bool testable = _polylineShaded ? data >= 3 && (data & 1) == 1 : data >= 2;
+
+            if (testable && (word & 0xF000F000u) == 0x50005000u)
+            {
+                _polyline = false;
+                ExecutePolyline();
+                _fifo.Clear();
+            }
             else _fifo.Add(word);
             return;
         }
@@ -129,7 +140,7 @@ public sealed partial class Gpu
         if (_fifo.Count == 1)
         {
             _need = CommandLength(word);
-            if (_need == LenPolyline) { _polyline = true; return; }
+            if (_need == LenPolyline) { _polyline = true; _polylineShaded = (word & (1u << 28)) != 0; return; }
             if (_need == LenImageLoad) _need = 3;
         }
 

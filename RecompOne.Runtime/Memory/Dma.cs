@@ -33,8 +33,16 @@ public sealed class Dma
         uint flags = (_dicr >> 24) & 0x7Fu;
         flags &= ~((val >> 24) & 0x7Fu);
         _dicr = (val & 0x00FFFFFFu) | (flags << 24);
-        if ((_dicr & 0x8000u) != 0 || (((_dicr >> 23) & 1u) != 0 && flags != 0))
-            _dicr |= 0x80000000u;
+        UpdateMaster();
+    }
+
+    void UpdateMaster()
+    {
+        uint flags = (_dicr >> 24) & 0x7Fu;
+        uint enables = (_dicr >> 16) & 0x7Fu;
+        bool set = (_dicr & 0x8000u) != 0
+                   || (((_dicr >> 23) & 1u) != 0 && (flags & enables) != 0);
+        _dicr = set ? _dicr | 0x80000000u : _dicr & 0x7FFFFFFFu;
     }
 
     public void Run(int channel, uint madr, uint bcr, uint chcr)
@@ -129,10 +137,12 @@ public sealed class Dma
 
     void Complete(int channel)
     {
+        Log.Irq($"dma ch {channel} dicr = 0x{_dicr:X8}");
         bool master = (_dicr & (1u << 23)) != 0;
         bool enabled = (_dicr & (1u << (16 + channel))) != 0;
         if (!master || !enabled) return;
         _dicr |= 1u << (24 + channel);
+        UpdateMaster();
         _raiseIrq();
     }
 

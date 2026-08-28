@@ -19,6 +19,9 @@ public static class Controller
     public const ushort Cross = 1 << 14;
     public const ushort Square = 1 << 15;
 
+    public static bool Analog;
+    public static bool Analog2;
+
     public static ushort State = 0xFFFF;
     public static byte   RightX = 0x80;
     public static byte   RightY = 0x80;

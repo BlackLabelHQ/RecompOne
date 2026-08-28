@@ -372,6 +372,7 @@ public static class HostWindow
         PanelManager.Register(new CdDebugPanel());
         PanelManager.Register(new ConsolePanel());
         PanelManager.Register(new OverlayEventsPanel());
+        PanelManager.Register(new InputRollPanel());
 
         PopupManager.Register(new SettingsPopup());
         PopupManager.Register(new ModsPopup());
@@ -439,6 +440,7 @@ public static class HostWindow
         Memory.RamLogger.TrackReads =
             PanelManager.Get<RamMapPanel>()?.IsOpen == true ||
             PanelManager.Get<MemoryEditorPanel>()?.IsOpen == true;
+        Memory.RamLogger.TrackWrites = Memory.RamLogger.TrackReads;
 
         var gpu = _gpu;
         if (gpu != null)

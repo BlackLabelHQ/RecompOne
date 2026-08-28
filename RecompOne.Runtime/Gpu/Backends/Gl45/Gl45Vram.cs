@@ -57,6 +57,8 @@ public sealed class Gl45Vram : IGlVram
         return targetTex;
     }
 
+    public void SampleBarrier() => _gl.TextureBarrier();
+
     public void WriteRect(int x, int y, int w, int h, ReadOnlySpan<ushort> px)
     {
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);

@@ -173,6 +173,137 @@ public static class FunctionDetector
         return result;
     }
 
+    //todo: polish, could be leading to wrong results
+    public static List<MipsFunction> DiscoverFallThroughs(MipsInstruction[] all, List<MipsFunction> existing, string overlayName)
+    {
+        if (all.Length == 0) return [];
+
+        uint codeEnd = all[^1].Vram + 4;
+        var starts = new HashSet<uint>(existing.Select(f => f.Start));
+        var targets = new SortedSet<uint>();
+
+        foreach (var f in existing)
+        {
+            if (!FallsThrough(f.Instructions)) continue;
+
+            uint t = f.End;
+            int i = InstrIndex(all, t);
+            while (i >= 0 && i < all.Length && all[i].IsNop) { t += 4; i++; }
+            if (i < 0 || i >= all.Length || t >= codeEnd) continue;
+            if (starts.Contains(t) || targets.Contains(t)) continue;
+            if (!IsKnownInstruction(all[i])) continue;
+
+            targets.Add(t);
+        }
+
+        return targets.Count == 0
+            ? []
+            : DetectFromAddresses(all, targets.Select(t => (t, (string?)null)), existing, overlayName);
+    }
+
+    static bool FallsThrough(MipsInstruction[] instrs)
+    {
+        if (instrs.Length == 0) return false;
+
+        int idx = instrs.Length - 1;
+        if (instrs.Length >= 2 && instrs[idx - 1].HasDelaySlot) idx--;
+
+        var ctrl = instrs[idx];
+        if (ctrl.IsReturn || ctrl.IsJump || ctrl.IsRegisterJump || ctrl.IsUnconditionalBranch) return false;
+        if (ctrl.IsFunctionCall) return false;
+        return true;
+    }
+
+    public static List<MipsFunction> DiscoverPointers(MipsInstruction[] all, List<MipsFunction> existing, IEnumerable<FunctionEntry> noTypeSymbols, string overlayName)
+    {
+        if (all.Length == 0) return [];
+
+        uint codeStart = all[0].Vram;
+        uint codeEnd = all[^1].Vram + 4;
+
+        var starts = new HashSet<uint>(existing.Select(f => f.Start));
+        var bodies = existing.Where(f => f.End > f.Start).OrderBy(f => f.Start).ToList();
+        var targets = new SortedSet<uint>();
+
+        foreach (var word in all)
+        {
+            uint t = word.Word;
+            if ((t & 3) != 0 || t < codeStart + 8 || t >= codeEnd) continue;
+            if (starts.Contains(t) || targets.Contains(t)) continue;
+            if (!bodies.Any(f => t > f.Start && t < f.End)) continue;
+
+            int idx = InstrIndex(all, t);
+            if (idx <= 1 || idx >= all.Length) continue;
+            if (!IsKnownInstruction(all[idx])) continue;
+            if (!EndsControlFlow(all[idx - 2]) && !all[idx - 1].IsNop) continue;
+
+            targets.Add(t);
+        }
+
+        var hi = new uint[32];
+        var hiSet = new bool[32];
+        foreach (var instr in all)
+        {
+            uint op = instr.Word >> 26;
+            if (op == 0x0F)
+            {
+                hi[instr.Rt] = (uint)(instr.ImmU << 16);
+                hiSet[instr.Rt] = true;
+                continue;
+            }
+            if (op != 0x09 && op != 0x0D) continue;
+            if (!hiSet[instr.Rs]) continue;
+
+            uint t = op == 0x09 ? hi[instr.Rs] + (uint)(int)instr.ImmS : hi[instr.Rs] + instr.ImmU;
+            if ((t & 3) != 0 || t < codeStart + 8 || t >= codeEnd) continue;
+            if (starts.Contains(t) || targets.Contains(t)) continue;
+            if (!bodies.Any(f => t > f.Start && t < f.End)) continue;
+
+            int i = InstrIndex(all, t);
+            if (i <= 1 || i >= all.Length) continue;
+            if (!IsKnownInstruction(all[i])) continue;
+            if (!EndsControlFlow(all[i - 2]) && !all[i - 1].IsNop) continue;
+
+            targets.Add(t);
+        }
+
+        foreach (var f in bodies)
+            foreach (var instr in f.Instructions)
+            {
+                uint op = instr.Word >> 26;
+                bool jump = op == 2 || op == 3;
+                bool branch = op == 1 || (op >= 4 && op <= 7);
+                if (!jump && !branch) continue;
+                uint t = jump ? instr.JumpTarget : instr.BranchTarget;
+                if (t < codeStart || t >= codeEnd) continue;
+                if (starts.Contains(t) || targets.Contains(t)) continue;
+                bool ownedByOther = bodies.Any(g => g.Start != f.Start && t > g.Start && t < g.End);
+                if (t > f.Start && t < f.End && !ownedByOther) continue;
+                if (!IsKnownInstruction(all[InstrIndex(all, t)])) continue;
+                targets.Add(t);
+            }
+
+        if (targets.Count == 0) return [];
+
+        var extras = DetectFromAddresses(all, targets.Select(t => (t, (string?)null)), existing, overlayName);
+        if (extras.Count > 0)
+        {
+            var merged = new List<MipsFunction>(existing);
+            merged.AddRange(extras);
+            extras.AddRange(DiscoverCalls(all, merged, noTypeSymbols, overlayName));
+        }
+        return extras;
+    }
+
+    static bool EndsControlFlow(MipsInstruction i)
+    {
+        uint op = i.Word >> 26;
+        if (op == 2) return true;
+        if (op == 0 && (i.Word & 0x3F) == 8) return true;
+        if (op == 4 && i.Rs == 0 && i.Rt == 0) return true;
+        return false;
+    }
+
     public static List<MipsFunction> LinearSweep(MipsInstruction[] all, List<MipsFunction> existing, IEnumerable<FunctionEntry> noTypeSymbols, string overlayName)
     {
         if (all.Length == 0) return [];

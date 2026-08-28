@@ -12,11 +12,13 @@ public sealed class RecompOneConfig
     [JsonPropertyName("funcMap")] public string? FuncMap { get; set; }
     [JsonPropertyName("main")] public string? Main { get; set; }
     [JsonPropertyName("functions")] public FunctionEntry[] Functions { get; set; } = [];
+    [JsonPropertyName("pointerScan")] public bool PointerScan { get; set; } //not sure if should be a config or on by default, this scans betwen cross overlay pointer calls to properly decode jumptbls, medievil uses it so thats why it is implemented here, maybe in the gfuture on by default, this also will toll the performance of the recompiler a bit so keeping it here while i decide what to do
     [JsonPropertyName("linearSweep")] public bool LinearSweep { get; set; } //linear sweep is to find functions when the elf doesnt ptovide then properly (fuck you sh) this can and WILL get some data as code, use it by your own risk
     [JsonPropertyName("debug")] public bool Debug { get; set; }
     [JsonPropertyName("addressComments")] public bool AddressComments { get; set; }
     [JsonPropertyName("disasmComments")] public bool DisasmComments { get; set; }
     [JsonPropertyName("overlays")] public OverlayConfig[] Overlays { get; set; } = [];
+    [JsonPropertyName("disableHle")] public string[] DisableHle { get; set; } = []; //can disable some of the patches
     [JsonPropertyName("stubs")] public string[] Stubs { get; set; } = [];
     [JsonPropertyName("ignored")] public string[] Ignored { get; set; } = [];
     [JsonPropertyName("patches")] public PatchEntry[] Patches { get; set; } = [];
@@ -102,9 +104,11 @@ public sealed class OverlayConfig
     [JsonPropertyName("lba")] public int Lba { get; set; } = -1;
     [JsonPropertyName("size")] public int? Size { get; set; }
     [JsonPropertyName("decrypt")] public bool Decrypt { get; set; }
+    [JsonPropertyName("gzip")] public bool Gzip { get; set; }
     [JsonPropertyName("rebase")] public int Rebase { get; set; } = 0;
     [JsonPropertyName("functions")] public FunctionEntry[] Functions { get; set; } = [];
     [JsonPropertyName("linearSweep")] public bool? LinearSweep { get; set; }
+    [JsonPropertyName("pointerScan")] public bool? PointerScan { get; set; }
     [JsonPropertyName("stubs")] public string[] Stubs { get; set; } = [];
     [JsonPropertyName("ignored")] public string[] Ignored { get; set; } = [];
 }
@@ -127,7 +131,6 @@ public static class ConfigLoader
     public static RecompOneConfig Load(string path)
     {
         using var stream = File.OpenRead(path);
-        return JsonSerializer.Deserialize<RecompOneConfig>(stream, Options)
-            ?? throw new InvalidDataException($"failed to parse config {path}");
+        return JsonSerializer.Deserialize<RecompOneConfig>(stream, Options) ?? throw new InvalidDataException($"failed to parse config {path}");
     }
 }

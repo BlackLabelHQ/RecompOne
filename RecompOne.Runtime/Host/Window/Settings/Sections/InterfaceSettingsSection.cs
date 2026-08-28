@@ -19,6 +19,18 @@ internal sealed class InterfaceSettingsSection : ISettingsSection
         DrawSwatches("settings.interface.background", "background", Theme.Backgrounds, Theme.MatchBackground(), Theme.Background, Theme.SetBackground);
         ImGui.Spacing();
         DrawScale();
+        ImGui.Spacing();
+        DrawShowFps();
+    }
+
+    static void DrawShowFps()
+    {
+        bool show = ConfigManager.View.ShowFps;
+        if (ImGui.Checkbox(Localization.T("settings.interface.show_fps"), ref show))
+        {
+            ConfigManager.View.ShowFps = show;
+            ConfigManager.SaveView(PanelManager.Panels);
+        }
     }
 
     static void DrawLanguage()

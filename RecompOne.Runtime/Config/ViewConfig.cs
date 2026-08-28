@@ -38,6 +38,13 @@ public class ViewConfig
         set => SetBool("HideTopBar", value);
     }
 
+    //todo: put top right
+    public bool ShowFps
+    {
+        get => GetBool("ShowFps");
+        set => SetBool("ShowFps", value);
+    }
+
     public bool AutoHideMenuBar
     {
         get => GetBool("AutoHideMenuBar");

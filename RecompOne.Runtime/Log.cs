@@ -9,10 +9,16 @@ public static class Log
     public static bool CdOn = false;
     public static bool SdkOn = false;
     public static bool MdecOn = false;
+    public static bool IrqOn = false;
 
     public static void Mdec(string m)
     {
         if (MdecOn) Console.WriteLine($"[MDEC] {m}");
+    }
+
+    public static void Irq(string m)
+    {
+        if (IrqOn) Console.WriteLine($"[IRQ] {m}");
     }
 
     public static void Bios(string m)

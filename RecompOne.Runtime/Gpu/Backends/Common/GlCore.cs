@@ -37,6 +37,10 @@ public sealed class GlCore : IGpuBackend
     HleDrawEnv _env;
 
     GlDisplayRt? _kTarget;
+    bool _kSamplesVram;
+    int _kTexX0, _kTexY0, _kTexX1, _kTexY1;
+    bool _vramDirty;
+    int _vdX0, _vdY0, _vdX1, _vdY1;
     bool _kTransparent;
     int _kImage = -1;
     int _kBlend, _kSetMask, _kCheckMask;
@@ -156,7 +160,28 @@ public sealed class GlCore : IGpuBackend
     const int FbSlackW = 64;
     const int FbSlackH = 32;
 
+    int _clsClipX0 = int.MinValue, _clsClipY0, _clsClipX1, _clsClipY1;
+    long _clsVersion = -1;
+    GlDisplayRt? _clsResult;
+
+    void InvalidateClassify() => _clsClipX0 = int.MinValue;
+
     GlDisplayRt? Classify()
+    {
+        if (_clsClipX0 == _env.ClipX0 && _clsClipY0 == _env.ClipY0 && _clsClipX1 == _env.ClipX1 && _clsClipY1 == _env.ClipY1 && _clsVersion == GpuHle.RectVersion)
+        {
+            if (_clsResult != null) _clsResult.Stamp = ++_rtStamp;
+            return _clsResult;
+        }
+
+        _clsClipX0 = _env.ClipX0; _clsClipY0 = _env.ClipY0;
+        _clsClipX1 = _env.ClipX1; _clsClipY1 = _env.ClipY1;
+        _clsVersion = GpuHle.RectVersion;
+        _clsResult = ClassifySlow();
+        return _clsResult;
+    }
+
+    GlDisplayRt? ClassifySlow()
     {
         int clipX = _env.ClipX0, clipY = _env.ClipY0;
         int clipW = _env.ClipX1 - _env.ClipX0 + 1, clipH = _env.ClipY1 - _env.ClipY0 + 1;
@@ -169,11 +194,8 @@ public sealed class GlCore : IGpuBackend
             var r = GpuHle.GetRect(i);
             if (!r.Valid || r.W <= 0 || r.H <= 0 || r.Stamp <= bestStamp) continue;
 
-            bool clipInside = clipX >= r.X && clipX + clipW <= r.X + r.W &&
-                              clipY >= r.Y && clipY + clipH <= r.Y + r.H;
-            bool clipIsFb = clipX <= r.X && clipX + clipW >= r.X + r.W &&
-                            clipY <= r.Y && clipY + clipH >= r.Y + r.H &&
-                            clipW - r.W <= FbSlackW && clipH - r.H <= FbSlackH;
+            bool clipInside = clipX >= r.X && clipX + clipW <= r.X + r.W && clipY >= r.Y && clipY + clipH <= r.Y + r.H;
+            bool clipIsFb = clipX <= r.X && clipX + clipW >= r.X + r.W && clipY <= r.Y && clipY + clipH >= r.Y + r.H && clipW - r.W <= FbSlackW && clipH - r.H <= FbSlackH;
             if (clipInside) { bestStamp = r.Stamp; fbX = r.X; fbY = r.Y; fbW = r.W; fbH = r.H; }
             else if (clipIsFb) { bestStamp = r.Stamp; fbX = clipX; fbY = clipY; fbW = clipW; fbH = clipH; }
         }
@@ -211,6 +233,7 @@ public sealed class GlCore : IGpuBackend
         {
             if (old.Dirty) Writeback(old);
             old.Destroy(_gl);
+            InvalidateClassify();
         }
 
         var fresh = new GlDisplayRt { X = fbX, Y = fbY, W = fbW, H = fbH, Margin = GpuHle.WideMargin(fbW), Stamp = ++_rtStamp, LastDrawFrame = _frame };
@@ -308,7 +331,33 @@ public sealed class GlCore : IGpuBackend
         _kClipX0 = _env.ClipX0; _kClipY0 = _env.ClipY0; _kClipX1 = _env.ClipX1; _kClipY1 = _env.ClipY1;
         _kRepTex = _pendingRepTex; _kRepClut = _pendingRepClut; _kRepClutCount = _pendingRepClutCount;
         _kRepX = _pendingRepX; _kRepY = _pendingRepY; _kRepW = _pendingRepW; _kRepH = _pendingRepH;
+
+        if (f.Textured && !f.UseImage && _pendingRepTex == 0)
+        {
+            int depth = (f.TPage >> 7) & 3;
+            AddTexRect((f.TPage & 0xF) * 64, ((f.TPage >> 4) & 1) * 256,
+                depth == 0 ? 64 : depth == 1 ? 128 : 256, 256);
+            if (depth < 2)
+                AddTexRect((f.Clut & 0x3F) * 16, (f.Clut >> 6) & 0x1FF, depth == 0 ? 16 : 256, 1);
+        }
     }
+
+    void AddTexRect(int x, int y, int w, int h)
+    {
+        if (!_kSamplesVram)
+        {
+            _kSamplesVram = true;
+            _kTexX0 = x; _kTexY0 = y; _kTexX1 = x + w; _kTexY1 = y + h;
+            return;
+        }
+        if (x < _kTexX0) _kTexX0 = x;
+        if (y < _kTexY0) _kTexY0 = y;
+        if (x + w > _kTexX1) _kTexX1 = x + w;
+        if (y + h > _kTexY1) _kTexY1 = y + h;
+    }
+
+    bool SampledRegionIsDirty() =>
+        _vramDirty && _kTexX0 < _vdX1 && _vdX0 < _kTexX1 && _kTexY0 < _vdY1 && _vdY0 < _kTexY1;
 
     uint _pendingRepTex, _pendingRepClut;
     int _pendingRepClutCount = 16;
@@ -598,8 +647,18 @@ public sealed class GlCore : IGpuBackend
         int readY = Math.Max(0, ry0 * s);
         int readW = Math.Max(0, (rx1 - rx0 + 1) * s);
         int readH = Math.Max(0, (ry1 - ry0 + 1) * s);
-        destTex = _vram.BeginDestRead(destTex, destW, destH, readX, readY, readW, readH);
-        RebindTarget(rt);
+        bool needDest = _legacy || _kCheckMask != 0;
+        if (needDest)
+        {
+            destTex = _vram.BeginDestRead(destTex, destW, destH, readX, readY, readW, readH);
+            RebindTarget(rt);
+            _vramDirty = false;
+        }
+        else if (rt == null && _kSamplesVram && SampledRegionIsDirty())
+        {
+            _vram.SampleBarrier();
+            _vramDirty = false;
+        }
 
         _gl.UseProgram(_progPrim);
         _gl.BindVertexArray(_vao);
@@ -675,8 +734,11 @@ public sealed class GlCore : IGpuBackend
                 SetBlend(0f, 1f);
                 _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
 
-                _vram.BeginDestRead(destTex, destW, destH, readX, readY, readW, readH);
-                RebindTarget(rt);
+                if (needDest)
+                {
+                    _vram.BeginDestRead(destTex, destW, destH, readX, readY, readW, readH);
+                    RebindTarget(rt);
+                }
                 _gl.BlendEquationSeparate(BlendEquationModeEXT.FuncReverseSubtract, BlendEquationModeEXT.FuncAdd);
                 SetBlend(1f, 1f);
                 _gl.Uniform4(_uBlendOpaque, 0f, 0f, 0f, 1f);
@@ -699,9 +761,24 @@ public sealed class GlCore : IGpuBackend
             int x1 = Math.Min(_kClipX1, (int)Math.Ceiling(_drawMaxX));
             int y1 = Math.Min(_kClipY1, (int)Math.Ceiling(_drawMaxY));
             if (x1 >= x0 && y1 >= y0)
+            {
                 Assets.Textures.VramTracker.MarkGpuWrite(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+                if (!_vramDirty)
+                {
+                    _vramDirty = true;
+                    _vdX0 = x0; _vdY0 = y0; _vdX1 = x1 + 1; _vdY1 = y1 + 1;
+                }
+                else
+                {
+                    if (x0 < _vdX0) _vdX0 = x0;
+                    if (y0 < _vdY0) _vdY0 = y0;
+                    if (x1 + 1 > _vdX1) _vdX1 = x1 + 1;
+                    if (y1 + 1 > _vdY1) _vdY1 = y1 + 1;
+                }
+            }
         }
         _count = 0;
+        _kSamplesVram = false;
     }
 
     void SetBlend(float src, float dst) => _gl.Uniform4(_uBlend, src, src, src, dst);

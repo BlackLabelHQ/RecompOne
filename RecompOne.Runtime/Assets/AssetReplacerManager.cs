@@ -200,6 +200,7 @@ public sealed class AssetReplacerManager
                 IndexXa(pack);
                 IndexTextures(pack);
             }
+            RefreshHasTextures();
         }
 
         Console.WriteLine($"[assets] game={_gameId} packs={found.Count} xa={_xa.Count} " +
@@ -216,6 +217,7 @@ public sealed class AssetReplacerManager
             _texAny.Clear();
             _cluts.Clear();
             _rules.Clear();
+            RefreshHasTextures();
         }
         Textures.TextureResolver.Invalidate();
         Xa.XaRouter.Reset();
@@ -380,10 +382,10 @@ public sealed class AssetReplacerManager
 
     static ulong Combine(ulong a, ulong b) => (a * 1099511628211UL) ^ b;
 
-    public bool HasTextures
-    {
-        get { lock (_gate) return _texExact.Count > 0 || _texAny.Count > 0 || _cluts.Count > 0 || _rules.Count > 0; }
-    }
+    volatile bool _hasTextures;
+    public bool HasTextures => _hasTextures;
+
+    void RefreshHasTextures() => _hasTextures = _texExact.Count > 0 || _texAny.Count > 0 || _cluts.Count > 0 || _rules.Count > 0;
 
     public bool HasRules
     {

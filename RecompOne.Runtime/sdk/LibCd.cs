@@ -30,6 +30,7 @@ public static class LibCd
         ReadS = 0x1B;
 
     const int Complete = 0x02;
+    const int DataEnd = 0x04;
     const int DataReady = 0x01;
     const int DiskError = 0x05;
     const byte ModeSize1 = 0x20, ModeSize0 = 0x10;
@@ -44,6 +45,11 @@ public static class LibCd
     static readonly byte[] _pos = new byte[4];
     static readonly byte[] _lastResult = new byte[8];
     static int _lastIntr = Complete;
+
+    static bool _cddaPlaying;
+    static bool _cddaAutoPause;
+    static double _cddaPos;
+    static int _cddaEndLba;
 
     static uint _cbSync;
     static uint _cbReady;
@@ -72,6 +78,7 @@ public static class LibCd
     public static void CdInit(CpuContext c, IMemory m)
     {
         CdResetState();
+        Runtime.Spu?.CdInitVolume();
         c.V0 = CdInitInternal() ? 0u : 1u;
     }
 
@@ -95,6 +102,7 @@ public static class LibCd
     public static void CdSync(CpuContext c, IMemory m)
     {
         uint result = c.A1;
+        PumpSync();
         PumpReady(1);
         c.V0 = (uint)SyncResult(m, result);
     }
@@ -102,7 +110,9 @@ public static class LibCd
     public static void CdReady(CpuContext c, IMemory m)
     {
         uint result = c.A1;
+        PumpSync();
         PumpReady(1);
+        if (_readActive && _cbReady == 0 && _cbData == 0) _lastIntr = DataReady;
         if (result != 0) WriteResult(m, result);
         c.V0 = (uint)_lastIntr;
     }
@@ -113,6 +123,9 @@ public static class LibCd
         uint buf = c.A1;
         _mode = (byte)c.A2;
         int lba = CurrentLba;
+
+        _xaActive = false;
+        lock (_dataIrqQueue) _dataIrqQueue.Clear();
         if (IsAudioRegion(lba) && (_mode & 0x01) == 0)
         {
             Log.Sdk($"CdRead out range lba={lba}");
@@ -141,11 +154,59 @@ public static class LibCd
 
     const int MaxSectorsPerTick = 400000;
 
+
+    static void StartCdda()
+    {
+        _cddaPlaying = false;
+        var fs = Runtime.Cd?.Fs;
+        if (fs == null) return;
+
+        int lba = CurrentLba;
+        int end = fs.LeadoutLba;
+        for (int t = 1; t <= 99; t++)
+        {
+            if (!fs.TrackStartLba(t, out int start)) break;
+            if (start > lba && start < end) end = start;
+        }
+
+        _cddaPos = lba;
+        _cddaEndLba = end;
+        _cddaAutoPause = (_mode & 0x02) != 0;
+        _cddaPlaying = true;
+        Log.Sdk($"cdda play lba= {lba} end= {end} autopause={_cddaAutoPause}");
+    }
+
+    static void TickCdda()
+    {
+        if (!_cddaPlaying) return;
+
+        _cddaPos += 75.0 / 60.0;
+        if (_cddaPos < _cddaEndLba) return;
+
+        _cddaPlaying = false;
+        _status = StatMotor;
+        if (!_cddaAutoPause) return;
+
+        _lastIntr = DataEnd;
+        Log.Sdk($"DataEnd being deliver");
+        var c = Runtime.Cpu;
+        var m = Runtime.Mem;
+        if (c == null || m == null || _cbReady == 0) return;
+        var snap = c.Snapshot();
+        c.A0 = DataEnd;
+        c.A1 = 0;
+        Dispatcher.Call(c, m, _cbReady);
+        c.Restore(snap);
+    }
+
     internal static void Tick()
     {
+        PumpSync();
+        PumpDataIrq();
+        TickCdda();
         bool xaMode = (_mode & 0x40) != 0;
 
-        if (_readActive && xaMode) return;
+        if (_xaActive && xaMode) return;
 
         if (!_readActive || (_cbData == 0 && _cbReady == 0)) return;
         var c = Runtime.Cpu;
@@ -171,6 +232,46 @@ public static class LibCd
             return;
         }
         c.Restore(snap);
+    }
+
+    static readonly Queue<int> _syncQueue = new();
+    static bool _inSyncCb;
+
+    static void QueueSync(int intr)
+    {
+        if (_cbSync == 0) return;
+        lock (_syncQueue) _syncQueue.Enqueue(intr);
+    }
+
+    static void PumpSync()
+    {
+        if (_inSyncCb || _cbSync == 0) return;
+        var c = Runtime.Cpu;
+        var m = Runtime.Mem;
+        if (c == null || m == null) return;
+
+        _inSyncCb = true;
+        var snap = c.Snapshot();
+        try
+        {
+            while (true)
+            {
+                int intr;
+                lock (_syncQueue)
+                {
+                    if (_syncQueue.Count == 0 || _cbSync == 0) break;
+                    intr = _syncQueue.Dequeue();
+                }
+                c.A0 = (uint)intr;
+                c.A1 = 0;
+                Dispatcher.Call(c, m, _cbSync);
+            }
+        }
+        finally
+        {
+            c.Restore(snap);
+            _inSyncCb = false;
+        }
     }
 
     static bool _pumping;
@@ -213,14 +314,36 @@ public static class LibCd
         _xaThread.Start();
     }
 
+    static readonly ManualResetEventSlim _xaWake = new(false);
+    internal static void WakeXa() => _xaWake.Set();
+
     static void XaLoop()
     {
         while (_xaRun)
         {
-            if (_readActive && (_mode & 0x40) != 0 && Runtime.Cd != null)
+            if (_xaActive && (_mode & 0x40) != 0 && Runtime.Cd != null)
+            {
                 PumpXa();
-            Thread.Sleep(2);
+                _xaWake.Reset();
+                _xaWake.Wait(8);
+            }
+            else
+            {
+                _xaWake.Reset();
+                _xaWake.Wait(50);
+            }
         }
+    }
+
+    static readonly System.Diagnostics.Stopwatch _xaClock = System.Diagnostics.Stopwatch.StartNew();
+    static double _xaLastMs;
+    static double _xaCredit;
+    const double XaBurst = 16.0;
+
+    static void StartXaPacer()
+    {
+        _xaLastMs = _xaClock.Elapsed.TotalMilliseconds;
+        _xaCredit = XaBurst;
     }
 
     static void PumpXa()
@@ -231,16 +354,34 @@ public static class LibCd
         bool useFilter = (_mode & 0x08) != 0;
         int scanned = 0;
 
-        while (_readActive && XaAudio.BufferedSamples < MinBuffer && scanned < MaxScan)
+        double now = _xaClock.Elapsed.TotalMilliseconds;
+        _xaCredit += (now - _xaLastMs) * SectorsPerSecond / 1000.0;
+        _xaLastMs = now;
+        if (_xaCredit > XaBurst) _xaCredit = XaBurst;
+
+        while (_xaActive && _xaCredit >= 1.0 && XaAudio.BufferedSamples < MinBuffer && scanned < MaxScan)
         {
             int lba = CurrentLba;
             if (lba < 0) break;
+            if (lba >= Runtime.Cd.Fs.DataSectors) { _xaActive = false; break; }
+            _xaCredit -= 1.0;
             byte[] sec;
             lock (DiscLock) sec = Runtime.Cd.ReadSectorData(lba, 2336);
+            NoteSectorHeader(lba, sec);
             AdvancePos(1);
             scanned++;
-            if ((sec[2] & 0x04) == 0) { CarrierMiss(); continue; }
-            if (useFilter && (sec[0] != _filterFile || sec[1] != _filterChannel)) { CarrierMiss(); continue; }
+            bool audio = (sec[2] & 0x04) != 0;
+            if (!audio) { QueueDataIrq(lba); CarrierMiss(); continue; }
+
+            if (!useFilter && _xaFirstSector && sec[1] != 0xFF)
+            {
+                _filterFile = sec[0];
+                _filterChannel = sec[1];
+                _xaFirstSector = false;
+            }
+
+            if (sec[1] == 0xFF || sec[0] != _filterFile || sec[1] != _filterChannel) { CarrierMiss(); continue; }
+            _xaFirstSector = false;
             _carrierMiss = 0;
             Assets.Xa.XaRouter.Sector(lba, sec, false);
         }
@@ -248,6 +389,84 @@ public static class LibCd
         Assets.Xa.XaRouter.PumpTail();
     }
 
+    static bool _xaFirstSector;
+
+    static readonly Queue<int> _dataIrqQueue = new();
+
+    static void QueueDataIrq(int lba)
+    {
+        lock (_dataIrqQueue)
+        {
+            if (_dataIrqQueue.Count >= 64) _dataIrqQueue.Dequeue();
+            _dataIrqQueue.Enqueue(lba);
+        }
+    }
+
+    static int _int1Lba = -1;
+    static bool _cdDataPending;
+
+    static void PumpDataIrq()
+    {
+        if (_cbReady == 0) return;
+        var c = Runtime.Cpu;
+        var m = Runtime.Mem;
+        if (c == null || m == null) return;
+
+        var snap = c.Snapshot();
+        try
+        {
+            for (int i = 0; i < 16; i++)
+            {
+                int lba;
+                lock (_dataIrqQueue)
+                {
+                    if (_dataIrqQueue.Count == 0 || _cbReady == 0) break;
+                    lba = _dataIrqQueue.Dequeue();
+                }
+
+                _int1Lba = lba;
+                _lastIntr = DataReady;
+                _cdDataPending = false;
+                c.A0 = DataReady;
+                c.A1 = 0;
+                Dispatcher.Call(c, m, _cbReady);
+
+                if (_cdDataPending && _cbData != 0)
+                {
+                    _cdDataPending = false;
+                    c.A0 = DataReady;
+                    c.A1 = 0;
+                    Dispatcher.Call(c, m, _cbData);
+                }
+            }
+        }
+        finally
+        {
+            _int1Lba = -1;
+            c.Restore(snap);
+        }
+    }
+
+    static readonly object _locGate = new();
+    static readonly byte[] _locL = new byte[8];
+
+    static void NoteSectorHeader(int lba, byte[] sec)
+    {
+        IntToPos(lba, out byte mm, out byte ss, out byte ff);
+        lock (_locGate)
+        {
+            _locL[0] = mm;
+            _locL[1] = ss;
+            _locL[2] = ff;
+            _locL[3] = 2;
+            _locL[4] = sec[0];
+            _locL[5] = sec[1];
+            _locL[6] = sec[2];
+            _locL[7] = sec[3];
+        }
+    }
+    
+    
     const int CarrierMissLimit = 96;
     static int _carrierMiss;
 
@@ -257,7 +476,7 @@ public static class LibCd
         _carrierMiss = 0;
         if (!Assets.Xa.XaRouter.WantsCarrier(out int rewindLba)) return;
         lock (_posGate) IntToPos(rewindLba, out _pos[0], out _pos[1], out _pos[2]);
-        Log.Sdk($"[assets] xa carrier rewinds to {rewindLba}");
+        Log.Sdk($"[assets] xa carrier rewinds to {rewindLba}"); 
     }
 
     static void AdvancePos(int n)
@@ -276,12 +495,19 @@ public static class LibCd
     {
         uint madr = c.A0;
         int words = (int)c.A1;
-        int lba = CurrentLba;
+        int lba = _int1Lba >= 0 ? _int1Lba : CurrentLba;
         byte[] data;
-        lock (DiscLock) data = Runtime.Cd!.ReadSectorData(lba);
+        lock (DiscLock) data = Runtime.Cd!.ReadSectorData(lba, SectorSize(_mode));
         int bytes = Math.Min(data.Length, words * 4);
-        for (int j = 0; j < bytes; j++)
-            m.WriteU8(madr + (uint)j, data[j]);
+        
+        for (int j = 0; j < bytes; j++) m.WriteU8(madr + (uint)j, data[j]);
+
+        _cdDataPending = true;
+        if (_readActive && _cbReady == 0 && _cbData == 0)
+        {
+            AdvancePos(1);
+            Dispatcher.LoadByLba(CurrentLba);
+        }
         c.V0 = 1;
     }
 
@@ -355,6 +581,8 @@ public static class LibCd
         _com = 0;
         _lastIntr = Complete;
         _cbSync = _cbReady = _cbData = 0;
+        lock (_syncQueue) _syncQueue.Clear();
+        lock (_dataIrqQueue) _dataIrqQueue.Clear();
         _readActive = false;
         _xaActive = false;
         _filterFile = _filterChannel = 0;
@@ -375,7 +603,9 @@ public static class LibCd
     {
         if (param != 0 && com < NeedsLoc.Length && NeedsLoc[com])
             ExecCommand(m, Setloc, param, 0);
-        return ExecCommand(m, com, param, result);
+        int intr = ExecCommand(m, com, param, result);
+        QueueSync(intr == 0 ? _lastIntr : intr);
+        return intr;
     }
 
     static int ExecCommand(IMemory m, byte com, uint param, uint result)
@@ -398,7 +628,7 @@ public static class LibCd
                 if (param != 0) { _filterFile = m.ReadU8(param); _filterChannel = m.ReadU8(param + 1); }
                 break;
             case ReadN:
-                if (IsAudioRegion(CurrentLba) && (_mode & 0x01) == 0)
+                        if (IsAudioRegion(CurrentLba) && (_mode & 0x01) == 0)
                 {
                     _readActive = false;
                     Log.Sdk($"readn out range lba={CurrentLba}");
@@ -407,12 +637,17 @@ public static class LibCd
                     return DiskError;
                 }
                 _readActive = true;
+                _xaActive = true;
+                _xaFirstSector = true;
+                StartXaPacer();
+                WakeXa();
+
                 _status = (byte)(StatMotor | StatRead);
                 Dispatcher.LoadByLba(CurrentLba);
                 EnsureXaThread();
                 break;
             case ReadS:
-                if (IsAudioRegion(CurrentLba) && (_mode & 0x01) == 0)
+                        if (IsAudioRegion(CurrentLba) && (_mode & 0x01) == 0)
                 {
                     _xaActive = false;
                     _readActive = false;
@@ -422,13 +657,16 @@ public static class LibCd
                     return DiskError;
                 }
                 _xaActive = true;
-                _readActive = false;
+                _xaFirstSector = true;
+                _readActive = (_mode & 0x40) == 0;
                 _status = (byte)(StatMotor | StatRead);
                 LibCdStream.OnReadStream(CurrentLba);
+                EnsureXaThread();
                 break;
             case Play:
                 _readActive = false;
                 _status = (byte)(StatMotor | StatPlay);
+                StartCdda();
                 break;
             case Getparam:
                 _lastResult[0] = _status;
@@ -443,17 +681,8 @@ public static class LibCd
                 return 0;
             case GetlocL:
             {
-                lock (_posGate)
-                {
-                    _lastResult[0] = _pos[0];
-                    _lastResult[1] = _pos[1];
-                    _lastResult[2] = _pos[2];
-                }
-                _lastResult[3] = _mode;
-                _lastResult[4] = _filterFile;
-                _lastResult[5] = _filterChannel;
-                _lastResult[6] = 0;
-                _lastResult[7] = 0;
+                lock (_locGate)
+                    Array.Copy(_locL, _lastResult, 8);
                 if (result != 0) WriteResult(m, result);
                 return 0;
             }
@@ -493,6 +722,7 @@ public static class LibCd
                 int lba = fs == null ? 0
                     : track == 0 || !fs.TrackStartLba(track, out int tl) ? fs.LeadoutLba : tl;
                 MsfAbs(lba, out byte tmm, out byte tss);
+                Log.Sdk($"Get-TD track={track} lba={lba} :: {tmm:D2}:{tss:D2}");
                 _lastResult[0] = _status;
                 _lastResult[1] = tmm;
                 _lastResult[2] = tss;
@@ -501,6 +731,8 @@ public static class LibCd
                 return 0;
             }
             case Pause: case Stop: case Init:
+                lock (_dataIrqQueue) _dataIrqQueue.Clear();
+                _cddaPlaying = false;
                 LibCdStream.OnStopStream();
                 _readActive = false;
                 _xaActive = false;
@@ -550,8 +782,10 @@ public static class LibCd
 
     static void MsfAbs(int lba, out byte mm, out byte ss)
     {
-        if (lba < 0) lba = 0; ss = ToBcd(lba / 75 % 60);
-        mm = ToBcd(lba / 75 / 60);
+        if (lba < 0) lba = 0;
+        int abs = lba + 150;
+        ss = ToBcd(abs / 75 % 60);
+        mm = ToBcd(abs / 75 / 60);
     }
 
     static bool IsAudioRegion(int lba)

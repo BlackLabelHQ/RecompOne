@@ -74,6 +74,7 @@ static int GenerateFunctionFile(string[] args)
     bool linearSweep = false;
     int offset = 0, skip = 0, lba = -1, size = -1;
     bool decrypt = false;
+    bool gzip = false;
     int rebase = 0;
 
     for (int i = 1; i < args.Length; i++)
@@ -92,6 +93,7 @@ static int GenerateFunctionFile(string[] args)
             case "-lba": lba = int.Parse(args[++i]); break;
             case "-size": size = Convert.ToInt32(args[++i], 16); break;
             case "-decrypt": decrypt = true; break;
+            case "-gzip": gzip = true; break;
             case "-rebase": rebase = Convert.ToInt32(args[++i], 16); break;
             default:
                 Console.Error.WriteLine($"unknown argument: {args[i]}");
@@ -112,7 +114,7 @@ static int GenerateFunctionFile(string[] args)
             Console.Error.WriteLine("-linear-sweep needs -disc <cue>, -base <hex> and eiter -file <path in disc> or -lba <n> -size <hex>");
             return 1;
         }
-        return GenerateFromLinearSweep(discPath, discFile, baseAddr, offset, skip, lba, size, decrypt, rebase, outPath);
+        return GenerateFromLinearSweep(discPath, discFile, baseAddr, offset, skip, lba, size, decrypt, gzip, rebase, outPath);
     }
 
     if (elfPath == null && mapPath == null)
@@ -162,7 +164,7 @@ static int GenerateFunctionFile(string[] args)
 }
 
 static int GenerateFromLinearSweep(string discPath, string? discFile, string baseAddr,
-    int offset, int skip, int lba, int size, bool decrypt, int rebase, string outPath)
+    int offset, int skip, int lba, int size, bool decrypt, bool gzip, int rebase, string outPath)
 {
     discPath = Path.GetFullPath(discPath);
     if (!File.Exists(discPath))
@@ -181,6 +183,7 @@ static int GenerateFromLinearSweep(string discPath, string? discFile, string bas
         Lba = lba,
         Size = size >= 0 ? size : null,
         Decrypt = decrypt,
+        Gzip = gzip,
         Rebase = rebase,
         LinearSweep = true,
     };

@@ -107,6 +107,9 @@ public static class OverlayWriter
             if (config.LinearSweep)
                 SweepFunctions(funcs, mainInstrs, elfInfo?.NoTypeSymbols ?? [], "main");
 
+            if (config.PointerScan)
+                ScanPointers(funcs, mainInstrs, elfInfo?.NoTypeSymbols ?? [], "main");
+
             AnalyzeJumpTables(funcs, elfInfo!, "main");
 
             ApplyStubsAndIgnored(funcs, config.Stubs, config.Ignored);
@@ -121,10 +124,12 @@ public static class OverlayWriter
                 analysis.Base, (uint)analysis.DiscBin.Length, analysis.Instructions));
         }
 
+        if (config.PointerScan) ScanCrossImageCalls(overlayResults);
+
         var allFuncs = overlayResults.SelectMany(o => o.Functions).ToList();
         ResolveCollisions(allFuncs);
         ApplyPatches(allFuncs, config.Patches);
-        SdkPatches.Apply(allFuncs);
+        SdkPatches.Apply(allFuncs, config.DisableHle);
         WriteAll(config, outDir, className, mainExe, sysCfg, overlayResults, allFuncs);
     }
 
@@ -214,6 +219,9 @@ public static class OverlayWriter
             if (overlayConfig.LinearSweep ?? config.LinearSweep)
                 SweepFunctions(funcs, instrs, elfInfo.NoTypeSymbols, overlayConfig.Name);
 
+            if (overlayConfig.PointerScan ?? config.PointerScan)
+                ScanPointers(funcs, instrs, elfInfo.NoTypeSymbols, overlayConfig.Name);
+
             AnalyzeJumpTables(funcs, elfInfo, overlayConfig.Name);
 
             ApplyStubsAndIgnored(funcs, overlayConfig.Stubs.Concat(config.Stubs), overlayConfig.Ignored.Concat(config.Ignored));
@@ -249,11 +257,65 @@ public static class OverlayWriter
 
         Console.WriteLine("[Recompiler] Emitting Entry.cs");
         var overlayNames = overlayResults.Select(o => o.Name).ToList();
-        EntryWriter.Write(mainExe, sysCfg.BootExe, className, mainCall, overlayNames, outDir);
+        EntryWriter.Write(mainExe, sysCfg, sysCfg.BootExe, className, mainCall, overlayNames, outDir);
 
         Console.WriteLine("[Recompiler] finished "); //maybe add time it took
     }
     
+    //scanning cross ovls
+    static void ScanCrossImageCalls(List<OverlayResult> results)
+    {
+        foreach (var owner in results)
+        {
+            if (owner.Instructions.Length == 0) continue;
+            uint lo = owner.Instructions[0].Vram;
+            uint hi = owner.Instructions[^1].Vram + 4;
+            var starts = new HashSet<uint>(owner.Functions.Select(f => f.Start));
+            var bodies = owner.Functions.Where(f => f.End > f.Start).ToList();
+            var targets = new SortedSet<uint>();
+
+            foreach (var other in results)
+            {
+                if (ReferenceEquals(other, owner) || other.Instructions.Length == 0) continue;
+
+                uint otherLo = other.Instructions[0].Vram;
+                uint otherHi = other.Instructions[^1].Vram + 4;
+                if (otherLo < hi && lo < otherHi) continue;
+
+                foreach (var instr in other.Instructions)
+                {
+                    uint op = instr.Word >> 26;
+                    if (op != 2 && op != 3) continue;
+                    uint t = instr.JumpTarget;
+                    if (t < lo || t >= hi || starts.Contains(t) || targets.Contains(t)) continue;
+                    if (!bodies.Any(f => t > f.Start && t < f.End)) continue;
+                    targets.Add(t);
+                }
+            }
+
+            if (targets.Count == 0) continue;
+            var extras = FunctionDetector.DetectFromAddresses(owner.Instructions,
+                targets.Select(t => (t, (string?)null)), owner.Functions, owner.Name);
+            owner.Functions.AddRange(extras);
+            Console.WriteLine($"[Recompiler] cross-image scan found {extras.Count} entry point(s) in {owner.Name}");
+        }
+    }
+
+    static void ScanPointers(List<MipsFunction> funcs, MipsInstruction[] instrs, IEnumerable<Symbols.FunctionEntry> noTypeSymbols, string overlayName)
+    {
+        var found = FunctionDetector.DiscoverPointers(instrs, funcs, noTypeSymbols, overlayName);
+        if (found.Count > 0)
+        {
+            funcs.AddRange(found);
+            Console.WriteLine($"[Recompiler] pointer scan found {found.Count} entry point(d) in {overlayName}");
+        }
+
+        var fell = FunctionDetector.DiscoverFallThroughs(instrs, funcs, overlayName);
+        if (fell.Count == 0) return;
+        funcs.AddRange(fell);
+        Console.WriteLine($"[Recompiler] fall-through scan found {fell.Count} entry point(s) in {overlayName}");
+    }
+
     static void AddConfigFunctions(List<MipsFunction> funcs, Config.FunctionEntry[] entries, MipsInstruction[] instrs, IEnumerable<Symbols.FunctionEntry> noTypeSymbols, string overlayName)
     {
         if (entries.Length == 0) return;
@@ -309,12 +371,14 @@ public static class OverlayWriter
         foreach (var func in funcs.OrderBy(f => f.Start))
         {
             var labels = LabelManager.Collect(func);
+            var backEdges = LabelManager.CollectBackEdges(func);
             var ctx = new FunctionContext
             {
                 FuncStart = func.Start,
                 FuncEnd = func.End,
                 KnownFunctions = knownFuncs,
                 Labels = labels,
+                BackEdges = backEdges,
                 Debug = debug,
                 AddressComments = addressComments,
                 DisasmComments = disasmComments,
@@ -371,7 +435,7 @@ public static class OverlayWriter
             if (cfg.Lba >= 0)
             {
                 int sz = cfg.Size ?? throw new InvalidOperationException($"'size' is required when using 'lba' for overlay '{cfg.Name}'");
-                return (Decrypt(fs.ReadSectors(cfg.Lba, sz), cfg.Decrypt), cfg.Lba);
+                return (Gunzip(Decrypt(fs.ReadSectors(cfg.Lba, sz), cfg.Decrypt), cfg.Gzip), cfg.Lba);
             }
             if (cfg.File != null)
             {
@@ -384,7 +448,7 @@ public static class OverlayWriter
                 byte[] full = fs.ReadFile(cfg.File);
                 int start = cfg.Offset + cfg.Skip;
                 int length = cfg.Size ?? (full.Length - start);
-                return (Decrypt(full.AsSpan(start, length).ToArray(), cfg.Decrypt), absLba);
+                return (Gunzip(Decrypt(full.AsSpan(start, length).ToArray(), cfg.Decrypt), cfg.Gzip), absLba);
             }
             Console.WriteLine($"[Recompiler] WARNING: overlay '{cfg.Name}' has no 'file' or 'lba' source defined");
             return (null, -1);
@@ -407,6 +471,16 @@ public static class OverlayWriter
         foreach (var s in elf.DataSections) s.Va += d;
         elf.TextData = discBin;
     }
+
+    static byte[] Gunzip(byte[] data, bool gzip)
+    {
+        if (!gzip) return data;
+        using var input = new MemoryStream(data);
+        using var gz = new System.IO.Compression.GZipStream(input, System.IO.Compression.CompressionMode.Decompress);
+        using var output = new MemoryStream();
+        gz.CopyTo(output);
+        return output.ToArray();
+    } //jersey has gziped ovl
 
     static byte[] Decrypt(byte[] data, bool decrypt)
     {

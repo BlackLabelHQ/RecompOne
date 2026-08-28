@@ -50,6 +50,8 @@ public static class MenuRegistry
 
     internal static void Invalidate() => _dirty = true;
 
+    public static Action? RightAligned;
+
     internal static void Draw()
     {
         if (!ImGui.BeginMainMenuBar()) return;
@@ -60,6 +62,8 @@ public static class MenuRegistry
             _dirty = false;
         }
         foreach (var menu in _draw) menu.Draw();
+
+        RightAligned?.Invoke();
 
         ImGui.EndMainMenuBar();
     }

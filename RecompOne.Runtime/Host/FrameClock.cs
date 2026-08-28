@@ -13,6 +13,10 @@ internal static class FrameClock
     public static bool VSync { get; set; }
 
     public static double LastFrameMs { get; private set; }
+
+    public static double Fps { get; private set; }
+    static double _fpsAccumMs;
+    static int _fpsFrames;
     public static double LastWaitMs { get; private set; }
 
     static double _lastStart;
@@ -23,6 +27,15 @@ internal static class FrameClock
         double now = _clock.Elapsed.TotalMilliseconds;
         LastFrameMs = now - _lastStart;
         _lastStart = now;
+
+        _fpsAccumMs += LastFrameMs;
+        _fpsFrames++;
+        if (_fpsAccumMs >= 1000.0)
+        {
+            Fps = _fpsFrames * 1000.0 / _fpsAccumMs;
+            _fpsAccumMs = 0;
+            _fpsFrames = 0;
+        }
 
         _nextFrameMs += FrameMs;
         double wait = _nextFrameMs - now;

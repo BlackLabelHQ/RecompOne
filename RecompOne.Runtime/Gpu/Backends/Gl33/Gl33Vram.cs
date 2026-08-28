@@ -91,6 +91,8 @@ public sealed class Gl33Vram : IGlVram
         return destTex;
     }
 
+    public void SampleBarrier() { }
+
     uint FboFor(uint tex, bool isVram)
     {
         if (isVram) return _fbo;
