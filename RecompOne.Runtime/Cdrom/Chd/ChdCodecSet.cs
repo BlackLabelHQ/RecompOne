@@ -8,8 +8,7 @@ internal sealed class ChdCodecSet
     public const int SubcodeData = 96;
     public const int FrameSize = SectorData + SubcodeData;
 
-    private static readonly byte[] SyncHeader =
-        [0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00];
+    private static readonly byte[] SyncHeader = [0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00];
 
     private readonly uint[] _compressors;
     private readonly int _frames;

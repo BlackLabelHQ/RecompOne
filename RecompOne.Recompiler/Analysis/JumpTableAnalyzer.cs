@@ -123,6 +123,7 @@ public static class JumpTableAnalyzer
         return result;
     }
 
+    //the add that joins the lui half with the index
     static void Addu(RegState[] regs, int rs, int rt, int rd)
     {
         bool rsLui = regs[rs].ValidLui;

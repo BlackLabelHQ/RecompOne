@@ -11,11 +11,8 @@ public static class FunctionEmitter
         var sb = new StringBuilder();
         var instrs = func.Instructions;
         
-        //a delay slot of an unconditional transfer is emitted only inline (before the
-        // jump) and skipped here but  for the edge case where that same instruction is also a branch target it needs to
-        // also be emitted at its ""natural(?)"" position (and the label too) so jumps to it need to be into the following
-        //  instructions instead of into the preceding jump in that case it shouldnt be skiped, otherwise it will be emmited in the wrong location and cause crashes
-        // on the functions with this edge case
+        //delay slots on condition blocks are emmited in line (before the jump) and skiped, but for the edge case where the same instruction
+        //is also the target of a branch it needs to be coorectly emmited in the right position (not in delay slot), otherwise this runs on the wrong time and jumps to the condition when it shouldnt
         var dsIdx = new HashSet<int>();
         for (int i = 0; i < instrs.Length - 1; i++)
             if (instrs[i].HasDelaySlot && InstructionEmitter.SkipDelaySlot(instrs[i])
@@ -111,8 +108,7 @@ public static class FunctionEmitter
             sb.AppendLine($"        {post}(c, m);");
     }
 
-    //some hand-written asm (crt0 stubs, etc) has no jr/j/branch at its declared end at all and just
-    // runs straight into the next symbol if a jal at the end is a call, not a fall-through, so its left alone
+    // hand written assembly sometimes doesnt have a return and expects to "fall" the execution onto the next 
     static bool FallsThrough(MipsInstruction[] instrs)
     {
         if (instrs.Length == 0) return false;

@@ -153,6 +153,7 @@ public static class InstructionEmitter
         return $"/* UNKOWN OP {desc} word=0x{i.Word:X8} @ 0x{i.Vram:X8} */";
     }
 
+    //it control instructions that emmit their own delay slot, so the it shouldnt write it a second time again, its just a filter to not produce wrongfully
     public static bool SkipDelaySlot(MipsInstruction ctrl)
     {
         uint op = ctrl.Word >> 26;

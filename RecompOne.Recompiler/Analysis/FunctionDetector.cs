@@ -35,6 +35,7 @@ public static class FunctionDetector
         return funcs;
     }
 
+    
     public static List<MipsFunction> DetectFromScan(MipsInstruction[] all, uint entryPoint, string overlayName)
     {
         if (all.Length == 0) return [];
@@ -117,7 +118,6 @@ public static class FunctionDetector
         }
         return result;
     }
-
     public static List<MipsFunction> DiscoverCalls(MipsInstruction[] all, List<MipsFunction> existing, IEnumerable<FunctionEntry> noTypeSymbols, string overlayName)
     {
         if (all.Length == 0) return [];
@@ -172,8 +172,78 @@ public static class FunctionDetector
         }
         return result;
     }
+    
+    static bool TryConstantTarget(MipsInstruction instr, out uint target)
+    {
+        target = 0;
+        uint op = instr.Word >> 26;
+        switch (op)
+        {
+            case 1:
+            case 4:
+            case 5:
+            case 6:
+            case 7:
+                target = instr.BranchTarget;
+                return true;
+            case 2:
+            case 3:
+                target = instr.JumpTarget;
+                return true;
+            case 18 when ((instr.Word >> 21) & 0x1F) == 8:
+                target = instr.BranchTarget;
+                return true;
+            default:
+                return false;
+        }
+    }
+    //a branch leaving its function then "promotes" it to target
+    public static List<MipsFunction> DiscoverEscapes(MipsInstruction[] all, List<MipsFunction> existing, string overlayName)
+    {
+        if (all.Length == 0) return [];
 
-    //todo: polish, could be leading to wrong results
+        uint codeStart = all[0].Vram;
+        uint codeEnd = all[^1].Vram + 4;
+
+        var funcs = new List<MipsFunction>(existing);
+        var starts = new HashSet<uint>(funcs.Select(f => f.Start));
+        var result = new List<MipsFunction>();
+        var frontier = new List<MipsFunction>(existing);
+
+        while (frontier.Count > 0)
+        {
+            var targets = new SortedSet<uint>();
+            foreach (var f in frontier)
+                foreach (var instr in f.Instructions)
+                {
+                    if (!TryConstantTarget(instr, out uint t)) continue;
+                    if (t >= f.Start && t < f.End) continue;
+                    if (t < codeStart || t >= codeEnd) continue;
+                    if (starts.Contains(t) || targets.Contains(t)) continue;
+
+                    int idx = InstrIndex(all, t);
+                    if (idx < 0 || idx >= all.Length) continue;
+                    if (!IsKnownInstruction(all[idx])) continue;
+
+                    targets.Add(t);
+                }
+
+            if (targets.Count == 0) break;
+
+            var batch = DetectFromAddresses(all, targets.Select(t => (t, (string?)null)), funcs, overlayName);
+            if (batch.Count == 0) break;
+
+            foreach (var f in batch) starts.Add(f.Start);
+            result.AddRange(batch);
+            funcs.AddRange(batch);
+            frontier = batch;
+        }
+
+        return result;
+    }
+    
+    
+    //functions that dont have return falls to the next function
     public static List<MipsFunction> DiscoverFallThroughs(MipsInstruction[] all, List<MipsFunction> existing, string overlayName)
     {
         if (all.Length == 0) return [];
@@ -214,6 +284,7 @@ public static class FunctionDetector
         return true;
     }
 
+    //to find entry
     public static List<MipsFunction> DiscoverPointers(MipsInstruction[] all, List<MipsFunction> existing, IEnumerable<FunctionEntry> noTypeSymbols, string overlayName)
     {
         if (all.Length == 0) return [];
@@ -294,7 +365,6 @@ public static class FunctionDetector
         }
         return extras;
     }
-
     static bool EndsControlFlow(MipsInstruction i)
     {
         uint op = i.Word >> 26;
@@ -304,6 +374,7 @@ public static class FunctionDetector
         return false;
     }
 
+    //tis is a bit harder to explain, but it basically goes tru the assembly and tries to build the functions automatically without any help from elf or map to find the correct bundares, its not perfect and can have some minor issues that need tunning!!
     public static List<MipsFunction> LinearSweep(MipsInstruction[] all, List<MipsFunction> existing, IEnumerable<FunctionEntry> noTypeSymbols, string overlayName)
     {
         if (all.Length == 0) return [];
@@ -355,6 +426,7 @@ public static class FunctionDetector
         return result;
     }
     
+    //accepts a block as funct only if every instruction decodes and a return turns up before the next boundary
     static bool ValidatesAsFunction(MipsInstruction[] all, int startIdx, int boundIdx)
     {
         boundIdx = Math.Clamp(boundIdx, startIdx + 1, all.Length);
@@ -367,6 +439,7 @@ public static class FunctionDetector
         return false;
     }
 
+    //addiu $sp, $sp, -n, gcc pattern, it reservers space on stack when start of the function
     static bool IsPrologue(MipsInstruction i)
     {
         return (i.Word >> 26) == 9 && i.Rs == 29 && i.Rt == 29 && i.ImmS < 0;
@@ -381,6 +454,7 @@ public static class FunctionDetector
         return false;
     }
 
+    
     static bool IsKnownInstruction(MipsInstruction i)
     {
         if (!i.IsValid || !i.IsImplemented) return false;
@@ -437,6 +511,7 @@ public static class FunctionDetector
         };
     }
 
+    //hard to explain, used to help find the correct end of the function, wich sometimes can be hard since you can have multiple return points ina  function, this TRIES to get the true end of it
     static int RefineEnd(MipsInstruction[] all, int startIdx, int maxEndIdx)
     {
         maxEndIdx = Math.Clamp(maxEndIdx, startIdx + 1, all.Length);
@@ -457,7 +532,7 @@ public static class FunctionDetector
         }
         return maxEndIdx;
     }
-    
+    //helper for above
     static bool IsFunctionEnd(MipsInstruction[] all, int startIdx, int i)
     {
         var instr = all[i];
@@ -472,6 +547,7 @@ public static class FunctionDetector
         return true;
     }
 
+    //true where theinstruction assigns regm to trace where a jr register came from
     static bool WritesReg(MipsInstruction p, int reg)
     {
         if (reg == 0) return false;
@@ -486,8 +562,7 @@ public static class FunctionDetector
         if (op is 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15) return p.Rt == reg; // addi(u),slti(u),andi,ori,xori,lui
         return false;
     }
-
-    //shouldbe the right behaviour now? in theory
+    
     public static HashSet<uint> ComputeRaReturnJrs(MipsFunction func)
     {
         var instrs = func.Instructions;
@@ -518,7 +593,6 @@ public static class FunctionDetector
         }
         return result;
     }
-
     static int MoveFromRa(MipsInstruction i)
     {
         uint op = i.Word >> 26, fn = i.Word & 0x3F;
@@ -534,7 +608,7 @@ public static class FunctionDetector
         return -1;
     }
 
-    static int DestReg(MipsInstruction i)
+    static int DestReg(MipsInstruction i) //-1 is "none"
     {
         uint op = i.Word >> 26, fn = i.Word & 0x3F;
         int rt = i.Rt, rd = i.Rd;
