@@ -321,7 +321,9 @@ public sealed class GlCore : IGpuBackend
         if (_count > 0 && (target != _kTarget || !DesiredMatches(transparent, blend, image))) Flush();
         if (_count + vertsNeeded > MaxVerts) Flush();
         CheckTextureFeedback(f);
-
+        
+        if (target != null) ClearMargin(target);
+        
         _kTarget = target;
         _kImage = image;
         _kTransparent = transparent; _kBlend = blend;
@@ -535,6 +537,26 @@ public sealed class GlCore : IGpuBackend
             }
             else SyncRtFromVram(rt, x, y, w, h);
         }
+    }
+    
+    void ClearMargin(GlDisplayRt rt)
+    {
+        if (rt.Margin <= 0 || rt.LastMarginFrame == _frame) return;
+        rt.LastMarginFrame = _frame;
+
+        int s = GlVram.Scale;
+        int left = rt.Margin * s;
+        int right = (rt.Margin + rt.W) * s;
+
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, rt.Fbo);
+        _gl.ClearColor(0f, 0f, 0f, 0f);
+        _gl.Enable(EnableCap.ScissorTest);
+        _gl.Scissor(0, 0, (uint)left, (uint)rt.TexH);
+        _gl.Clear(ClearBufferMask.ColorBufferBit);
+        _gl.Scissor(right, 0, (uint)(rt.TexW - right), (uint)rt.TexH);
+        _gl.Clear(ClearBufferMask.ColorBufferBit);
+        _gl.Disable(EnableCap.ScissorTest);
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
     }
 
     void FillRtFull(GlDisplayRt rt, ushort color15)

@@ -162,8 +162,10 @@ public static class LibGpu
     static (short X, short Y, short W, short H) ReadRect(IMemory m, uint p) => (S16(m, p), S16(m, p + 2), S16(m, p + 4), S16(m, p + 6));
 
     
-    static short ClampW(short w) => (short)((((w - 1) & 0x3FF) + 1));
-    static short ClampH(short h) => (short)((((h - 1) & 0x1FF) + 1));
+    static short Clamp(short v, int max) => (short)Math.Clamp((int)v, 0, max);
+
+    const int VramW = 1024;
+    const int VramH = 512;
 
     static uint Pack(short lo, short hi) => ((uint)(ushort)hi << 16) | (ushort)lo;
 
@@ -174,7 +176,7 @@ public static class LibGpu
 
         var r = ReadRect(m, c.A0);
         uint src = c.A1;
-        short w = ClampW(r.W), h = ClampH(r.H);
+        short w = Clamp(r.W, VramW), h = Clamp(r.H, VramH);
         int words = (w * h + 1) / 2;
         if (words <= 0) { c.V0 = 0xFFFFFFFFu; return; }
 
@@ -195,7 +197,7 @@ public static class LibGpu
 
         var r = ReadRect(m, c.A0);
         uint dst = c.A1;
-        short w = ClampW(r.W), h = ClampH(r.H);
+        short w = Clamp(r.W, VramW), h = Clamp(r.H, VramH);
         int words = (w * h + 1) / 2;
         if (words <= 0) { c.V0 = 0xFFFFFFFFu; return; }
 
@@ -215,6 +217,7 @@ public static class LibGpu
         if (gpu == null) { c.V0 = 0xFFFFFFFFu; return; }
 
         var r = ReadRect(m, c.A0);
+        if (r.W == 0 || r.H == 0) { c.V0 = 0xFFFFFFFFu; return; }
         gpu.WriteGp0(0x80000000u);
         gpu.WriteGp0(Pack(r.X, r.Y));
         gpu.WriteGp0(Pack((short)c.A1, (short)c.A2));
@@ -229,7 +232,7 @@ public static class LibGpu
         if (gpu == null) { c.V0 = 0xFFFFFFFFu; return; }
 
         var r = ReadRect(m, c.A0);
-        short w = ClampW(r.W), h = ClampH(r.H);
+        short w = Clamp(r.W, VramW - 1), h = Clamp(r.H, VramH - 1);
         uint color = ((c.A3 & 0xFFu) << 16) | ((c.A2 & 0xFFu) << 8) | (c.A1 & 0xFFu);
 
         if ((r.X & 0x3F) != 0 || (w & 0x3F) != 0)

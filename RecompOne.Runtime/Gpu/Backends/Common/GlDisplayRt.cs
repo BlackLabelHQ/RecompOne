@@ -10,6 +10,7 @@ public sealed class GlDisplayRt
     public bool Dirty;
     public long Stamp;
     public long LastDrawFrame;
+    public long LastMarginFrame = -1;
 
     public int Wide1x => W + Margin * 2;
     public int TexW => Wide1x * GlVram.Scale;
