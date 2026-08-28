@@ -29,6 +29,15 @@ public static class SdkPatches
             "StSetRing", "StClearRing", "StUnSetRing", "StSetStream",
             "StSetMask", "StGetNext", "StFreeRing", "StGetBackloc",
         }),
+        ("libmcrd", "RecompOne.Runtime.Sdk.LibMcrd", new[]
+        {
+            "MemCardInit", "MemCardEnd", "MemCardStart", "MemCardStop",
+            "MemCardExist", "MemCardAccept", "MemCardOpen", "MemCardClose",
+            "MemCardReadData", "MemCardWriteData", "MemCardReadFile",
+            "MemCardWriteFile", "MemCardCreateFile", "MemCardDeleteFile",
+            "MemCardFormat", "MemCardUnformat", "MemCardGetDirentry",
+            "MemCardSync", "MemCardCallback",
+        }),
         ("libpad", "RecompOne.Runtime.Sdk.LibPad", new[]
         {
             "PadInitDirect", "PadStartCom", "PadStopCom", "PadEnableCom",

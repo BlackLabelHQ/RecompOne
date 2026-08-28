@@ -160,6 +160,7 @@ public static class Runtime
         Audio.Attach(Spu);
         FrameClock.Throttle();
         Sdk.LibCd.Tick();
+        if (Cpu != null && Mem != null) Sdk.LibMcrd.Tick(Cpu, Mem);
         if (Mem != null) { Bios.BiosB.RefreshPad(Mem); Sdk.LibPad.Refresh(Mem); } //is this correct?
         Interrupts.Raise(0);
     }
