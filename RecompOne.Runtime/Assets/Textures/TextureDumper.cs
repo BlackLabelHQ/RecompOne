@@ -5,7 +5,7 @@ namespace RecompOne.Runtime.Assets.Textures;
 
 public static class TextureDumper
 {
-    sealed class Job
+    private sealed class Job
     {
         public ulong Id;
         public ushort[] Window = [];
@@ -16,23 +16,34 @@ public static class TextureDumper
         public bool IsPage;
     }
 
-    const int QueueCapacity = 8192;
+    private const int QueueCapacity = 8192;
 
-    static readonly HashSet<ulong> _seen = [];
-    static readonly HashSet<ulong> _idxWritten = [];
-    static readonly HashSet<ulong> _clutWritten = [];
-    static readonly object _gate = new();
-    static BlockingCollection<Job> _queue = NewQueue();
-    static Thread? _worker;
-    static string _root = "";
-    static string _clutRoot = "";
-    static string _pageRoot = "";
-    static int _written, _dropped, _failed, _offered;
+    private static readonly HashSet<ulong> _seen = [];
+    private static readonly HashSet<ulong> _idxWritten = [];
+    private static readonly HashSet<ulong> _clutWritten = [];
+    private static readonly object _gate = new();
+    private static BlockingCollection<Job> _queue = NewQueue();
+    private static Thread? _worker;
+    private static string _root = "";
+    private static string _clutRoot = "";
+    private static string _pageRoot = "";
+    private static int _written, _dropped, _failed, _offered;
 
     public static bool Tiles { get; private set; }
     public static bool Pages { get; private set; }
     public static bool Enabled => Tiles || Pages;
-    public static int UniqueSeen { get { lock (_gate) return _seen.Count; } }
+
+    public static int UniqueSeen
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _seen.Count;
+            }
+        }
+    }
+
     public static int Offered => Volatile.Read(ref _offered);
     public static int Written => Volatile.Read(ref _written);
     public static int Dropped => Volatile.Read(ref _dropped);
@@ -40,12 +51,15 @@ public static class TextureDumper
     public static int Pending => _queue.Count;
     public static string Root => _root;
 
-    static BlockingCollection<Job> NewQueue() => new(new ConcurrentQueue<Job>(), QueueCapacity);
+    private static BlockingCollection<Job> NewQueue()
+    {
+        return new BlockingCollection<Job>(new ConcurrentQueue<Job>(), QueueCapacity);
+    }
 
     public static void SetTiles(bool on)
     {
         if (on == Tiles) return;
-        bool was = Enabled;
+        var was = Enabled;
         Tiles = on;
         Apply(was);
     }
@@ -53,29 +67,29 @@ public static class TextureDumper
     public static void SetPages(bool on)
     {
         if (on == Pages) return;
-        bool was = Enabled;
+        var was = Enabled;
         Pages = on;
         Apply(was);
     }
 
     public static void SetEnabled(bool on)
     {
-        bool was = Enabled;
+        var was = Enabled;
         Tiles = Pages = on;
         Apply(was);
     }
 
-    static void Apply(bool was)
+    private static void Apply(bool was)
     {
         if (Enabled == was) return;
         if (Enabled) Start();
         else Stop();
     }
 
-    static void Start()
+    private static void Start()
     {
         {
-            string game = Sanitize(AssetReplacerManager.Instance.GameId);
+            var game = Sanitize(AssetReplacerManager.Instance.GameId);
             _root = Path.GetFullPath(Path.Combine("dump", game, "textures"));
             _clutRoot = Path.GetFullPath(Path.Combine("dump", game, "cluts"));
             _pageRoot = Path.GetFullPath(Path.Combine("dump", game, "pages"));
@@ -97,6 +111,7 @@ public static class TextureDumper
                 _idxWritten.Clear();
                 _clutWritten.Clear();
             }
+
             Volatile.Write(ref _written, 0);
             Volatile.Write(ref _dropped, 0);
             Volatile.Write(ref _failed, 0);
@@ -105,24 +120,24 @@ public static class TextureDumper
             if (_queue.IsAddingCompleted) _queue = NewQueue();
             EnsureWorker();
             TextureResolver.ResetStats();
-           // Console.WriteLine($"[assets] texture dump ON (tiles={Tiles} pages={Pages}) -> {_root}");
+            // Console.WriteLine($"[assets] texture dump ON (tiles={Tiles} pages={Pages}) -> {_root}");
         }
     }
 
-    static void Stop()
+    private static void Stop()
     {
-       // Console.WriteLine($"[assets] texture dump OFF: seen={UniqueSeen} written={Written} " + $"pending={Pending} dropped={Dropped} failed={Failed}");
-       // Console.WriteLine($"[assets] resolver: {TextureResolver.StatsLine()}");
+        // Console.WriteLine($"[assets] texture dump OFF: seen={UniqueSeen} written={Written} " + $"pending={Pending} dropped={Dropped} failed={Failed}");
+        // Console.WriteLine($"[assets] resolver: {TextureResolver.StatsLine()}");
     }
 
-    static string Sanitize(string s)
+    private static string Sanitize(string s)
     {
         var sb = new StringBuilder(s.Length);
-        foreach (char c in s) sb.Append(char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '_');
+        foreach (var c in s) sb.Append(char.IsLetterOrDigit(c) || c is '-' or '_' ? c : '_');
         return sb.Length == 0 ? "UNKNOWN" : sb.ToString();
     }
 
-    static void EnsureWorker()
+    private static void EnsureWorker()
     {
         if (_worker is { IsAlive: true }) return;
         _worker = new Thread(WorkerLoop) { IsBackground = true, Name = "tex-dump" };
@@ -138,7 +153,7 @@ public static class TextureDumper
             return;
         }
 
-        ulong id = indexHash ^ (clutHash * 1099511628211UL);
+        var id = indexHash ^ (clutHash * 1099511628211UL);
         lock (_gate)
         {
             if (!_seen.Add(id)) return;
@@ -155,12 +170,16 @@ public static class TextureDumper
             TPage = tpage,
             ClutId = clut,
             Window = TextureTile.CopyWindow(vram, rect),
-            Clut = TextureTile.CopyClut(vram, rect),
+            Clut = TextureTile.CopyClut(vram, rect)
         };
 
         if (!_queue.TryAdd(job))
         {
-            lock (_gate) _seen.Remove(id);
+            lock (_gate)
+            {
+                _seen.Remove(id);
+            }
+
             Interlocked.Increment(ref _dropped);
             return;
         }
@@ -168,16 +187,16 @@ public static class TextureDumper
         OfferPage(vram, rect, clutHash, tpage, clut);
     }
 
-    static void OfferPage(ushort[] vram, in TileRect tile, ulong clutHash, int tpage, int clut)
+    private static void OfferPage(ushort[] vram, in TileRect tile, ulong clutHash, int tpage, int clut)
     {
         if (!Pages || tile.Bpp == 16) return;
 
-        int widthTexels = tile.Bpp == 4 ? 256 : 128;
+        var widthTexels = tile.Bpp == 4 ? 256 : 128;
         var pageRect = TextureTile.Describe(tpage, clut, 0, 0, widthTexels, 256);
         if (VramTracker.IsGpuDirty(pageRect.VramX, pageRect.VramY, pageRect.VramW, pageRect.H)) return;
-        if (!TextureTile.Hash(vram, pageRect, out ulong pageIndexHash, out ulong pageClutHash)) return;
+        if (!TextureTile.Hash(vram, pageRect, out var pageIndexHash, out var pageClutHash)) return;
 
-        ulong pageId = 0x9E3779B97F4A7C15UL ^ pageIndexHash ^ (pageClutHash * 1099511628211UL);
+        var pageId = 0x9E3779B97F4A7C15UL ^ pageIndexHash ^ (pageClutHash * 1099511628211UL);
         lock (_gate)
         {
             if (!_seen.Add(pageId)) return;
@@ -193,18 +212,21 @@ public static class TextureDumper
             ClutId = clut,
             IsPage = true,
             Window = TextureTile.CopyWindow(vram, pageRect),
-            Clut = TextureTile.CopyClut(vram, pageRect),
+            Clut = TextureTile.CopyClut(vram, pageRect)
         };
 
         if (_queue.TryAdd(job)) return;
-        lock (_gate) _seen.Remove(pageId);
+        lock (_gate)
+        {
+            _seen.Remove(pageId);
+        }
+
         Interlocked.Increment(ref _dropped);
     }
 
-    static void WorkerLoop()
+    private static void WorkerLoop()
     {
         foreach (var job in _queue.GetConsumingEnumerable())
-        {
             try
             {
                 WriteJob(job);
@@ -216,33 +238,32 @@ public static class TextureDumper
                 Console.Error.WriteLine($"[assets] texture dump failed for {job.IndexHash:x16} " +
                                         $"({job.Rect.W}x{job.Rect.H} {job.Rect.Bpp}bpp u0={job.Rect.U0}): {ex.Message}");
             }
-        }
     }
 
-    static void WriteJob(Job job)
+    private static void WriteJob(Job job)
     {
         var r = job.Rect;
 
         if (job.IsPage)
         {
-            string page = Path.Combine(_pageRoot, $"{job.IndexHash:x16}_{job.ClutHash:x16}");
+            var page = Path.Combine(_pageRoot, $"{job.IndexHash:x16}_{job.ClutHash:x16}");
             PngWriter.WriteRgba(page + ".png", TextureTile.DecodeFrom(job.Window, job.Clut, r), r.W, r.H);
             File.WriteAllText(page + ".json", $$"""
-            {
-              "kind": "page",
-              "indexHash": "{{job.IndexHash:x16}}",
-              "clutHash": "{{job.ClutHash:x16}}",
-              "bpp": {{r.Bpp}},
-              "width": {{r.W}},
-              "height": {{r.H}},
-              "texpage": {{job.TPage}},
-              "clut": {{job.ClutId}}
-            }
-            """);
+                                                {
+                                                  "kind": "page",
+                                                  "indexHash": "{{job.IndexHash:x16}}",
+                                                  "clutHash": "{{job.ClutHash:x16}}",
+                                                  "bpp": {{r.Bpp}},
+                                                  "width": {{r.W}},
+                                                  "height": {{r.H}},
+                                                  "texpage": {{job.TPage}},
+                                                  "clut": {{job.ClutId}}
+                                                }
+                                                """);
             return;
         }
 
-        string baseName = Path.Combine(_root, $"{job.IndexHash:x16}_{job.ClutHash:x16}");
+        var baseName = Path.Combine(_root, $"{job.IndexHash:x16}_{job.ClutHash:x16}");
 
         PngWriter.WriteRgba(baseName + ".png", TextureTile.DecodeFrom(job.Window, job.Clut, r), r.W, r.H);
         File.WriteAllBytes(baseName + ".idx.bin", TextureTile.RawBytes(job.Window));
@@ -259,33 +280,33 @@ public static class TextureDumper
             if (writeIdx)
             {
                 var indices = TextureTile.DecodeIndicesFrom(job.Window, r);
-                int max = r.Bpp == 4 ? 15 : 255;
+                var max = r.Bpp == 4 ? 15 : 255;
                 var scaled = new byte[indices.Length];
-                for (int i = 0; i < indices.Length; i++) scaled[i] = (byte)(indices[i] * 255 / max);
+                for (var i = 0; i < indices.Length; i++) scaled[i] = (byte)(indices[i] * 255 / max);
                 PngWriter.WriteGray(Path.Combine(_root, $"{job.IndexHash:x16}.idx.png"), scaled, r.W, r.H);
             }
 
             if (writeClut)
             {
-                string clutBase = Path.Combine(_clutRoot, $"{job.ClutHash:x16}");
+                var clutBase = Path.Combine(_clutRoot, $"{job.ClutHash:x16}");
                 PngWriter.WriteRgba(clutBase + ".clut.png", TextureTile.DecodeClutFrom(job.Clut), job.Clut.Length, 1);
                 File.WriteAllBytes(clutBase + ".clut.bin", TextureTile.RawBytes(job.Clut));
             }
         }
 
-        string json = $$"""
-        {
-          "indexHash": "{{job.IndexHash:x16}}",
-          "clutHash": "{{job.ClutHash:x16}}",
-          "bpp": {{r.Bpp}},
-          "width": {{r.W}},
-          "height": {{r.H}},
-          "texpage": {{job.TPage}},
-          "clut": {{job.ClutId}},
-          "u0": {{r.U0}},
-          "v0": {{r.V0}}
-        }
-        """;
+        var json = $$"""
+                     {
+                       "indexHash": "{{job.IndexHash:x16}}",
+                       "clutHash": "{{job.ClutHash:x16}}",
+                       "bpp": {{r.Bpp}},
+                       "width": {{r.W}},
+                       "height": {{r.H}},
+                       "texpage": {{job.TPage}},
+                       "clut": {{job.ClutId}},
+                       "u0": {{r.U0}},
+                       "v0": {{r.V0}}
+                     }
+                     """;
         File.WriteAllText(baseName + ".json", json);
     }
 }

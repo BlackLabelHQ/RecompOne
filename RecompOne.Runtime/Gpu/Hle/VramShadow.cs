@@ -10,9 +10,12 @@ public sealed class VramShadow //in ram vram
 
     public ushort this[int x, int y]
     {
-        get => Pixels[((y & (Height - 1)) * Width) + (x & (Width - 1))];
-        set => Pixels[((y & (Height - 1)) * Width) + (x & (Width - 1))] = value;
+        get => Pixels[(y & (Height - 1)) * Width + (x & (Width - 1))];
+        set => Pixels[(y & (Height - 1)) * Width + (x & (Width - 1))] = value;
     }
 
-    public void Clear() => Array.Clear(Pixels);
+    public void Clear()
+    {
+        Array.Clear(Pixels);
+    }
 }

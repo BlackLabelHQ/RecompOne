@@ -1,9 +1,15 @@
 namespace RecompOne.Runtime.Dispatch;
 
-public enum OverlayEventKind { Loaded, Unloaded, Overwritten, VramCollision }
+public enum OverlayEventKind
+{
+    Loaded,
+    Unloaded,
+    Overwritten,
+    VramCollision
+}
 
 public readonly record struct OverlayEvent(
-    long   TimestampMs,
+    long TimestampMs,
     string OverlayName,
     OverlayEventKind Kind,
     string? DisplacedBy
@@ -11,12 +17,12 @@ public readonly record struct OverlayEvent(
 
 public sealed class OverlayEventLog
 {
-    const int MaxEntries = 500;
+    private const int MaxEntries = 500;
 
-    readonly List<OverlayEvent> _events = new(MaxEntries);
-    readonly object _lock = new();
+    private readonly List<OverlayEvent> _events = new(MaxEntries);
+    private readonly object _lock = new();
 
-    static readonly long _startMs = Environment.TickCount64;
+    private static readonly long _startMs = Environment.TickCount64;
 
     public void Record(string name, OverlayEventKind kind, string? displacedBy = null)
     {
@@ -30,13 +36,28 @@ public sealed class OverlayEventLog
 
     public void Read(List<OverlayEvent> dest)
     {
-        lock (_lock) dest.AddRange(_events);
+        lock (_lock)
+        {
+            dest.AddRange(_events);
+        }
     }
 
     public void Clear()
     {
-        lock (_lock) _events.Clear();
+        lock (_lock)
+        {
+            _events.Clear();
+        }
     }
 
-    public int Count { get { lock (_lock) return _events.Count; } }
+    public int Count
+    {
+        get
+        {
+            lock (_lock)
+            {
+                return _events.Count;
+            }
+        }
+    }
 }

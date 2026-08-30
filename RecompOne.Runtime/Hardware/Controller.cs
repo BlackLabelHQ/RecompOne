@@ -23,15 +23,15 @@ public static class Controller
     public static bool Analog2;
 
     public static ushort State = 0xFFFF;
-    public static byte   RightX = 0x80;
-    public static byte   RightY = 0x80;
-    public static byte   LeftX = 0x80;
-    public static byte   LeftY = 0x80;
+    public static byte RightX = 0x80;
+    public static byte RightY = 0x80;
+    public static byte LeftX = 0x80;
+    public static byte LeftY = 0x80;
 
     public static ushort State2 = 0xFFFF;
-    public static bool   Connected2;
-    public static byte   RightX2 = 0x80;
-    public static byte   RightY2 = 0x80;
-    public static byte   LeftX2 = 0x80;
-    public static byte   LeftY2 = 0x80;
+    public static bool Connected2;
+    public static byte RightX2 = 0x80;
+    public static byte RightY2 = 0x80;
+    public static byte LeftX2 = 0x80;
+    public static byte LeftY2 = 0x80;
 }

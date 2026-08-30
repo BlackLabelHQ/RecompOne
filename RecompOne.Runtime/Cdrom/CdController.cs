@@ -67,9 +67,15 @@ public sealed class CdController
         {
             if (_runs.TryGetValue(source, out var run))
             {
-                if (lba == run.Start + run.Count) { run.Count++; return; }
+                if (lba == run.Start + run.Count)
+                {
+                    run.Count++;
+                    return;
+                }
+
                 EnqueueLocked(RunLine(source, run));
             }
+
             _runs[source] = new ReadRun { Start = lba, Count = 1, Time = DateTime.Now.ToString("HH:mm:ss.fff") };
         }
     }
@@ -87,10 +93,12 @@ public sealed class CdController
         while (_dbgEvents.Count > DbgMaxEvents) _dbgEvents.Dequeue();
     }
 
-    private static string RunLine(string source, ReadRun run) =>
-        run.Count == 1
+    private static string RunLine(string source, ReadRun run)
+    {
+        return run.Count == 1
             ? $"{run.Time}  {source} lba={run.Start}"
             : $"{run.Time}  {source} lba={run.Start}..{run.Start + run.Count - 1} ({run.Count} sectors)";
+    }
 
     public void ClearDebugEvents()
     {
@@ -103,7 +111,8 @@ public sealed class CdController
 
     public void CaptureDebug(out CdDebug d, List<string> events)
     {
-        d = new CdDebug {
+        d = new CdDebug
+        {
             SeekLba = _seekLba,
             LastReadLba = _lastReadLba,
             Reading = _reading,
@@ -128,34 +137,38 @@ public sealed class CdController
         }
     }
 
-    private static string CmdName(byte cmd) => cmd switch {
-        0x01 => "GetStat",
-        0x02 => "Setloc",
-        0x03 => "Play",
-        0x04 => "Forward",
-        0x05 => "Backward",
-        0x06 => "ReadN",
-        0x07 => "Standby",
-        0x08 => "Stop",
-        0x09 => "Pause",
-        0x0A => "Init",
-        0x0B => "Mute",
-        0x0C => "Demute",
-        0x0D => "Setfilter",
-        0x0E => "Setmode",
-        0x0F => "Getparam",
-        0x10 => "GetlocL",
-        0x11 => "GetlocP",
-        0x13 => "GetTN",
-        0x14 => "GetTD",
-        0x15 => "SeekL",
-        0x16 => "SeekP",
-        0x19 => "Test",
-        0x1A => "GetID",
-        0x1B => "ReadS",
-        0x1E => "ReadTOC",
-        _ => $"0x{cmd:X2}"
-    };
+    private static string CmdName(byte cmd)
+    {
+        return cmd switch
+        {
+            0x01 => "GetStat",
+            0x02 => "Setloc",
+            0x03 => "Play",
+            0x04 => "Forward",
+            0x05 => "Backward",
+            0x06 => "ReadN",
+            0x07 => "Standby",
+            0x08 => "Stop",
+            0x09 => "Pause",
+            0x0A => "Init",
+            0x0B => "Mute",
+            0x0C => "Demute",
+            0x0D => "Setfilter",
+            0x0E => "Setmode",
+            0x0F => "Getparam",
+            0x10 => "GetlocL",
+            0x11 => "GetlocP",
+            0x13 => "GetTN",
+            0x14 => "GetTD",
+            0x15 => "SeekL",
+            0x16 => "SeekP",
+            0x19 => "Test",
+            0x1A => "GetID",
+            0x1B => "ReadS",
+            0x1E => "ReadTOC",
+            _ => $"0x{cmd:X2}"
+        };
+    }
 
     public CdController(DiscFs fs, IMemory m)
     {
@@ -170,10 +183,10 @@ public sealed class CdController
     public void LoadToMemory(string path, uint address, int offset = 0, int length = -1)
     {
         var data = _fs.ReadFile(path);
-        int count = length < 0 ? data.Length - offset : length;
-        for (int i = 0; i < count; i++)
+        var count = length < 0 ? data.Length - offset : length;
+        for (var i = 0; i < count; i++)
             _m.WriteU8(address + (uint)i, data[offset + i]);
-        RecompOne.Runtime.Log.Cd($"{path} -> 0x{address:X8} | {count} bytes");
+        Log.Cd($"{path} -> 0x{address:X8} | {count} bytes");
         DbgEvent($"file {path} -> 0x{address:X8} ({count} bytes)");
         Dispatcher.TryLoad(CdUtils.OverlayName(CdUtils.ExtractFileName(path)));
     }
@@ -182,10 +195,11 @@ public sealed class CdController
     {
         return (phys & 3) switch
         {
-            0 => (byte)((_index & 3) | (_paramFifo.Count == 0 ? 0x08 : 0) | 0x10 | (_responseFifo.Count > 0 ? 0x20 : 0) | (_dataReady ? 0x40 : 0)),
+            0 => (byte)((_index & 3) | (_paramFifo.Count == 0 ? 0x08 : 0) | 0x10 |
+                        (_responseFifo.Count > 0 ? 0x20 : 0) | (_dataReady ? 0x40 : 0)),
             1 => _responseFifo.Count > 0 ? _responseFifo.Dequeue() : (byte)0,
             2 => ReadDataByte(),
-            _ => _index == 1 ? _irqFlags : (byte)0,
+            _ => _index == 1 ? _irqFlags : (byte)0
         };
     }
 
@@ -206,21 +220,29 @@ public sealed class CdController
             case 3:
                 if (_index == 0)
                 {
-                    if ((val & 0x80) != 0) { _dataFifoPos = 0; _dataReady = true; }
-                    else _dataReady = false;
+                    if ((val & 0x80) != 0)
+                    {
+                        _dataFifoPos = 0;
+                        _dataReady = true;
+                    }
+                    else
+                    {
+                        _dataReady = false;
+                    }
                 }
                 else if (_index == 1)
                 {
                     _irqFlags &= (byte)~val;
                     if (_irqFlags == 0) AfterAck();
                 }
+
                 break;
         }
     }
 
     private void ExecuteCommand(byte cmd)
     {
-        RecompOne.Runtime.Log.Cd($"cmd 0x{cmd:X2}");
+        Log.Cd($"cmd 0x{cmd:X2}");
         var prms = new List<byte>();
         while (_paramFifo.Count > 0) prms.Add(_paramFifo.Dequeue());
         DbgEvent(prms.Count > 0
@@ -240,7 +262,7 @@ public sealed class CdController
             case 0x03: // cd-da play (not sure if it goes used in games?)
                 _reading = false;
                 _playing = true;
-                if (prms.Count == 1 && prms[0] != 0 && _fs.TrackStartLba(BcdToInt(prms[0]), out int trackLba))
+                if (prms.Count == 1 && prms[0] != 0 && _fs.TrackStartLba(BcdToInt(prms[0]), out var trackLba))
                     _seekLba = trackLba - 150;
                 QueueIrq(3, [DriveStatus()]);
                 break;
@@ -255,6 +277,7 @@ public sealed class CdController
                     QueueIrq(5, [(byte)(DriveStatus() | 0x01), 0x40]);
                     break;
                 }
+
                 _reading = true;
                 _playing = false;
                 ReadNextSector();
@@ -294,7 +317,12 @@ public sealed class CdController
                 QueueIrq(3, [DriveStatus()]);
                 break;
             case 0x0D: // set filter
-                if (prms.Count >= 2) { _filterFile = prms[0]; _filterChannel = prms[1]; }
+                if (prms.Count >= 2)
+                {
+                    _filterFile = prms[0];
+                    _filterChannel = prms[1];
+                }
+
                 QueueIrq(3, [DriveStatus()]);
                 break;
             case 0x0E: // set mode
@@ -315,9 +343,9 @@ public sealed class CdController
                 break;
             case 0x14: // getTD
             {
-                int track = prms.Count >= 1 ? BcdToInt(prms[0]) : 0;
-                int lba = track == 0 || !_fs.TrackStartLba(track, out int tl) ? _fs.LeadoutLba : tl;
-                LbaToMsf(lba, out byte tmm, out byte tss, out _);
+                var track = prms.Count >= 1 ? BcdToInt(prms[0]) : 0;
+                var lba = track == 0 || !_fs.TrackStartLba(track, out var tl) ? _fs.LeadoutLba : tl;
+                LbaToMsf(lba, out var tmm, out var tss, out _);
                 QueueIrq(3, [DriveStatus(), tmm, tss]);
                 break;
             }
@@ -326,7 +354,7 @@ public sealed class CdController
                 QueueIrq(3, [DriveStatus()]);
                 _seeking = false;
                 //04h if outside
-                if (IsAudioRegion(_seekLba)) 
+                if (IsAudioRegion(_seekLba))
                 {
                     _reading = false;
                     _playing = false;
@@ -336,6 +364,7 @@ public sealed class CdController
                 {
                     QueueIrq(2, [DriveStatus()]);
                 }
+
                 break;
             case 0x16: //seek P
                 _seeking = true;
@@ -361,6 +390,7 @@ public sealed class CdController
                     QueueIrq(5, [(byte)(DriveStatus() | 0x01), 0x40]);
                     break;
                 }
+
                 _reading = true;
                 _playing = false;
                 ReadNextSector();
@@ -378,7 +408,7 @@ public sealed class CdController
         }
     }
 
-    
+
     private void QueueIrq(byte irqType, byte[] response)
     {
         if (_irqFlags == 0 && _pendingIrqs.Count == 0)
@@ -389,7 +419,12 @@ public sealed class CdController
 
     private void AfterAck()
     {
-        if (_pendingIrqs.Count > 0) { DeliverNext(); return; }
+        if (_pendingIrqs.Count > 0)
+        {
+            DeliverNext();
+            return;
+        }
+
         if (_reading && _lastIrq == 1) _streamPending = true;
         ClearInInterrupt();
     }
@@ -421,10 +456,16 @@ public sealed class CdController
         _lastIrq = irqType;
         SetInInterrupt(1);
     }
+
     private byte ReadDataByte()
     {
-        if (!_dataReady || _dataFifoPos >= _dataBuf.Length) { _dataReady = false; return 0; }
-        byte b = _dataBuf[_dataFifoPos++];
+        if (!_dataReady || _dataFifoPos >= _dataBuf.Length)
+        {
+            _dataReady = false;
+            return 0;
+        }
+
+        var b = _dataBuf[_dataFifoPos++];
         if (_dataFifoPos >= _dataBuf.Length) _dataReady = false;
         return b;
     }
@@ -472,7 +513,11 @@ public sealed class CdController
     }
 
     public DiscFs Fs => _fs;
-    public byte DriveStatusByte() => DriveStatus();
+
+    public byte DriveStatusByte()
+    {
+        return DriveStatus();
+    }
 
     public byte[] ReadSectorData(int lba)
     {
@@ -514,18 +559,22 @@ public sealed class CdController
         for (uint i = 0; i < count; i++)
         {
             ReadNextSector();
-            int sectorSize = (mode & 0x30) == 0 ? 2048 : 2048; //fix
-            for (int j = 0; j < Math.Min(_dataBuf.Length, sectorSize); j++)
+            var sectorSize = (mode & 0x30) == 0 ? 2048 : 2048; //fix
+            for (var j = 0; j < Math.Min(_dataBuf.Length, sectorSize); j++)
                 _m.WriteU8(dstAddr + i * (uint)sectorSize + (uint)j, _dataBuf[j]);
             _seekLba++;
         }
+
         QueueIrq(3, [DriveStatus()]);
         QueueIrq(1, [DriveStatus()]);
         QueueIrq(2, [DriveStatus()]);
     }
 
-    
-    private bool IsAudioRegion(int lba) => lba >= _fs.DataSectors;
+
+    private bool IsAudioRegion(int lba)
+    {
+        return lba >= _fs.DataSectors;
+    }
 
     private byte DriveStatus()
     {
@@ -538,33 +587,38 @@ public sealed class CdController
 
     private byte[] GetlocL()
     {
-        LbaToMsf(_lastReadLba + 150, out byte amm, out byte ass, out byte aff);
+        LbaToMsf(_lastReadLba + 150, out var amm, out var ass, out var aff);
         return [amm, ass, aff, _mode, _filterFile, _filterChannel, 0, 0];
     }
+
     private byte[] GetlocP()
     {
-        int abs = _seekLba + 150;
-        LbaToMsf(abs, out byte amm, out byte ass, out byte aff);
-        int track = 1;
-        int rel = _seekLba;
+        var abs = _seekLba + 150;
+        LbaToMsf(abs, out var amm, out var ass, out var aff);
+        var track = 1;
+        var rel = _seekLba;
         if (_fs.HasTracks)
-        {
-            for (int t = _fs.FirstTrack; t <= _fs.LastTrack; t++)
-            {
-                if (_fs.TrackStartLba(t, out int tl) && abs >= tl)
+            for (var t = _fs.FirstTrack; t <= _fs.LastTrack; t++)
+                if (_fs.TrackStartLba(t, out var tl) && abs >= tl)
                 {
                     track = t;
                     rel = abs - tl;
                 }
-            }
-        }
-        LbaToMsf(rel, out byte rmm, out byte rss, out byte rff);
+
+        LbaToMsf(rel, out var rmm, out var rss, out var rff);
         return [IntToBcd(track), 0x01, rmm, rss, rff, amm, ass, aff];
     }
 
-    private static byte IntToBcd(int n) => (byte)(((n / 10) << 4) | (n % 10));
-    private static int BcdToInt(byte b) => (b >> 4) * 10 + (b & 0xF);
-    
+    private static byte IntToBcd(int n)
+    {
+        return (byte)(((n / 10) << 4) | (n % 10));
+    }
+
+    private static int BcdToInt(byte b)
+    {
+        return (b >> 4) * 10 + (b & 0xF);
+    }
+
     //not sure if its correct
     private static void LbaToMsf(int lba, out byte mm, out byte ss, out byte ff)
     {
@@ -576,9 +630,9 @@ public sealed class CdController
 
     private static int BcdToLba(byte mm, byte ss, byte ff)
     {
-        int m = (mm >> 4) * 10 + (mm & 0xF);
-        int s = (ss >> 4) * 10 + (ss & 0xF);
-        int f = (ff >> 4) * 10 + (ff & 0xF);
+        var m = (mm >> 4) * 10 + (mm & 0xF);
+        var s = (ss >> 4) * 10 + (ss & 0xF);
+        var f = (ff >> 4) * 10 + (ff & 0xF);
         return (m * 60 + s) * 75 + f - 150;
     }
 }

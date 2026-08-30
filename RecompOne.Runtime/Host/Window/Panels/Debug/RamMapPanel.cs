@@ -11,18 +11,27 @@ internal sealed class RamMapPanel : IPanel
     public string TitleKey => "panel.ram_map";
     public bool IsOpen { get; set; }
 
-    static uint _texId;
-    public static void SetTexture(uint id) => _texId = id;
+    private static uint _texId;
 
-    readonly TextureView _view = new();
+    public static void SetTexture(uint id)
+    {
+        _texId = id;
+    }
+
+    private readonly TextureView _view = new();
 
     public void Draw()
     {
         var flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.MenuBar;
         ImGui.SetNextWindowSize(new Vector2(820, 300), ImGuiCond.FirstUseEver);
 
-        bool open = IsOpen;
-        if (!ImGui.Begin(this.Title(), ref open, flags)) { IsOpen = open; ImGui.End(); return; }
+        var open = IsOpen;
+        if (!ImGui.Begin(this.Title(), ref open, flags))
+        {
+            IsOpen = open;
+            ImGui.End();
+            return;
+        }
 
         DrawMenuBar();
         DrawMap();
@@ -31,7 +40,7 @@ internal sealed class RamMapPanel : IPanel
         ImGui.End();
     }
 
-    void DrawMenuBar()
+    private void DrawMenuBar()
     {
         if (!ImGui.BeginMenuBar()) return;
 
@@ -67,11 +76,15 @@ internal sealed class RamMapPanel : IPanel
         ImGui.EndMenuBar();
     }
 
-    uint? _hoveredAddr;
+    private uint? _hoveredAddr;
 
-    void DrawMap()
+    private void DrawMap()
     {
-        if (_texId == 0) { ImGui.TextDisabled("Waiting for RAM texture..."); return; }
+        if (_texId == 0)
+        {
+            ImGui.TextDisabled("Waiting for RAM texture...");
+            return;
+        }
 
         var r = _view.Draw(_texId, RamLogger.Width, RamLogger.Height);
         _hoveredAddr = null;
@@ -81,7 +94,7 @@ internal sealed class RamMapPanel : IPanel
         int byteX = (int)texel.X, byteY = (int)texel.Y;
         if (byteX >= 0 && byteY >= 0 && byteX < RamLogger.Width && byteY < RamLogger.Height)
         {
-            uint addr = (uint)byteY * RamLogger.Width + (uint)byteX;
+            var addr = (uint)byteY * RamLogger.Width + (uint)byteX;
             if (addr < 0x200000u) _hoveredAddr = addr;
         }
 

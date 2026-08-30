@@ -5,10 +5,10 @@ namespace RecompOne.Runtime.Host.Window;
 
 public sealed class ModLoadingPopup : Popup
 {
-    static volatile bool _active;
-    static volatile int _current;
-    static volatile int _total;
-    static volatile string _name = "";
+    private static volatile bool _active;
+    private static volatile int _current;
+    private static volatile int _total;
+    private static volatile string _name = "";
 
     protected override string TitleKey => "mods.loading";
     protected override Vector2 Size => new(400f, 0f);
@@ -28,7 +28,10 @@ public sealed class ModLoadingPopup : Popup
         _name = name;
     }
 
-    public static void End() => _active = false;
+    public static void End()
+    {
+        _active = false;
+    }
 
     protected internal override void Update()
     {
@@ -42,8 +45,8 @@ public sealed class ModLoadingPopup : Popup
         if (name.Length > 0) ImGui.TextUnformatted(name);
         else ImGui.TextDisabled("...");
 
-        int total = _total;
-        int current = _current;
+        var total = _total;
+        var current = _current;
         ImGui.ProgressBar(total > 0 ? current / (float)total : 0f, new Vector2(-1f, 0f), $"{current}/{total}");
     }
 }

@@ -5,9 +5,9 @@ namespace RecompOne.Runtime.Host.Window;
 
 public sealed class SettingsPopup : Popup
 {
-    const float SidebarWidth = 180f;
+    private const float SidebarWidth = 180f;
 
-    string _selectedId = "";
+    private string _selectedId = "";
 
     protected override string TitleKey => "settings.title";
     protected override Vector2 Size => new(780f, 500f);
@@ -22,17 +22,18 @@ public sealed class SettingsPopup : Popup
         DrawContent(current);
     }
 
-    ISettingsSection? ResolveSelection(IReadOnlyList<ISettingsSection> sections)
+    private ISettingsSection? ResolveSelection(IReadOnlyList<ISettingsSection> sections)
     {
         if (sections.Count == 0) return null;
         foreach (var section in sections)
-            if (section.Id == _selectedId) return section;
+            if (section.Id == _selectedId)
+                return section;
 
         _selectedId = sections[0].Id;
         return sections[0];
     }
 
-    void DrawSidebar(IReadOnlyList<ISettingsSection> sections, ISettingsSection? current)
+    private void DrawSidebar(IReadOnlyList<ISettingsSection> sections, ISettingsSection? current)
     {
         ImGui.BeginChild("##settings-sidebar", new Vector2(SidebarWidth, 0f), ImGuiChildFlags.Border);
 
@@ -43,7 +44,7 @@ public sealed class SettingsPopup : Popup
         ImGui.EndChild();
     }
 
-    static void DrawContent(ISettingsSection? current)
+    private static void DrawContent(ISettingsSection? current)
     {
         ImGui.BeginChild("##settings-content", Vector2.Zero, ImGuiChildFlags.Border);
 

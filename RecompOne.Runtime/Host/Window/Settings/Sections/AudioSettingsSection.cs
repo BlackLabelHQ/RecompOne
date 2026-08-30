@@ -23,7 +23,7 @@ internal sealed class AudioSettingsSection : ISettingsSection
     {
         var game = ConfigManager.Game;
 
-        float volume = game.MasterVolume;
+        var volume = game.MasterVolume;
         if (ImGui.SliderFloat(Localization.T("settings.audio.master"), ref volume, 0f, 1f, "%.2f"))
         {
             game.MasterVolume = Math.Clamp(volume, 0f, 1f);
@@ -31,27 +31,29 @@ internal sealed class AudioSettingsSection : ISettingsSection
             ConfigManager.SaveGame();
         }
 
-        float spu = game.SpuVolume;
+        var spu = game.SpuVolume;
         if (ImGui.SliderFloat(Localization.T("settings.audio.spu"), ref spu, 0f, 1f, "%.2f"))
         {
             game.SpuVolume = Math.Clamp(spu, 0f, 1f);
             Apply();
             ConfigManager.SaveGame();
         }
+
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.audio.spu_hint"));
 
-        float xa = game.XaVolume;
+        var xa = game.XaVolume;
         if (ImGui.SliderFloat(Localization.T("settings.audio.xa"), ref xa, 0f, 1f, "%.2f"))
         {
             game.XaVolume = Math.Clamp(xa, 0f, 1f);
             Apply();
             ConfigManager.SaveGame();
         }
+
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.audio.xa_hint"));
 
         ImGui.Separator();
 
-        bool muted = game.Muted;
+        var muted = game.Muted;
         if (ImGui.Checkbox(Localization.T("settings.audio.mute"), ref muted))
         {
             game.Muted = muted;

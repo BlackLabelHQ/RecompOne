@@ -13,11 +13,17 @@ public abstract class Popup
 
     protected abstract void DrawContent();
 
-    protected virtual void OnOpened() { }
+    protected virtual void OnOpened()
+    {
+    }
 
-    protected virtual void OnClosed() { }
+    protected virtual void OnClosed()
+    {
+    }
 
-    protected internal virtual void Update() { }
+    protected internal virtual void Update()
+    {
+    }
 
     public bool IsOpen { get; private set; }
 
@@ -46,11 +52,11 @@ public abstract class Popup
         else Open();
     }
 
-    string Id => _id ??= $"##popup-{GetType().FullName}";
-    string? _id;
+    private string Id => _id ??= $"##popup-{GetType().FullName}";
+    private string? _id;
 
-    bool _pendingOpen;
-    bool _pendingClose;
+    private bool _pendingOpen;
+    private bool _pendingClose;
 
     internal bool Finished => !IsOpen && !_pendingClose;
 
@@ -74,7 +80,7 @@ public abstract class Popup
             ImGuiWindowFlags.NoScrollWithMouse;
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
-        bool visible = ImGui.BeginPopupModal(Id, flags);
+        var visible = ImGui.BeginPopupModal(Id, flags);
         ImGui.PopStyleVar();
 
         if (!visible)
@@ -95,7 +101,7 @@ public abstract class Popup
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, padding);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 0f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, Vector4.Zero);
-        bool bodyVisible = ImGui.BeginChild("##body", body, childFlags, ImGuiWindowFlags.NoSavedSettings);
+        var bodyVisible = ImGui.BeginChild("##body", body, childFlags, ImGuiWindowFlags.NoSavedSettings);
         ImGui.PopStyleColor();
         ImGui.PopStyleVar(2);
 
@@ -116,12 +122,12 @@ public abstract class Popup
         ImGui.EndPopup();
     }
 
-    void DrawTitleBar()
+    private void DrawTitleBar()
     {
         var style = ImGui.GetStyle();
         var draw = ImGui.GetWindowDrawList();
 
-        float height = Theme.TitleBarHeight;
+        var height = Theme.TitleBarHeight;
         var origin = ImGui.GetCursorScreenPos();
         var end = new Vector2(origin.X + ImGui.GetWindowWidth(), origin.Y + height);
 
@@ -138,16 +144,17 @@ public abstract class Popup
         ImGui.Dummy(Vector2.Zero);
     }
 
-    void DrawCloseButton(Vector2 origin, float height)
+    private void DrawCloseButton(Vector2 origin, float height)
     {
         var style = ImGui.GetStyle();
-        float margin = style.FramePadding.Y;
-        float size = height - margin * 2f;
-        var pos = new Vector2(origin.X + ImGui.GetWindowWidth() - size - style.WindowPadding.X * 0.5f, origin.Y + margin);
+        var margin = style.FramePadding.Y;
+        var size = height - margin * 2f;
+        var pos = new Vector2(origin.X + ImGui.GetWindowWidth() - size - style.WindowPadding.X * 0.5f,
+            origin.Y + margin);
 
         ImGui.SetCursorScreenPos(pos);
-        bool clicked = ImGui.InvisibleButton("##close", new Vector2(size, size));
-        bool hovered = ImGui.IsItemHovered();
+        var clicked = ImGui.InvisibleButton("##close", new Vector2(size, size));
+        var hovered = ImGui.IsItemHovered();
 
         var text = Theme.TitleBarText;
         var draw = ImGui.GetWindowDrawList();
@@ -155,10 +162,12 @@ public abstract class Popup
             draw.AddRectFilled(pos, pos + new Vector2(size, size),
                 ImGui.ColorConvertFloat4ToU32(text with { W = 0.18f }), style.FrameRounding);
 
-        float inset = size * 0.32f;
-        uint color = ImGui.ColorConvertFloat4ToU32(text with { W = hovered ? 1f : 0.8f });
-        draw.AddLine(pos + new Vector2(inset, inset), pos + new Vector2(size - inset, size - inset), color, 1.6f * Theme.Scale);
-        draw.AddLine(pos + new Vector2(size - inset, inset), pos + new Vector2(inset, size - inset), color, 1.6f * Theme.Scale);
+        var inset = size * 0.32f;
+        var color = ImGui.ColorConvertFloat4ToU32(text with { W = hovered ? 1f : 0.8f });
+        draw.AddLine(pos + new Vector2(inset, inset), pos + new Vector2(size - inset, size - inset), color,
+            1.6f * Theme.Scale);
+        draw.AddLine(pos + new Vector2(size - inset, inset), pos + new Vector2(inset, size - inset), color,
+            1.6f * Theme.Scale);
 
         if (hovered) ImGui.SetTooltip(Localization.T("common.close"));
         if (clicked) Close();

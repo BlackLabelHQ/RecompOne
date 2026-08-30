@@ -6,10 +6,14 @@ namespace RecompOne.Runtime.Host.Window;
 internal sealed class TextureView
 {
     public float Zoom = 1f;
-    Vector2 _pan;
-    bool _first = true;
+    private Vector2 _pan;
+    private bool _first = true;
 
-    public void Reset() { Zoom = 1f; _pan = Vector2.Zero; }
+    public void Reset()
+    {
+        Zoom = 1f;
+        _pan = Vector2.Zero;
+    }
 
     public readonly struct Result(bool hovered, Vector2 imgPos, float scale)
     {
@@ -25,13 +29,17 @@ internal sealed class TextureView
         if (texId == 0 || texW <= 0 || texH <= 0 || avail.X <= 0 || avail.Y <= 0)
             return new Result(false, origin, 1f);
 
-        if (_first) { Reset(); _first = false; }
+        if (_first)
+        {
+            Reset();
+            _first = false;
+        }
 
         ImGui.InvisibleButton("##texview", avail);
-        bool hovered = ImGui.IsItemHovered();
+        var hovered = ImGui.IsItemHovered();
 
-        float baseScale = MathF.Min(avail.X / texW, avail.Y / texH);
-        float scale = baseScale * Zoom;
+        var baseScale = MathF.Min(avail.X / texW, avail.Y / texH);
+        var scale = baseScale * Zoom;
         var drawn = new Vector2(texW * scale, texH * scale);
         var imgPos = origin + (avail - drawn) * 0.5f + _pan;
 

@@ -7,15 +7,16 @@ public sealed class Spu
     public const int RamSize = 512 * 1024;
     public readonly byte[] Ram = new byte[RamSize];
 
-    const uint Base = 0x1F801C00u;
+    private const uint Base = 0x1F801C00u;
 
-    static readonly int[] K0 = { 0,  60, 115,  98, 122 };
-    static readonly int[] K1 = { 0,   0, -52, -55, -60 };
+    private static readonly int[] K0 = { 0, 60, 115, 98, 122 };
+    private static readonly int[] K1 = { 0, 0, -52, -55, -60 };
 
-    static readonly int[] AdsrStepDown = { -8, -7, -6, -5 };
-    static readonly int[] AdsrStepUp = { 7, 6, 5, 4 };
+    private static readonly int[] AdsrStepDown = { -8, -7, -6, -5 };
+    private static readonly int[] AdsrStepUp = { 7, 6, 5, 4 };
 
-    static readonly short[] Gauss = {
+    private static readonly short[] Gauss =
+    {
         -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, //
         -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, //
         0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0000, 0x0001, //
@@ -79,10 +80,17 @@ public sealed class Spu
         0x57C3, 0x57E2, 0x57FF, 0x581C, 0x5838, 0x5853, 0x586D, 0x5886, //
         0x589E, 0x58B5, 0x58CB, 0x58E0, 0x58F4, 0x5907, 0x5919, 0x592A, //
         0x593A, 0x5949, 0x5958, 0x5965, 0x5971, 0x597C, 0x5986, 0x598F, //
-        0x5997, 0x599E, 0x59A4, 0x59A9, 0x59AD, 0x59B0, 0x59B2, 0x59B3  //
+        0x5997, 0x599E, 0x59A4, 0x59A9, 0x59AD, 0x59B0, 0x59B2, 0x59B3 //
     };
 
-    public enum AdsrPhase { Off, Attack, Decay, Sustain, Release }
+    public enum AdsrPhase
+    {
+        Off,
+        Attack,
+        Decay,
+        Sustain,
+        Release
+    }
 
     public struct VoiceDebug
     {
@@ -101,7 +109,7 @@ public sealed class Spu
         public uint TransferAddr, ReverbStartAddr, Endx;
     }
 
-    sealed class Voice
+    private sealed class Voice
     {
         public ushort VolL, VolR;
         public ushort Pitch;
@@ -126,79 +134,118 @@ public sealed class Spu
         public readonly short[] Buf = new short[31];
     }
 
-    readonly Voice[] _v = new Voice[24];
-    readonly object _sync = new();
+    private readonly Voice[] _v = new Voice[24];
+    private readonly object _sync = new();
 
-    ushort _mainVolL, _mainVolR;
-    short _mainCurL, _mainCurR;
-    int _mainCycL, _mainCycR;
-    ushort _reverbVolL, _reverbVolR;
+    private ushort _mainVolL, _mainVolR;
+    private short _mainCurL, _mainCurR;
+    private int _mainCycL, _mainCycR;
+    private ushort _reverbVolL, _reverbVolR;
 
-    readonly ushort[] _rev = new ushort[0x20]; //revcopied from duckstation
-    uint _revCur;
-    bool _revRight;
-    int _revInL, _revInR, _revOutL, _revOutR;
+    private readonly ushort[] _rev = new ushort[0x20]; //revcopied from duckstation
+    private uint _revCur;
+    private bool _revRight;
+    private int _revInL, _revInR, _revOutL, _revOutR;
 
-    const int dAPF1 = 0, dAPF2 = 1, vIIR = 2, vCOMB1 = 3, vCOMB2 = 4, vCOMB3 = 5, vCOMB4 = 6,
-              vWALL = 7, vAPF1 = 8, vAPF2 = 9, mLSAME = 10, mRSAME = 11, mLCOMB1 = 12,
-              mRCOMB1 = 13, mLCOMB2 = 14, mRCOMB2 = 15, dLSAME = 16, dRSAME = 17,
-              mLDIFF = 18, mRDIFF = 19, mLCOMB3 = 20, mRCOMB3 = 21, mLCOMB4 = 22,
-              mRCOMB4 = 23, dLDIFF = 24, dRDIFF = 25, mLAPF1 = 26, mRAPF1 = 27,
-              mLAPF2 = 28, mRAPF2 = 29, vLIN = 30, vRIN = 31;
+    private const int dAPF1 = 0,
+        dAPF2 = 1,
+        vIIR = 2,
+        vCOMB1 = 3,
+        vCOMB2 = 4,
+        vCOMB3 = 5,
+        vCOMB4 = 6,
+        vWALL = 7,
+        vAPF1 = 8,
+        vAPF2 = 9,
+        mLSAME = 10,
+        mRSAME = 11,
+        mLCOMB1 = 12,
+        mRCOMB1 = 13,
+        mLCOMB2 = 14,
+        mRCOMB2 = 15,
+        dLSAME = 16,
+        dRSAME = 17,
+        mLDIFF = 18,
+        mRDIFF = 19,
+        mLCOMB3 = 20,
+        mRCOMB3 = 21,
+        mLCOMB4 = 22,
+        mRCOMB4 = 23,
+        dLDIFF = 24,
+        dRDIFF = 25,
+        mLAPF1 = 26,
+        mRAPF1 = 27,
+        mLAPF2 = 28,
+        mRAPF2 = 29,
+        vLIN = 30,
+        vRIN = 31;
 
-    short R(int i) => (short)_rev[i];
-
-    uint RevBase => (uint)_reverbStartAddr << 3;
-
-    uint RevAddr(long byteOffset)
+    private short R(int i)
     {
-        int b = (int)RevBase;
-        int size = RamSize - b;
+        return (short)_rev[i];
+    }
+
+    private uint RevBase => (uint)_reverbStartAddr << 3;
+
+    private uint RevAddr(long byteOffset)
+    {
+        var b = (int)RevBase;
+        var size = RamSize - b;
         if (size <= 0) return 0;
-        
-        int a = (int)_revCur - b + (int)byteOffset;
+
+        var a = (int)_revCur - b + (int)byteOffset;
         if ((uint)a >= (uint)size)
         {
             a %= size;
             if (a < 0) a += size;
         }
+
         return (uint)(b + a) & (uint)(RamSize - 2);
     }
 
-    short RevReadAt(int reg, long extra = 0)
+    private short RevReadAt(int reg, long extra = 0)
     {
-        uint a = RevAddr(((long)_rev[reg] << 3) + extra);
+        var a = RevAddr(((long)_rev[reg] << 3) + extra);
         return (short)(Ram[a] | (Ram[a + 1] << 8));
     }
 
-    void RevWriteAt(int reg, int value)
+    private void RevWriteAt(int reg, int value)
     {
         if ((_spucnt & 0x80) == 0) return;
-        uint a = RevAddr((long)_rev[reg] << 3);
-        short v = (short)Math.Clamp(value, -0x8000, 0x7FFF);
+        var a = RevAddr((long)_rev[reg] << 3);
+        var v = (short)Math.Clamp(value, -0x8000, 0x7FFF);
         Ram[a] = (byte)v;
         Ram[a + 1] = (byte)(v >> 8);
     }
 
-    static int RevMul(int sample, short vol) => sample * vol >> 15;
+    private static int RevMul(int sample, short vol)
+    {
+        return sample * vol >> 15;
+    }
 
-    void ReverbStep(int lin, int rin)
+    private void ReverbStep(int lin, int rin)
     {
         lin = RevMul(lin, R(vLIN));
         rin = RevMul(rin, R(vRIN));
 
-        int sameL = RevMul(lin + RevMul(RevReadAt(dLSAME), R(vWALL)) - RevReadAt(mLSAME, -2), R(vIIR)) + RevReadAt(mLSAME, -2);
-        int sameR = RevMul(rin + RevMul(RevReadAt(dRSAME), R(vWALL)) - RevReadAt(mRSAME, -2), R(vIIR)) + RevReadAt(mRSAME, -2);
+        var sameL = RevMul(lin + RevMul(RevReadAt(dLSAME), R(vWALL)) - RevReadAt(mLSAME, -2), R(vIIR)) +
+                    RevReadAt(mLSAME, -2);
+        var sameR = RevMul(rin + RevMul(RevReadAt(dRSAME), R(vWALL)) - RevReadAt(mRSAME, -2), R(vIIR)) +
+                    RevReadAt(mRSAME, -2);
         RevWriteAt(mLSAME, sameL);
         RevWriteAt(mRSAME, sameR);
 
-        int diffL = RevMul(lin + RevMul(RevReadAt(dRDIFF), R(vWALL)) - RevReadAt(mLDIFF, -2), R(vIIR)) + RevReadAt(mLDIFF, -2);
-        int diffR = RevMul(rin + RevMul(RevReadAt(dLDIFF), R(vWALL)) - RevReadAt(mRDIFF, -2), R(vIIR)) + RevReadAt(mRDIFF, -2);
+        var diffL = RevMul(lin + RevMul(RevReadAt(dRDIFF), R(vWALL)) - RevReadAt(mLDIFF, -2), R(vIIR)) +
+                    RevReadAt(mLDIFF, -2);
+        var diffR = RevMul(rin + RevMul(RevReadAt(dLDIFF), R(vWALL)) - RevReadAt(mRDIFF, -2), R(vIIR)) +
+                    RevReadAt(mRDIFF, -2);
         RevWriteAt(mLDIFF, diffL);
         RevWriteAt(mRDIFF, diffR);
 
-        int outL = RevMul(RevReadAt(mLCOMB1), R(vCOMB1)) + RevMul(RevReadAt(mLCOMB2), R(vCOMB2)) + RevMul(RevReadAt(mLCOMB3), R(vCOMB3)) + RevMul(RevReadAt(mLCOMB4), R(vCOMB4));
-        int outR = RevMul(RevReadAt(mRCOMB1), R(vCOMB1)) + RevMul(RevReadAt(mRCOMB2), R(vCOMB2)) + RevMul(RevReadAt(mRCOMB3), R(vCOMB3)) + RevMul(RevReadAt(mRCOMB4), R(vCOMB4));
+        var outL = RevMul(RevReadAt(mLCOMB1), R(vCOMB1)) + RevMul(RevReadAt(mLCOMB2), R(vCOMB2)) +
+                   RevMul(RevReadAt(mLCOMB3), R(vCOMB3)) + RevMul(RevReadAt(mLCOMB4), R(vCOMB4));
+        var outR = RevMul(RevReadAt(mRCOMB1), R(vCOMB1)) + RevMul(RevReadAt(mRCOMB2), R(vCOMB2)) +
+                   RevMul(RevReadAt(mRCOMB3), R(vCOMB3)) + RevMul(RevReadAt(mRCOMB4), R(vCOMB4));
 
         int tapL = RevReadAt(mLAPF1, -((long)_rev[dAPF1] << 3));
         int tapR = RevReadAt(mRAPF1, -((long)_rev[dAPF1] << 3));
@@ -221,26 +268,32 @@ public sealed class Spu
         _revOutL = Math.Clamp(outL, -0x8000, 0x7FFF);
         _revOutR = Math.Clamp(outR, -0x8000, 0x7FFF);
 
-        uint b = RevBase;
+        var b = RevBase;
         long size = RamSize - b;
-        if (size <= 0) { _revCur = 0; return; }
+        if (size <= 0)
+        {
+            _revCur = 0;
+            return;
+        }
+
         _revCur = _revCur + 2 >= RamSize ? b : Math.Max(b, _revCur + 2);
     }
-    ushort _kon, _konHi;
-    ushort _koff, _koffHi;
-    ushort _pmon, _pmonHi;
-    ushort _non, _nonHi;
-    ushort _eon, _eonHi;
-    uint _endx;
-    ushort _spucnt;
-    ushort _transferAddr;
-    ushort _transferCtrl = 4;
-    ushort _cdVolL, _cdVolR;
-    ushort _extVolL, _extVolR;
-    int _cdMixLL = 0x80, _cdMixLR, _cdMixRL, _cdMixRR = 0x80;
 
-  //vol cont
-    int _voiceGain = 0x8000, _xaGain = 0x8000;
+    private ushort _kon, _konHi;
+    private ushort _koff, _koffHi;
+    private ushort _pmon, _pmonHi;
+    private ushort _non, _nonHi;
+    private ushort _eon, _eonHi;
+    private uint _endx;
+    private ushort _spucnt;
+    private ushort _transferAddr;
+    private ushort _transferCtrl = 4;
+    private ushort _cdVolL, _cdVolR;
+    private ushort _extVolL, _extVolR;
+    private int _cdMixLL = 0x80, _cdMixLR, _cdMixRL, _cdMixRR = 0x80;
+
+    //vol cont
+    private int _voiceGain = 0x8000, _xaGain = 0x8000;
 
     public float VoiceGain
     {
@@ -253,31 +306,36 @@ public sealed class Spu
         get => _xaGain / 32768f;
         set => _xaGain = (int)(Math.Clamp(value, 0f, 1f) * 32768f);
     }
-    ushort _reverbStartAddr;
 
-    int _noiseLevel = 1;
-    int _noiseTimer;
+    private ushort _reverbStartAddr;
+
+    private int _noiseLevel = 1;
+    private int _noiseTimer;
 
     public Spu()
     {
-        for (int i = 0; i < 24; i++) _v[i] = new Voice();
+        for (var i = 0; i < 24; i++) _v[i] = new Voice();
     }
 
     public ushort ReadReg16(uint phys)
     {
-        lock (_sync) return ReadReg(phys);
+        lock (_sync)
+        {
+            return ReadReg(phys);
+        }
     }
 
-    ushort ReadReg(uint phys)
+    private ushort ReadReg(uint phys)
     {
-        uint off = phys - Base;
+        var off = phys - Base;
 
         if (off < 0x180u)
         {
-            int n = (int)(off >> 4);
-            int r = (int)(off & 0xFu);
+            var n = (int)(off >> 4);
+            var r = (int)(off & 0xFu);
             var v = _v[n];
-            return r switch {
+            return r switch
+            {
                 0x0 => v.VolL,
                 0x2 => v.VolR,
                 0x4 => v.Pitch,
@@ -292,7 +350,8 @@ public sealed class Spu
             };
         }
 
-        return off switch {
+        return off switch
+        {
             0x180 => _mainVolL,
             0x182 => _mainVolR,
             0x184 => _reverbVolL,
@@ -325,17 +384,20 @@ public sealed class Spu
 
     public void WriteReg16(uint phys, ushort val)
     {
-        lock (_sync) WriteReg(phys, val);
+        lock (_sync)
+        {
+            WriteReg(phys, val);
+        }
     }
 
-    void WriteReg(uint phys, ushort val)
+    private void WriteReg(uint phys, ushort val)
     {
-        uint off = phys - Base;
+        var off = phys - Base;
 
         if (off < 0x180u)
         {
-            int n = (int)(off >> 4);
-            int r = (int)(off & 0xFu);
+            var n = (int)(off >> 4);
+            var r = (int)(off & 0xFu);
             var v = _v[n];
             switch (r)
             {
@@ -346,8 +408,12 @@ public sealed class Spu
                 case 0x8: v.AdsrLo = val; break;
                 case 0xA: v.AdsrHi = val; break;
                 case 0xC: v.AdsrVol = (short)val; break;
-                case 0xE: v.RepeatAddr = val; v.IgnoreLoop = true; break;
+                case 0xE:
+                    v.RepeatAddr = val;
+                    v.IgnoreLoop = true;
+                    break;
             }
+
             return;
         }
 
@@ -357,10 +423,22 @@ public sealed class Spu
             case 0x182: _mainVolR = val; break;
             case 0x184: _reverbVolL = val; break;
             case 0x186: _reverbVolR = val; break;
-            case 0x188: KeyOn(val, false);  _kon = val; break;
-            case 0x18A: KeyOn(val, true);   _konHi = val; break;
-            case 0x18C: KeyOff(val, false); _koff = val; break;
-            case 0x18E: KeyOff(val, true);  _koffHi = val; break;
+            case 0x188:
+                KeyOn(val, false);
+                _kon = val;
+                break;
+            case 0x18A:
+                KeyOn(val, true);
+                _konHi = val;
+                break;
+            case 0x18C:
+                KeyOff(val, false);
+                _koff = val;
+                break;
+            case 0x18E:
+                KeyOff(val, true);
+                _koffHi = val;
+                break;
             case 0x190: _pmon = val; break;
             case 0x192: _pmonHi = val; break;
             case 0x194: _non = val; break;
@@ -381,29 +459,29 @@ public sealed class Spu
         }
     }
 
-    uint _konPending, _koffPending;
+    private uint _konPending, _koffPending;
 
-    void KeyOn(ushort mask, bool hi)
+    private void KeyOn(ushort mask, bool hi)
     {
-        uint bits = (uint)mask << (hi ? 16 : 0);
+        var bits = (uint)mask << (hi ? 16 : 0);
         _konPending |= bits;
         _koffPending &= ~bits;
         _endx &= ~bits;
     }
 
-    void KeyOff(ushort mask, bool hi)
+    private void KeyOff(ushort mask, bool hi)
     {
-        uint bits = (uint)mask << (hi ? 16 : 0);
+        var bits = (uint)mask << (hi ? 16 : 0);
         _koffPending |= bits & ~_konPending;
     }
 
-    void ResolveKeys()
+    private void ResolveKeys()
     {
         if (_konPending == 0 && _koffPending == 0) return;
 
-        for (int i = 0; i < 24; i++)
+        for (var i = 0; i < 24; i++)
         {
-            uint bit = 1u << i;
+            var bit = 1u << i;
             if ((_konPending & bit) != 0)
             {
                 var v = _v[i];
@@ -429,21 +507,25 @@ public sealed class Spu
         _koffPending = 0;
     }
 
-    public uint TransferAddrBytes() => (uint)_transferAddr << 3;
+    public uint TransferAddrBytes()
+    {
+        return (uint)_transferAddr << 3;
+    }
 
     public void CaptureDebug(VoiceDebug[] voices, out SpuDebug state)
     {
         lock (_sync)
         {
-            uint nonMask = (uint)(_non | (_nonHi << 16));
-            uint pmonMask = (uint)(_pmon | (_pmonHi << 16));
-            uint eonMask = (uint)(_eon | (_eonHi << 16));
+            var nonMask = (uint)(_non | (_nonHi << 16));
+            var pmonMask = (uint)(_pmon | (_pmonHi << 16));
+            var eonMask = (uint)(_eon | (_eonHi << 16));
 
-            int n = Math.Min(voices.Length, 24);
-            for (int i = 0; i < n; i++)
+            var n = Math.Min(voices.Length, 24);
+            for (var i = 0; i < n; i++)
             {
                 var v = _v[i];
-                voices[i] = new VoiceDebug {
+                voices[i] = new VoiceDebug
+                {
                     Phase = v.Phase,
                     AdsrVol = v.AdsrVol,
                     VolL = v.VolL,
@@ -459,7 +541,8 @@ public sealed class Spu
                 };
             }
 
-            state = new SpuDebug {
+            state = new SpuDebug
+            {
                 MainVolL = _mainVolL,
                 MainVolR = _mainVolR,
                 ReverbVolL = _reverbVolL,
@@ -480,7 +563,7 @@ public sealed class Spu
     {
         lock (_sync)
         {
-            for (int i = 0; i < data.Length; i++)
+            for (var i = 0; i < data.Length; i++)
                 Ram[(spuByteAddr + (uint)i) & (RamSize - 1)] = data[i];
         }
     }
@@ -508,68 +591,83 @@ public sealed class Spu
         }
     }
 
-    short[] _xaL = [], _xaR = [];
+    private short[] _xaL = [], _xaR = [];
 
-    const int MixChunk = 16;
+    private const int MixChunk = 16;
 
     public void Mix(short[] dst, int frames)
     {
-        if (_xaL.Length < frames) { _xaL = new short[frames]; _xaR = new short[frames]; }
-        int xaCount = XaAudio.NextBlock(_xaL, _xaR, frames);
-
-        for (int chunk = 0; chunk < frames; chunk += MixChunk)
+        if (_xaL.Length < frames)
         {
-            int last = Math.Min(chunk + MixChunk, frames);
+            _xaL = new short[frames];
+            _xaR = new short[frames];
+        }
+
+        var xaCount = XaAudio.NextBlock(_xaL, _xaR, frames);
+
+        for (var chunk = 0; chunk < frames; chunk += MixChunk)
+        {
+            var last = Math.Min(chunk + MixChunk, frames);
 
             lock (_sync)
-            for (int n = chunk; n < last; n++)
             {
-                SweepTick(_mainVolL, ref _mainCurL, ref _mainCycL);
-                SweepTick(_mainVolR, ref _mainCurR, ref _mainCycR);
-
-                var (l, r) = Tick();
-                int mixL = l * _voiceGain >> 15, mixR = r * _voiceGain >> 15;
-                if (n < xaCount)
+                for (var n = chunk; n < last; n++)
                 {
-                    short xl = _xaL[n], xr = _xaR[n];
-                    int aL = Math.Clamp((xl * _cdMixLL + xr * _cdMixRL) >> 7, -32768, 32767);
-                    int aR = Math.Clamp((xl * _cdMixLR + xr * _cdMixRR) >> 7, -32768, 32767);
-                    int cL = (aL * (short)_cdVolL >> 15) * _xaGain >> 15;
-                    int cR = (aR * (short)_cdVolR >> 15) * _xaGain >> 15;
-                    mixL += cL;
-                    mixR += cR;
-                    if ((_spucnt & 0x04) != 0) { _revInL += cL; _revInR += cR; }
-                }
+                    SweepTick(_mainVolL, ref _mainCurL, ref _mainCycL);
+                    SweepTick(_mainVolR, ref _mainCurR, ref _mainCycR);
 
-                _revRight = !_revRight;
-                if (_revRight) ReverbStep(_revInL, _revInR);
-                mixL += RevMul(_revOutL, (short)_reverbVolL);
-                mixR += RevMul(_revOutR, (short)_reverbVolR);
-                mixL = Math.Clamp(mixL, -32768, 32767) * _mainCurL >> 15;
-                mixR = Math.Clamp(mixR, -32768, 32767) * _mainCurR >> 15;
-                dst[n * 2] = (short)mixL;
-                dst[n * 2 + 1] = (short)mixR;
+                    var (l, r) = Tick();
+                    int mixL = (l * _voiceGain) >> 15, mixR = (r * _voiceGain) >> 15;
+                    if (n < xaCount)
+                    {
+                        short xl = _xaL[n], xr = _xaR[n];
+                        var aL = Math.Clamp((xl * _cdMixLL + xr * _cdMixRL) >> 7, -32768, 32767);
+                        var aR = Math.Clamp((xl * _cdMixLR + xr * _cdMixRR) >> 7, -32768, 32767);
+                        var cL = (((aL * (short)_cdVolL) >> 15) * _xaGain) >> 15;
+                        var cR = (((aR * (short)_cdVolR) >> 15) * _xaGain) >> 15;
+                        mixL += cL;
+                        mixR += cR;
+                        if ((_spucnt & 0x04) != 0)
+                        {
+                            _revInL += cL;
+                            _revInR += cR;
+                        }
+                    }
+
+                    _revRight = !_revRight;
+                    if (_revRight) ReverbStep(_revInL, _revInR);
+                    mixL += RevMul(_revOutL, (short)_reverbVolL);
+                    mixR += RevMul(_revOutR, (short)_reverbVolR);
+                    mixL = (Math.Clamp(mixL, -32768, 32767) * _mainCurL) >> 15;
+                    mixR = (Math.Clamp(mixR, -32768, 32767) * _mainCurR) >> 15;
+                    dst[n * 2] = (short)mixL;
+                    dst[n * 2 + 1] = (short)mixR;
+                }
             }
         }
     }
 
-    (short L, short R) Tick()
+    private (short L, short R) Tick()
     {
         ResolveKeys();
         TickNoise();
         int sumL = 0, sumR = 0;
         _revInL = 0;
         _revInR = 0;
-        uint eonMask = (uint)(_eon | (_eonHi << 16));
+        var eonMask = (uint)(_eon | (_eonHi << 16));
 
-        uint nonMask = (uint)(_non  | (_nonHi  << 16));
-        uint pmonMask = (uint)(_pmon | (_pmonHi << 16));
-        int prevOutx = 0;
+        var nonMask = (uint)(_non | (_nonHi << 16));
+        var pmonMask = (uint)(_pmon | (_pmonHi << 16));
+        var prevOutx = 0;
 
-        for (int i = 0; i < 24; i++)
+        for (var i = 0; i < 24; i++)
         {
             var v = _v[i];
-            if (v.Phase == AdsrPhase.Off) { prevOutx = 0; continue; }
+            if (v.Phase == AdsrPhase.Off)
+            {
+                prevOutx = 0;
+                continue;
+            }
 
             TickAdsr(v);
             SweepTick(v.VolL, ref v.CurVolL, ref v.VolCycL);
@@ -589,26 +687,27 @@ public sealed class Spu
             }
             else
             {
-                int idx = (int)(v.PitchCounter >> 12);
-                int fi = (int)((v.PitchCounter >> 4) & 0xFF);
-                sample = ((Gauss[0x0FF - fi] * v.Buf[idx])     >> 15)
-                       + ((Gauss[0x1FF - fi] * v.Buf[idx + 1]) >> 15)
-                       + ((Gauss[0x100 + fi] * v.Buf[idx + 2]) >> 15)
-                       + ((Gauss[0x000 + fi] * v.Buf[idx + 3]) >> 15);
+                var idx = (int)(v.PitchCounter >> 12);
+                var fi = (int)((v.PitchCounter >> 4) & 0xFF);
+                sample = ((Gauss[0x0FF - fi] * v.Buf[idx]) >> 15)
+                         + ((Gauss[0x1FF - fi] * v.Buf[idx + 1]) >> 15)
+                         + ((Gauss[0x100 + fi] * v.Buf[idx + 2]) >> 15)
+                         + ((Gauss[0x000 + fi] * v.Buf[idx + 3]) >> 15);
             }
 
-            int amp = (sample * v.AdsrVol) >> 15;
+            var amp = (sample * v.AdsrVol) >> 15;
 
             int step = v.Pitch;
             if (i > 0 && (pmonMask & (1u << i)) != 0)
             {
-                int factor = Math.Clamp(prevOutx, -0x8000, 0x7FFF) + 0x8000;
-                step = ((short)(ushort)step * factor >> 15) & 0xFFFF;
+                var factor = Math.Clamp(prevOutx, -0x8000, 0x7FFF) + 0x8000;
+                step = (((short)(ushort)step * factor) >> 15) & 0xFFFF;
             }
+
             if (step > 0x3FFF) step = 0x4000;
 
             v.PitchCounter += (uint)step;
-            if ((v.PitchCounter >> 12) >= 28)
+            if (v.PitchCounter >> 12 >= 28)
             {
                 v.PitchCounter -= 28u << 12;
                 DecodeBlock(v, i);
@@ -616,11 +715,15 @@ public sealed class Spu
 
             prevOutx = amp;
 
-            int vl = (amp * v.CurVolL) >> 15;
-            int vr = (amp * v.CurVolR) >> 15;
+            var vl = (amp * v.CurVolL) >> 15;
+            var vr = (amp * v.CurVolR) >> 15;
             sumL += vl;
             sumR += vr;
-            if ((eonMask & (1u << i)) != 0) { _revInL += vl; _revInR += vr; }
+            if ((eonMask & (1u << i)) != 0)
+            {
+                _revInL += vl;
+                _revInR += vr;
+            }
         }
 
         sumL = Math.Clamp(sumL, -32768, 32767);
@@ -628,7 +731,7 @@ public sealed class Spu
         return ((short)sumL, (short)sumR);
     }
 
-    static void SweepTick(ushort reg, ref short level, ref int cycleCount)
+    private static void SweepTick(ushort reg, ref short level, ref int cycleCount)
     {
         if ((reg & 0x8000) == 0)
         {
@@ -636,55 +739,60 @@ public sealed class Spu
             return;
         }
 
-        bool exp = (reg & 0x4000) != 0;
-        bool dec = (reg & 0x2000) != 0;
-        bool neg = (reg & 0x1000) != 0;
-        int shift = (reg >> 2) & 0x1F;
-        int stepIdx = reg & 0x3;
+        var exp = (reg & 0x4000) != 0;
+        var dec = (reg & 0x2000) != 0;
+        var neg = (reg & 0x1000) != 0;
+        var shift = (reg >> 2) & 0x1F;
+        var stepIdx = reg & 0x3;
         EnvTick(ref level, ref cycleCount, shift, stepIdx, exp, dec, neg);
     }
 
-    static void EnvTick(ref short level, ref int cycleCount, int shift, int stepIdx, bool exp, bool decrease, bool negPhase)
+    private static void EnvTick(ref short level, ref int cycleCount, int shift, int stepIdx, bool exp, bool decrease,
+        bool negPhase)
     {
-        int mag = negPhase ? -level : level;
-        int cycles = 1 << Math.Max(0, shift - 11);
-        int step = (decrease ? AdsrStepDown : AdsrStepUp)[stepIdx] << Math.Max(0, 11 - shift);
+        var mag = negPhase ? -level : level;
+        var cycles = 1 << Math.Max(0, shift - 11);
+        var step = (decrease ? AdsrStepDown : AdsrStepUp)[stepIdx] << Math.Max(0, 11 - shift);
 
         if (exp && !decrease && mag > 0x6000) cycles *= 4;
-        if (exp && decrease) { step = step * mag / 0x8000; if (step == 0) step = -1; }
+        if (exp && decrease)
+        {
+            step = step * mag / 0x8000;
+            if (step == 0) step = -1;
+        }
 
         cycleCount++;
         if (cycleCount < cycles) return;
         cycleCount = 0;
 
-        int next = Math.Clamp(mag + step, 0, 0x7FFF);
+        var next = Math.Clamp(mag + step, 0, 0x7FFF);
         level = (short)(negPhase ? -next : next);
     }
 
-    void DecodeBlock(Voice v, int index)
+    private void DecodeBlock(Voice v, int index)
     {
         v.Buf[0] = v.Buf[28];
         v.Buf[1] = v.Buf[29];
         v.Buf[2] = v.Buf[30];
 
-        uint addr = v.CurAddr & (uint)(RamSize - 1);
-        byte hdr = Ram[addr];
-        byte flags = Ram[(addr + 1) & (RamSize - 1)];
+        var addr = v.CurAddr & (uint)(RamSize - 1);
+        var hdr = Ram[addr];
+        var flags = Ram[(addr + 1) & (RamSize - 1)];
 
-        int shift = hdr & 0xF;
+        var shift = hdr & 0xF;
         if (shift > 12) shift = 9;
-        int filter = (hdr >> 4) & 0x7;
+        var filter = (hdr >> 4) & 0x7;
         if (filter > 4) filter = 4;
 
-        int k0 = K0[filter];
-        int k1 = K1[filter];
+        var k0 = K0[filter];
+        var k1 = K1[filter];
 
-        int pos = 3;
-        for (int i = 0; i < 14; i++)
+        var pos = 3;
+        for (var i = 0; i < 14; i++)
         {
-            byte b = Ram[(addr + 2 + (uint)i) & (RamSize - 1)];
+            var b = Ram[(addr + 2 + (uint)i) & (RamSize - 1)];
             v.Buf[pos++] = DecodeSample(v, b & 0xF, shift, k0, k1);
-            v.Buf[pos++] = DecodeSample(v, b >> 4,  shift, k0, k1);
+            v.Buf[pos++] = DecodeSample(v, b >> 4, shift, k0, k1);
         }
 
         if ((flags & 4) != 0 && !v.IgnoreLoop)
@@ -695,7 +803,7 @@ public sealed class Spu
         if ((flags & 1) != 0)
         {
             v.EndX = true;
-            _endx  |= 1u << index;
+            _endx |= 1u << index;
             v.CurAddr = (uint)v.RepeatAddr << 3;
 
             if ((flags & 2) == 0)
@@ -707,9 +815,9 @@ public sealed class Spu
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    static short DecodeSample(Voice v, int nibble, int shift, int k0, int k1)
+    private static short DecodeSample(Voice v, int nibble, int shift, int k0, int k1)
     {
-        int s = (nibble << 28) >> 28;
+        var s = (nibble << 28) >> 28;
         s = (s << 12) >> shift;
         s += (v.Old * k0 + v.Older * k1) >> 6;
         s = Math.Clamp(s, -32768, 32767);
@@ -718,24 +826,24 @@ public sealed class Spu
         return (short)s;
     }
 
-    void TickAdsr(Voice v)
+    private void TickAdsr(Voice v)
     {
         if (v.Phase == AdsrPhase.Off) return;
 
         int lo = v.AdsrLo, hi = v.AdsrHi;
 
-        bool atkExp = (lo >> 15 & 1) != 0;
-        int  atkShift = (lo >> 10) & 0x1F;
-        int  atkStep = (lo >>  8) & 0x3;
-        int  decShift = (lo >>  4) & 0xF;
-        int  susLvl = ((lo & 0xF) + 1) << 11;
+        var atkExp = ((lo >> 15) & 1) != 0;
+        var atkShift = (lo >> 10) & 0x1F;
+        var atkStep = (lo >> 8) & 0x3;
+        var decShift = (lo >> 4) & 0xF;
+        var susLvl = ((lo & 0xF) + 1) << 11;
 
-        bool susExp = (hi >> 15 & 1) != 0;
-        bool susDec = (hi >> 14 & 1) != 0;
-        int  susShift = (hi >>  8) & 0x1F;
-        int  susStep = (hi >>  6) & 0x3;
-        bool relExp = (hi >>  5 & 1) != 0;
-        int  relShift =  hi & 0x1F;
+        var susExp = ((hi >> 15) & 1) != 0;
+        var susDec = ((hi >> 14) & 1) != 0;
+        var susShift = (hi >> 8) & 0x1F;
+        var susStep = (hi >> 6) & 0x3;
+        var relExp = ((hi >> 5) & 1) != 0;
+        var relShift = hi & 0x1F;
 
         if (v.Phase == AdsrPhase.Attack && v.AdsrVol >= 0x7FFF)
         {
@@ -749,11 +857,12 @@ public sealed class Spu
             v.AdsrCycleCount = 0;
         }
 
-        (bool decrease, int shift, int stepIdx, bool exp) = v.Phase switch {
-            AdsrPhase.Attack => (false,  atkShift, atkStep, atkExp),
-            AdsrPhase.Decay => (true,   decShift, 0,       true),
+        var (decrease, shift, stepIdx, exp) = v.Phase switch
+        {
+            AdsrPhase.Attack => (false, atkShift, atkStep, atkExp),
+            AdsrPhase.Decay => (true, decShift, 0, true),
             AdsrPhase.Sustain => (susDec, susShift, susStep, susExp),
-            AdsrPhase.Release => (true,   relShift, 0,       relExp),
+            AdsrPhase.Release => (true, relShift, 0, relExp),
             _ => (false, 0, 0, false)
         };
 
@@ -763,13 +872,13 @@ public sealed class Spu
             v.Phase = AdsrPhase.Off;
     }
 
-    void TickNoise()
+    private void TickNoise()
     {
-        int shift = (_spucnt >> 10) & 0xF;
-        int step = ((_spucnt >>  8) & 0x3) + 4;
+        var shift = (_spucnt >> 10) & 0xF;
+        var step = ((_spucnt >> 8) & 0x3) + 4;
 
         _noiseTimer -= step;
-        int parity = ((_noiseLevel >> 15) ^ (_noiseLevel >> 12) ^
+        var parity = ((_noiseLevel >> 15) ^ (_noiseLevel >> 12) ^
                       (_noiseLevel >> 11) ^ (_noiseLevel >> 10) ^ 1) & 1;
         if (_noiseTimer < 0)
         {

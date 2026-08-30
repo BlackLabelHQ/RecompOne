@@ -3,15 +3,15 @@ namespace RecompOne.Runtime.Events;
 /// <summary>type routed event bus to listen and send events</summary>
 public static class Event
 {
-    static readonly object _gate = new();
+    private static readonly object _gate = new();
 
-    static class Bag<T> where T : IEvent
+    private static class Bag<T> where T : IEvent
     {
         public static Action<T>[] Handlers = Array.Empty<Action<T>>();
     }
 
-    static readonly Dictionary<string, Action<IEvent>[]> _byId = new(StringComparer.Ordinal);
-    static volatile bool _anyId;
+    private static readonly Dictionary<string, Action<IEvent>[]> _byId = new(StringComparer.Ordinal);
+    private static volatile bool _anyId;
 
     public static void AddListener<T>(Action<T> fn) where T : IEvent
     {
@@ -30,9 +30,14 @@ public static class Event
         lock (_gate)
         {
             var cur = Bag<T>.Handlers;
-            int i = Array.IndexOf(cur, fn);
+            var i = Array.IndexOf(cur, fn);
             if (i < 0) return false;
-            if (cur.Length == 1) { Bag<T>.Handlers = Array.Empty<Action<T>>(); return true; }
+            if (cur.Length == 1)
+            {
+                Bag<T>.Handlers = Array.Empty<Action<T>>();
+                return true;
+            }
+
             var next = new Action<T>[cur.Length - 1];
             Array.Copy(cur, 0, next, 0, i);
             Array.Copy(cur, i + 1, next, i, cur.Length - i - 1);
@@ -60,9 +65,12 @@ public static class Event
         lock (_gate)
         {
             if (!_byId.TryGetValue(id, out var cur)) return false;
-            int i = Array.IndexOf(cur, fn);
+            var i = Array.IndexOf(cur, fn);
             if (i < 0) return false;
-            if (cur.Length == 1) _byId.Remove(id);
+            if (cur.Length == 1)
+            {
+                _byId.Remove(id);
+            }
             else
             {
                 var next = new Action<IEvent>[cur.Length - 1];
@@ -70,34 +78,49 @@ public static class Event
                 Array.Copy(cur, i + 1, next, i, cur.Length - i - 1);
                 _byId[id] = next;
             }
+
             _anyId = _byId.Count != 0;
             return true;
         }
     }
 
-    public static bool HasListeners<T>() where T : IEvent => Bag<T>.Handlers.Length != 0;
+    public static bool HasListeners<T>() where T : IEvent
+    {
+        return Bag<T>.Handlers.Length != 0;
+    }
 
-    public static bool HasListeners(string id) => _byId.TryGetValue(id, out var h) && h.Length != 0;
+    public static bool HasListeners(string id)
+    {
+        return _byId.TryGetValue(id, out var h) && h.Length != 0;
+    }
 
     public static bool HasAnyListeners<T>() where T : IEvent
-        => Bag<T>.Handlers.Length != 0 || (_anyId && _byId.ContainsKey(typeof(T).Name));
+    {
+        return Bag<T>.Handlers.Length != 0 || (_anyId && _byId.ContainsKey(typeof(T).Name));
+    }
 
     public static void Dispatch<T>(T evt) where T : IEvent
     {
         var handlers = Bag<T>.Handlers;
-        for (int i = 0; i < handlers.Length; i++)
-        {
-            try { handlers[i](evt); }
-            catch (Exception e) { Console.Error.WriteLine($"[Event] {typeof(T).Name} listener throwed: {e}"); }
-        }
+        for (var i = 0; i < handlers.Length; i++)
+            try
+            {
+                handlers[i](evt);
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine($"[Event] {typeof(T).Name} listener throwed: {e}");
+            }
 
         if (_anyId && _byId.TryGetValue(evt.Id, out var idh))
-        {
-            for (int i = 0; i < idh.Length; i++)
-            {
-                try { idh[i](evt); }
-                catch (Exception e) { Console.Error.WriteLine($"[Event] {evt.Id} listener throwed: {e}"); }
-            }
-        }
+            for (var i = 0; i < idh.Length; i++)
+                try
+                {
+                    idh[i](evt);
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine($"[Event] {evt.Id} listener throwed: {e}");
+                }
     }
 }

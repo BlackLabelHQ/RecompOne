@@ -4,15 +4,24 @@ namespace RecompOne.Runtime.Diagnostics;
 
 public static class ConsoleMirror
 {
-    const int MaxLines = 4000;
+    private const int MaxLines = 4000;
 
-    static readonly object _gate = new();
-    static readonly List<string> _lines = new();
-    static readonly StringBuilder _pending = new();
-    static int _version;
-    static bool _installed;
+    private static readonly object _gate = new();
+    private static readonly List<string> _lines = new();
+    private static readonly StringBuilder _pending = new();
+    private static int _version;
+    private static bool _installed;
 
-    public static int Version { get { lock (_gate) return _version; } }
+    public static int Version
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _version;
+            }
+        }
+    }
 
     public static void Install()
     {
@@ -43,21 +52,19 @@ public static class ConsoleMirror
         }
     }
 
-    static void Append(string? text)
+    private static void Append(string? text)
     {
         if (string.IsNullOrEmpty(text)) return;
         lock (_gate)
         {
-            foreach (char c in text)
-            {
+            foreach (var c in text)
                 if (c == '\n') FlushPendingLocked();
                 else if (c != '\r') _pending.Append(c);
-            }
             _version++;
         }
     }
 
-    static void AppendChar(char c)
+    private static void AppendChar(char c)
     {
         lock (_gate)
         {
@@ -67,17 +74,21 @@ public static class ConsoleMirror
         }
     }
 
-    static void FlushPendingLocked()
+    private static void FlushPendingLocked()
     {
         _lines.Add(_pending.ToString());
         _pending.Clear();
         if (_lines.Count > MaxLines) _lines.RemoveRange(0, _lines.Count - MaxLines);
     }
 
-    sealed class Tee : TextWriter
+    private sealed class Tee : TextWriter
     {
-        readonly TextWriter _inner;
-        public Tee(TextWriter inner) => _inner = inner;
+        private readonly TextWriter _inner;
+
+        public Tee(TextWriter inner)
+        {
+            _inner = inner;
+        }
 
         public override Encoding Encoding => _inner.Encoding;
 
@@ -100,6 +111,9 @@ public static class ConsoleMirror
             AppendChar('\n');
         }
 
-        public override void Flush() => _inner.Flush();
+        public override void Flush()
+        {
+            _inner.Flush();
+        }
     }
 }

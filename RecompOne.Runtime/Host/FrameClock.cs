@@ -4,27 +4,27 @@ namespace RecompOne.Runtime.Host;
 
 internal static class FrameClock
 {
-    const double FrameMs = 1000.0 / 60.0;
-    const double SpinMs = 1.5;
+    private const double FrameMs = 1000.0 / 60.0;
+    private const double SpinMs = 1.5;
 
-    static readonly Stopwatch _clock = Stopwatch.StartNew();
-    static double _nextFrameMs;
+    private static readonly Stopwatch _clock = Stopwatch.StartNew();
+    private static double _nextFrameMs;
 
     public static bool VSync { get; set; }
 
     public static double LastFrameMs { get; private set; }
 
     public static double Fps { get; private set; }
-    static double _fpsAccumMs;
-    static int _fpsFrames;
+    private static double _fpsAccumMs;
+    private static int _fpsFrames;
     public static double LastWaitMs { get; private set; }
 
-    static double _lastStart;
+    private static double _lastStart;
 
 
     public static void Throttle()
     {
-        double now = _clock.Elapsed.TotalMilliseconds;
+        var now = _clock.Elapsed.TotalMilliseconds;
         LastFrameMs = now - _lastStart;
         _lastStart = now;
 
@@ -38,7 +38,7 @@ internal static class FrameClock
         }
 
         _nextFrameMs += FrameMs;
-        double wait = _nextFrameMs - now;
+        var wait = _nextFrameMs - now;
 
         if (wait < -100)
         {
@@ -59,10 +59,10 @@ internal static class FrameClock
             return;
         }
 
-        double sleepUntil = _nextFrameMs - SpinMs;
+        var sleepUntil = _nextFrameMs - SpinMs;
         if (now < sleepUntil)
         {
-            int ms = (int)(sleepUntil - now);
+            var ms = (int)(sleepUntil - now);
             if (ms > 0) Thread.Sleep(ms);
         }
 
@@ -72,5 +72,8 @@ internal static class FrameClock
         LastWaitMs = wait;
     }
 
-    public static void Resync() => _nextFrameMs = _clock.Elapsed.TotalMilliseconds;
+    public static void Resync()
+    {
+        _nextFrameMs = _clock.Elapsed.TotalMilliseconds;
+    }
 }

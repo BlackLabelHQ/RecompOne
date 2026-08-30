@@ -5,24 +5,27 @@ namespace RecompOne.Runtime.Hle;
 //gl21 has no blitframebuffer so every copy goes tru a textured quad, i hate this
 public sealed class Gl21Vram : IGlVram
 {
-    readonly GL _gl;
-    uint _tex, _fbo;
-    uint _stageTex;
-    uint _destVramTex, _destVramFbo;
-    uint _destRtTex, _destRtFbo;
-    int _destRtW, _destRtH;
-    uint _scratchTex, _scratchFbo;
+    private readonly GL _gl;
+    private uint _tex, _fbo;
+    private uint _stageTex;
+    private uint _destVramTex, _destVramFbo;
+    private uint _destRtTex, _destRtFbo;
+    private int _destRtW, _destRtH;
+    private uint _scratchTex, _scratchFbo;
 
-    uint _blitProg, _blitVao, _blitVbo;
-    int _uDstRect, _uSrcRect;
-    bool _hasVao;
+    private uint _blitProg, _blitVao, _blitVbo;
+    private int _uDstRect, _uSrcRect;
+    private bool _hasVao;
 
-    byte[] _readBuf = [];
+    private byte[] _readBuf = [];
 
     public uint Texture => _tex;
     public uint Fbo => _fbo;
 
-    public Gl21Vram(GL gl) => _gl = gl;
+    public Gl21Vram(GL gl)
+    {
+        _gl = gl;
+    }
 
     public void Init()
     {
@@ -37,7 +40,7 @@ public sealed class Gl21Vram : IGlVram
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
     }
 
-    unsafe void InitBlit()
+    private unsafe void InitBlit()
     {
         _blitProg = GlShaders.Build(_gl, GlShaders.BlitVs120, GlShaders.BlitFs120, "blit21", [(0u, "aPos")]);
         _uDstRect = _gl.GetUniformLocation(_blitProg, "uDstRect");
@@ -51,26 +54,34 @@ public sealed class Gl21Vram : IGlVram
             _gl.BindVertexArray(_blitVao);
             _hasVao = true;
         }
-        catch { _hasVao = false; }
+        catch
+        {
+            _hasVao = false;
+        }
 
         _blitVbo = _gl.GenBuffer();
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _blitVbo);
         float[] quad = { -1f, -1f, 1f, -1f, -1f, 1f, 1f, 1f };
         fixed (float* q = quad)
-            _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(quad.Length * sizeof(float)), q, BufferUsageARB.StaticDraw);
+        {
+            _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(quad.Length * sizeof(float)), q,
+                BufferUsageARB.StaticDraw);
+        }
+
         if (_hasVao)
         {
             _gl.EnableVertexAttribArray(0);
             _gl.VertexAttribPointer(0, 2, VertexAttribPointerType.Float, false, 2 * sizeof(float), (void*)0);
             _gl.BindVertexArray(0);
         }
+
         _gl.BindBuffer(BufferTargetARB.ArrayBuffer, 0);
     }
 
-    uint CreateTex(int w, int h)
+    private uint CreateTex(int w, int h)
     {
         _gl.ActiveTexture(TextureUnit.Texture7);
-        uint t = _gl.GenTexture();
+        var t = _gl.GenTexture();
         _gl.BindTexture(TextureTarget.Texture2D, t);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
@@ -82,9 +93,9 @@ public sealed class Gl21Vram : IGlVram
         return t;
     }
 
-    uint CreateFbo(uint tex)
+    private uint CreateFbo(uint tex)
     {
-        uint f = _gl.GenFramebuffer();
+        var f = _gl.GenFramebuffer();
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, f);
         _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
             TextureTarget.Texture2D, tex, 0);
@@ -97,7 +108,8 @@ public sealed class Gl21Vram : IGlVram
         _gl.Viewport(0, 0, (uint)GlVram.Width, (uint)GlVram.Height);
     }
 
-    unsafe void BlitQuad(uint srcTex, int srcW, int srcH, uint dstFbo, int dstW, int dstH, int sx, int sy, int dx, int dy, int w, int h)
+    private unsafe void BlitQuad(uint srcTex, int srcW, int srcH, uint dstFbo, int dstW, int dstH, int sx, int sy,
+        int dx, int dy, int w, int h)
     {
         if (w <= 0 || h <= 0) return;
 
@@ -114,7 +126,10 @@ public sealed class Gl21Vram : IGlVram
         _gl.ActiveTexture(TextureUnit.Texture0);
         _gl.BindTexture(TextureTarget.Texture2D, srcTex);
 
-        if (_hasVao) _gl.BindVertexArray(_blitVao);
+        if (_hasVao)
+        {
+            _gl.BindVertexArray(_blitVao);
+        }
         else
         {
             _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _blitVbo);
@@ -128,7 +143,7 @@ public sealed class Gl21Vram : IGlVram
 
     public uint BeginDestRead(uint targetTex, int targetW, int targetH, int x, int y, int w, int h)
     {
-        bool isVram = targetTex == _tex;
+        var isVram = targetTex == _tex;
         uint destTex, destFbo;
         if (isVram)
         {
@@ -152,7 +167,7 @@ public sealed class Gl21Vram : IGlVram
         return destTex;
     }
 
-    void EnsureRtDest(int w, int h)
+    private void EnsureRtDest(int w, int h)
     {
         if (_destRtTex != 0 && _destRtW == w && _destRtH == h) return;
         if (_destRtFbo != 0) _gl.DeleteFramebuffer(_destRtFbo);
@@ -163,7 +178,9 @@ public sealed class Gl21Vram : IGlVram
         _destRtH = h;
     }
 
-    public void SampleBarrier() { }
+    public void SampleBarrier()
+    {
+    }
 
     public void WriteRect(int x, int y, int w, int h, ReadOnlySpan<ushort> px)
     {
@@ -174,12 +191,12 @@ public sealed class Gl21Vram : IGlVram
             PixelFormat.Rgba, PixelType.UnsignedShort1555Rev, px);
         _gl.ActiveTexture(TextureUnit.Texture0);
 
-        int s = GlVram.Scale;
+        var s = GlVram.Scale;
         BlitScaled(_stageTex, VramShadow.Width, VramShadow.Height, _fbo, GlVram.Width, GlVram.Height,
             x, y, w, h, x * s, y * s, w * s, h * s);
     }
 
-    unsafe void BlitScaled(uint srcTex, int srcW, int srcH, uint dstFbo, int dstW, int dstH,
+    private unsafe void BlitScaled(uint srcTex, int srcW, int srcH, uint dstFbo, int dstW, int dstH,
         int sx, int sy, int sw, int sh, int dx, int dy, int dw, int dh)
     {
         if (sw <= 0 || sh <= 0 || dw <= 0 || dh <= 0) return;
@@ -197,7 +214,10 @@ public sealed class Gl21Vram : IGlVram
         _gl.ActiveTexture(TextureUnit.Texture0);
         _gl.BindTexture(TextureTarget.Texture2D, srcTex);
 
-        if (_hasVao) _gl.BindVertexArray(_blitVao);
+        if (_hasVao)
+        {
+            _gl.BindVertexArray(_blitVao);
+        }
         else
         {
             _gl.BindBuffer(BufferTargetARB.ArrayBuffer, _blitVbo);
@@ -213,8 +233,8 @@ public sealed class Gl21Vram : IGlVram
     public void Fill(int x, int y, int w, int h, ushort color15)
     {
         float r = (color15 & 0x1F) / 31f, g = ((color15 >> 5) & 0x1F) / 31f, b = ((color15 >> 10) & 0x1F) / 31f;
-        float a = (color15 & 0x8000) != 0 ? 1f : 0f;
-        int s = GlVram.Scale;
+        var a = (color15 & 0x8000) != 0 ? 1f : 0f;
+        var s = GlVram.Scale;
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
         _gl.Enable(EnableCap.ScissorTest);
         _gl.Scissor(x * s, y * s, (uint)Math.Max(0, w * s), (uint)Math.Max(0, h * s));
@@ -225,7 +245,7 @@ public sealed class Gl21Vram : IGlVram
 
     public void CopyRect(int sx, int sy, int dx, int dy, int w, int h)
     {
-        int s = GlVram.Scale;
+        var s = GlVram.Scale;
         BlitQuad(_tex, GlVram.Width, GlVram.Height, _scratchFbo, GlVram.Width, GlVram.Height,
             sx * s, sy * s, sx * s, sy * s, w * s, h * s);
         BlitQuad(_scratchTex, GlVram.Width, GlVram.Height, _fbo, GlVram.Width, GlVram.Height,
@@ -237,24 +257,24 @@ public sealed class Gl21Vram : IGlVram
     {
         if (w <= 0 || h <= 0) return;
 
-        int s = GlVram.Scale;
-        int rowBytes = w * s * 4;
+        var s = GlVram.Scale;
+        var rowBytes = w * s * 4;
         if (_readBuf.Length < rowBytes) _readBuf = new byte[rowBytes];
 
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
         _gl.Disable(EnableCap.ScissorTest);
         _gl.PixelStore(PixelStoreParameter.PackAlignment, 1);
 
-        for (int row = 0; row < h; row++)
+        for (var row = 0; row < h; row++)
         {
             _gl.ReadPixels(x * s, (y + row) * s, (uint)(w * s), 1, PixelFormat.Rgba, PixelType.UnsignedByte,
                 _readBuf.AsSpan(0, rowBytes));
 
-            for (int col = 0; col < w; col++)
+            for (var col = 0; col < w; col++)
             {
-                int o = col * s * 4;
+                var o = col * s * 4;
                 int r5 = _readBuf[o] >> 3, g5 = _readBuf[o + 1] >> 3, b5 = _readBuf[o + 2] >> 3;
-                int a = _readBuf[o + 3] >= 128 ? 1 : 0;
+                var a = _readBuf[o + 3] >= 128 ? 1 : 0;
                 dst[row * w + col] = (ushort)(r5 | (g5 << 5) | (b5 << 10) | (a << 15));
             }
         }

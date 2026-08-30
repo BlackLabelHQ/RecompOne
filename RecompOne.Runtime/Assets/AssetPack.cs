@@ -5,15 +5,15 @@ namespace RecompOne.Runtime.Assets;
 
 public sealed class AssetPack : IDisposable
 {
-    static readonly JsonSerializerOptions Json = new()
+    private static readonly JsonSerializerOptions Json = new()
     {
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
-        AllowTrailingCommas = true,
+        AllowTrailingCommas = true
     };
 
-    readonly string _root;
-    readonly bool _isZip;
+    private readonly string _root;
+    private readonly bool _isZip;
 
     public PackManifest Manifest { get; }
     public string Path => _root;
@@ -22,7 +22,7 @@ public sealed class AssetPack : IDisposable
     public bool Enabled { get; set; } = true;
     public string? LoadError { get; internal set; }
 
-    AssetPack(string root, bool isZip, PackManifest manifest)
+    private AssetPack(string root, bool isZip, PackManifest manifest)
     {
         _root = root;
         _isZip = isZip;
@@ -34,10 +34,10 @@ public sealed class AssetPack : IDisposable
         error = null;
         try
         {
-            bool isZip = File.Exists(path) &&
-                         System.IO.Path.GetExtension(path).Equals(".zip", StringComparison.OrdinalIgnoreCase);
+            var isZip = File.Exists(path) &&
+                        System.IO.Path.GetExtension(path).Equals(".zip", StringComparison.OrdinalIgnoreCase);
 
-            byte[]? manifestBytes = isZip ? ReadFromZip(path, "pack.json") : ReadFromFolder(path, "pack.json");
+            var manifestBytes = isZip ? ReadFromZip(path, "pack.json") : ReadFromFolder(path, "pack.json");
             if (manifestBytes == null)
             {
                 error = "pack.json not found";
@@ -50,11 +50,13 @@ public sealed class AssetPack : IDisposable
                 error = "pack.json is empty or invalid";
                 return null;
             }
+
             if (string.IsNullOrWhiteSpace(manifest.Id))
             {
                 error = "pack.json has no 'id'";
                 return null;
             }
+
             if (manifest.FormatVersion > 1)
             {
                 error = $"pack format {manifest.FormatVersion} is newer than this runtime supports (1)";
@@ -70,13 +72,13 @@ public sealed class AssetPack : IDisposable
         }
     }
 
-    static byte[]? ReadFromFolder(string root, string rel)
+    private static byte[]? ReadFromFolder(string root, string rel)
     {
-        string full = SafeCombine(root, rel);
+        var full = SafeCombine(root, rel);
         return File.Exists(full) ? File.ReadAllBytes(full) : null;
     }
 
-    static byte[]? ReadFromZip(string zipPath, string rel)
+    private static byte[]? ReadFromZip(string zipPath, string rel)
     {
         using var zip = ZipFile.OpenRead(zipPath);
         var entry = zip.GetEntry(rel) ?? zip.Entries.FirstOrDefault(e =>
@@ -88,11 +90,11 @@ public sealed class AssetPack : IDisposable
         return ms.ToArray();
     }
 
-    static string SafeCombine(string root, string rel)
+    private static string SafeCombine(string root, string rel)
     {
         rel = rel.Replace('\\', '/').TrimStart('/');
-        string full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, rel));
-        string rootFull = System.IO.Path.GetFullPath(root);
+        var full = System.IO.Path.GetFullPath(System.IO.Path.Combine(root, rel));
+        var rootFull = System.IO.Path.GetFullPath(root);
         if (!full.StartsWith(rootFull, StringComparison.Ordinal))
             throw new UnauthorizedAccessException($"path escapes the pack: {rel}");
         return full;
@@ -101,7 +103,7 @@ public sealed class AssetPack : IDisposable
     public byte[]? ReadAsset(string relativePath)
     {
         if (string.IsNullOrWhiteSpace(relativePath)) return null;
-        string rel = relativePath.Replace('\\', '/').TrimStart('/');
+        var rel = relativePath.Replace('\\', '/').TrimStart('/');
         if (rel.Contains("..", StringComparison.Ordinal)) return null;
         try
         {
@@ -116,27 +118,42 @@ public sealed class AssetPack : IDisposable
 
     public IEnumerable<string> ListAssets(string directory)
     {
-        string prefix = directory.Replace('\\', '/').Trim('/') + "/";
+        var prefix = directory.Replace('\\', '/').Trim('/') + "/";
         if (_isZip)
         {
             ZipArchive zip;
-            try { zip = ZipFile.OpenRead(_root); }
-            catch { yield break; }
+            try
+            {
+                zip = ZipFile.OpenRead(_root);
+            }
+            catch
+            {
+                yield break;
+            }
+
             using (zip)
             {
                 foreach (var e in zip.Entries)
                 {
-                    string name = e.FullName.Replace('\\', '/');
+                    var name = e.FullName.Replace('\\', '/');
                     if (e.Length > 0 && name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
                         yield return name;
                 }
             }
+
             yield break;
         }
 
         string full;
-        try { full = SafeCombine(_root, directory); }
-        catch { yield break; }
+        try
+        {
+            full = SafeCombine(_root, directory);
+        }
+        catch
+        {
+            yield break;
+        }
+
         if (!Directory.Exists(full)) yield break;
 
         foreach (var file in Directory.EnumerateFiles(full))
@@ -150,9 +167,12 @@ public sealed class AssetPack : IDisposable
         var ids = g.All().ToArray();
         if (ids.Length == 0) return true;
         foreach (var id in ids)
-            if (id.Equals(gameId, StringComparison.OrdinalIgnoreCase)) return true;
+            if (id.Equals(gameId, StringComparison.OrdinalIgnoreCase))
+                return true;
         return !g.Strict;
     }
 
-    public void Dispose() { }
+    public void Dispose()
+    {
+    }
 }

@@ -12,7 +12,7 @@ public sealed class MipsInstruction : IDisposable
     public int Rs => (int)((Word >> 21) & 0x1F);
     public int Rt => (int)((Word >> 16) & 0x1F);
     public int Rd => (int)((Word >> 11) & 0x1F);
-    public int Sa => (int)((Word >>  6) & 0x1F);
+    public int Sa => (int)((Word >> 6) & 0x1F);
     public short ImmS => (short)(Word & 0xFFFF);
     public ushort ImmU => (ushort)(Word & 0xFFFF);
     public uint InstrIndex => Word & 0x3FFFFFFu;
@@ -29,15 +29,18 @@ public sealed class MipsInstruction : IDisposable
     public bool IsImplemented => _rab.IsImplemented;
     public bool IsReturn => _rab.IsReturn;
     public bool IsFunctionCall => _rab.IsFunctionCall;
-    public bool IsUnconditionalBranch=> _rab.IsUnconditionalBranch;
+    public bool IsUnconditionalBranch => _rab.IsUnconditionalBranch;
     public bool IsJumptableJump => _rab.IsJumptableJump;
     public bool HasDelaySlot => _rab.HasDelaySlot;
 
-    public bool IsJump => UniqueId is RabbitizerInstrId.cpu_j   or RabbitizerInstrId.r3000gte_INVALID;
+    public bool IsJump => UniqueId is RabbitizerInstrId.cpu_j or RabbitizerInstrId.r3000gte_INVALID;
     public bool IsRegisterJump => UniqueId is RabbitizerInstrId.cpu_jr or RabbitizerInstrId.cpu_jalr;
     public bool IsJrRegister => UniqueId == RabbitizerInstrId.cpu_jr;
     public bool IsBranch => !IsJump && HasDelaySlot && !IsFunctionCall;
-    public bool IsLoad => UniqueId is RabbitizerInstrId.cpu_lw  or RabbitizerInstrId.cpu_lh or RabbitizerInstrId.cpu_lhu or RabbitizerInstrId.cpu_lb or RabbitizerInstrId.cpu_lbu or RabbitizerInstrId.cpu_lwl or RabbitizerInstrId.cpu_lwr;
+
+    public bool IsLoad => UniqueId is RabbitizerInstrId.cpu_lw or RabbitizerInstrId.cpu_lh or RabbitizerInstrId.cpu_lhu
+        or RabbitizerInstrId.cpu_lb or RabbitizerInstrId.cpu_lbu or RabbitizerInstrId.cpu_lwl
+        or RabbitizerInstrId.cpu_lwr;
 
     public MipsInstruction(uint word, uint vram,
         RabbitizerInstrCategory category = RabbitizerInstrCategory.R3000Gte)
@@ -47,9 +50,18 @@ public sealed class MipsInstruction : IDisposable
         _rab = new Instruction(word, vram, category);
     }
 
-    public string Disassemble(string? immOverride = null) => _rab.Disassemble(immOverride);
+    public string Disassemble(string? immOverride = null)
+    {
+        return _rab.Disassemble(immOverride);
+    }
 
-    public override string ToString() => _rab.ToString();
+    public override string ToString()
+    {
+        return _rab.ToString();
+    }
 
-    public void Dispose() => _rab.Dispose();
+    public void Dispose()
+    {
+        _rab.Dispose();
+    }
 }

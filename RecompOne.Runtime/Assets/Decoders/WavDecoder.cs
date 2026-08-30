@@ -2,15 +2,15 @@ namespace RecompOne.Runtime.Assets.Decoders;
 
 public sealed class WavDecoder : IPcmDecoder
 {
-    readonly Stream _s;
-    readonly long _dataStart;
-    readonly long _dataBytes;
-    readonly int _bits;
-    readonly bool _float;
-    readonly int _blockAlign;
-    readonly byte[] _buf;
+    private readonly Stream _s;
+    private readonly long _dataStart;
+    private readonly long _dataBytes;
+    private readonly int _bits;
+    private readonly bool _float;
+    private readonly int _blockAlign;
+    private readonly byte[] _buf;
 
-    long _framePos;
+    private long _framePos;
 
     public int SampleRate { get; }
     public int Channels { get; }
@@ -34,9 +34,9 @@ public sealed class WavDecoder : IPcmDecoder
         while (_s.Position + 8 <= _s.Length)
         {
             ReadExact(ch);
-            string id = $"{(char)ch[0]}{(char)ch[1]}{(char)ch[2]}{(char)ch[3]}";
-            uint size = BitConverter.ToUInt32(ch[4..]);
-            long next = _s.Position + size + (size & 1);
+            var id = $"{(char)ch[0]}{(char)ch[1]}{(char)ch[2]}{(char)ch[3]}";
+            var size = BitConverter.ToUInt32(ch[4..]);
+            var next = _s.Position + size + (size & 1);
 
             if (id == "fmt ")
             {
@@ -80,12 +80,12 @@ public sealed class WavDecoder : IPcmDecoder
         _s.Position = _dataStart;
     }
 
-    void ReadExact(Span<byte> dst)
+    private void ReadExact(Span<byte> dst)
     {
-        int done = 0;
+        var done = 0;
         while (done < dst.Length)
         {
-            int n = _s.Read(dst[done..]);
+            var n = _s.Read(dst[done..]);
             if (n <= 0) throw new EndOfStreamException();
             done += n;
         }
@@ -93,63 +93,67 @@ public sealed class WavDecoder : IPcmDecoder
 
     public int ReadFrames(short[] dst, int frames)
     {
-        int produced = 0;
+        var produced = 0;
         while (produced < frames)
         {
-            int want = Math.Min(frames - produced, _buf.Length / _blockAlign);
-            long remaining = TotalFrames - _framePos;
+            var want = Math.Min(frames - produced, _buf.Length / _blockAlign);
+            var remaining = TotalFrames - _framePos;
             if (remaining <= 0) break;
             if (want > remaining) want = (int)remaining;
 
-            int bytes = want * _blockAlign;
-            int got = 0;
+            var bytes = want * _blockAlign;
+            var got = 0;
             while (got < bytes)
             {
-                int n = _s.Read(_buf, got, bytes - got);
+                var n = _s.Read(_buf, got, bytes - got);
                 if (n <= 0) break;
                 got += n;
             }
-            int gotFrames = got / _blockAlign;
+
+            var gotFrames = got / _blockAlign;
             if (gotFrames <= 0) break;
 
             Convert(_buf, gotFrames, dst, produced * Channels);
             produced += gotFrames;
             _framePos += gotFrames;
         }
+
         return produced;
     }
 
-    void Convert(byte[] src, int frames, short[] dst, int dstIndex)
+    private void Convert(byte[] src, int frames, short[] dst, int dstIndex)
     {
-        int n = frames * Channels;
+        var n = frames * Channels;
         switch (_bits)
         {
             case 8:
-                for (int i = 0; i < n; i++)
+                for (var i = 0; i < n; i++)
                     dst[dstIndex + i] = (short)((src[i] - 128) << 8);
                 break;
             case 16:
-                for (int i = 0; i < n; i++)
+                for (var i = 0; i < n; i++)
                     dst[dstIndex + i] = BitConverter.ToInt16(src, i * 2);
                 break;
             case 24:
-                for (int i = 0; i < n; i++)
+                for (var i = 0; i < n; i++)
                 {
-                    int v = src[i * 3] | (src[i * 3 + 1] << 8) | ((sbyte)src[i * 3 + 2] << 16);
+                    var v = src[i * 3] | (src[i * 3 + 1] << 8) | ((sbyte)src[i * 3 + 2] << 16);
                     dst[dstIndex + i] = (short)(v >> 8);
                 }
+
                 break;
             default:
                 if (_float)
-                    for (int i = 0; i < n; i++)
+                    for (var i = 0; i < n; i++)
                     {
-                        float f = BitConverter.ToSingle(src, i * 4);
-                        int v = (int)(f * 32767f);
+                        var f = BitConverter.ToSingle(src, i * 4);
+                        var v = (int)(f * 32767f);
                         dst[dstIndex + i] = (short)(v < -32768 ? -32768 : v > 32767 ? 32767 : v);
                     }
                 else
-                    for (int i = 0; i < n; i++)
+                    for (var i = 0; i < n; i++)
                         dst[dstIndex + i] = (short)(BitConverter.ToInt32(src, i * 4) >> 16);
+
                 break;
         }
     }
@@ -162,5 +166,8 @@ public sealed class WavDecoder : IPcmDecoder
         _s.Position = _dataStart + frame * _blockAlign;
     }
 
-    public void Dispose() => _s.Dispose();
+    public void Dispose()
+    {
+        _s.Dispose();
+    }
 }

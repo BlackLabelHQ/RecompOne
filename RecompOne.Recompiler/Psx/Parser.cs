@@ -26,13 +26,14 @@ public static class Parser
             BssAddress = reader.ReadUInt32(),
             BssSize = reader.ReadUInt32(),
             InitialSP = reader.ReadUInt32(),
-            SpOffset = reader.ReadUInt32(),
+            SpOffset = reader.ReadUInt32()
         };
 
         reader.ReadBytes(20); // reserved bb
         var regionBytes = reader.ReadBytes(0x34);
-        int regionLen = Array.IndexOf(regionBytes, (byte)0);
-        exe.Region = System.Text.Encoding.ASCII.GetString(regionBytes, 0, regionLen < 0 ? regionBytes.Length : regionLen).Trim();
+        var regionLen = Array.IndexOf(regionBytes, (byte)0);
+        exe.Region = System.Text.Encoding.ASCII
+            .GetString(regionBytes, 0, regionLen < 0 ? regionBytes.Length : regionLen).Trim();
 
         exe.Code = data[0x800..(0x800 + (int)exe.TextSize)];
         return exe;

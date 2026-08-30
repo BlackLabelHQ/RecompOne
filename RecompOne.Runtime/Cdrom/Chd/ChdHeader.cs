@@ -16,7 +16,7 @@ internal enum ChdCompression
     Self1 = 10,
     ParentSelf = 11,
     Parent0 = 12,
-    Parent1 = 13,
+    Parent1 = 13
 }
 
 internal readonly record struct ChdMapEntry(ChdCompression Compression, uint Length, ulong Offset, ushort Crc);
@@ -40,7 +40,7 @@ internal sealed class ChdHeader
     public static ChdHeader ReadV5(ReadOnlySpan<byte> raw)
     {
         var compressors = new uint[4];
-        for (int i = 0; i < 4; i++)
+        for (var i = 0; i < 4; i++)
             compressors[i] = ChdBig.U32(raw, 0x10 + i * 4);
 
         return new ChdHeader
@@ -51,34 +51,44 @@ internal sealed class ChdHeader
             MapOffset = ChdBig.U64(raw, 0x28),
             MetaOffset = ChdBig.U64(raw, 0x30),
             HunkBytes = ChdBig.U32(raw, 0x38),
-            UnitBytes = ChdBig.U32(raw, 0x3C),
+            UnitBytes = ChdBig.U32(raw, 0x3C)
         };
     }
 }
 
 internal static class ChdBig
 {
-    public static ushort U16(ReadOnlySpan<byte> b, int o) => (ushort)((b[o] << 8) | b[o + 1]);
+    public static ushort U16(ReadOnlySpan<byte> b, int o)
+    {
+        return (ushort)((b[o] << 8) | b[o + 1]);
+    }
 
-    public static uint U24(ReadOnlySpan<byte> b, int o) => (uint)((b[o] << 16) | (b[o + 1] << 8) | b[o + 2]);
+    public static uint U24(ReadOnlySpan<byte> b, int o)
+    {
+        return (uint)((b[o] << 16) | (b[o + 1] << 8) | b[o + 2]);
+    }
 
-    public static uint U32(ReadOnlySpan<byte> b, int o) =>
-        ((uint)b[o] << 24) | ((uint)b[o + 1] << 16) | ((uint)b[o + 2] << 8) | b[o + 3];
+    public static uint U32(ReadOnlySpan<byte> b, int o)
+    {
+        return ((uint)b[o] << 24) | ((uint)b[o + 1] << 16) | ((uint)b[o + 2] << 8) | b[o + 3];
+    }
 
     public static ulong U48(ReadOnlySpan<byte> b, int o)
     {
         ulong value = 0;
-        for (int i = 0; i < 6; i++) value = (value << 8) | b[o + i];
+        for (var i = 0; i < 6; i++) value = (value << 8) | b[o + i];
         return value;
     }
 
     public static ulong U64(ReadOnlySpan<byte> b, int o)
     {
         ulong value = 0;
-        for (int i = 0; i < 8; i++) value = (value << 8) | b[o + i];
+        for (var i = 0; i < 8; i++) value = (value << 8) | b[o + i];
         return value;
     }
 
-    public static uint Tag(string s) =>
-        ((uint)s[0] << 24) | ((uint)s[1] << 16) | ((uint)s[2] << 8) | s[3];
+    public static uint Tag(string s)
+    {
+        return ((uint)s[0] << 24) | ((uint)s[1] << 16) | ((uint)s[2] << 8) | s[3];
+    }
 }

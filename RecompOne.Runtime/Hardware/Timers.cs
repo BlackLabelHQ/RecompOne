@@ -6,59 +6,70 @@ namespace RecompOne.Runtime.Hardware;
 //but it should work most of times, i have to revisit this if it starts causing issues
 public sealed class Timers
 {
-    const uint Base = 0x1F801100u;
-    const uint End = 0x1F801130u;
+    private const uint Base = 0x1F801100u;
+    private const uint End = 0x1F801130u;
 
-    const double SysClock = 33868800.0;
-    const double HblankHz = 15780.0;
-    const double DotClock = 5322240.0; 
+    private const double SysClock = 33868800.0;
+    private const double HblankHz = 15780.0;
+    private const double DotClock = 5322240.0;
 
-    readonly Stopwatch _clock = Stopwatch.StartNew();
-    readonly double[] _resetT = new double[3];
-    readonly ushort[] _mode = new ushort[3];
-    readonly ushort[] _target = new ushort[3];
+    private readonly Stopwatch _clock = Stopwatch.StartNew();
+    private readonly double[] _resetT = new double[3];
+    private readonly ushort[] _mode = new ushort[3];
+    private readonly ushort[] _target = new ushort[3];
 
-    public static bool InRange(uint phys) => phys >= Base && phys < End;
+    public static bool InRange(uint phys)
+    {
+        return phys >= Base && phys < End;
+    }
 
     public bool TryRead(uint phys, out uint value)
     {
         value = 0;
         if (!InRange(phys)) return false;
-        int t = (int)((phys - Base) / 0x10u);
+        var t = (int)((phys - Base) / 0x10u);
         switch ((phys - Base) & 0xFu)
         {
             case 0x0: value = CurrentValue(t); break;
             case 0x4: value = _mode[t]; break;
             case 0x8: value = _target[t]; break;
         }
+
         return true;
     }
 
     public bool TryWrite(uint phys, uint value)
     {
         if (!InRange(phys)) return false;
-        int t = (int)((phys - Base) / 0x10u);
+        var t = (int)((phys - Base) / 0x10u);
         switch ((phys - Base) & 0xFu)
         {
             case 0x0: _resetT[t] = _clock.Elapsed.TotalSeconds; break;
-            case 0x4: _mode[t] = (ushort)value; _resetT[t] = _clock.Elapsed.TotalSeconds; break;
+            case 0x4:
+                _mode[t] = (ushort)value;
+                _resetT[t] = _clock.Elapsed.TotalSeconds;
+                break;
             case 0x8: _target[t] = (ushort)value; break;
         }
+
         return true;
     }
 
-    ushort CurrentValue(int t)
+    private ushort CurrentValue(int t)
     {
-        double elapsed = _clock.Elapsed.TotalSeconds - _resetT[t];
-        long ticks = (long)(elapsed * Rate(t));
+        var elapsed = _clock.Elapsed.TotalSeconds - _resetT[t];
+        var ticks = (long)(elapsed * Rate(t));
         return (ushort)(ticks & 0xFFFF);
     }
-    
-    double Rate(int t) => t switch
+
+    private double Rate(int t)
     {
-        0 => (_mode[0] & 0x100u) != 0 ? DotClock : SysClock,
-        1 => (_mode[1] & 0x100u) != 0 ? HblankHz : SysClock,
-        2 => (_mode[2] & 0x200u) != 0 ? SysClock / 8.0 : SysClock,
-        _ => SysClock,
-    };
+        return t switch
+        {
+            0 => (_mode[0] & 0x100u) != 0 ? DotClock : SysClock,
+            1 => (_mode[1] & 0x100u) != 0 ? HblankHz : SysClock,
+            2 => (_mode[2] & 0x200u) != 0 ? SysClock / 8.0 : SysClock,
+            _ => SysClock
+        };
+    }
 }

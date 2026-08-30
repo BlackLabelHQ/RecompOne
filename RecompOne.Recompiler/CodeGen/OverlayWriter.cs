@@ -13,19 +13,27 @@ namespace RecompOne.Recompiler.CodeGen;
 
 public static class OverlayWriter
 {
-    record OverlayResult(string Name, List<MipsFunction> Functions, int LbaStart, uint Base, uint Size, MipsInstruction[] Instructions);
+    private record OverlayResult(
+        string Name,
+        List<MipsFunction> Functions,
+        int LbaStart,
+        uint Base,
+        uint Size,
+        MipsInstruction[] Instructions);
 
     public static void Write(RecompOneConfig config, DiscFs fs, string outDir)
     {
-        string className = SafeIdentifier(config.Game.Name);
+        var className = SafeIdentifier(config.Game.Name);
 
         Console.WriteLine("[Recompiler] reading SYSTEM.CNF");
         var sysCfg = SystemCfg.Parse(fs);
-        Console.WriteLine($"[Recompiler] SYSTEM.CNF: BOOT={sysCfg.BootExe}  TCB={sysCfg.Tcb}  EVENT={sysCfg.Event}  STACK=0x{sysCfg.Stack:X8}");
+        Console.WriteLine(
+            $"[Recompiler] SYSTEM.CNF: BOOT={sysCfg.BootExe}  TCB={sysCfg.Tcb}  EVENT={sysCfg.Event}  STACK=0x{sysCfg.Stack:X8}");
 
         var mainExe = Parser.ParseExe(fs, sysCfg.BootExe);
         Console.WriteLine($"[Recompiler] PS-EXE: {mainExe.Region}");
-        Console.WriteLine($"[Recompiler] PS-EXE: PC=0x{mainExe.InitialPC:X8}  GP=0x{mainExe.InitialGP:X8}  SP=0x{mainExe.InitialSP:X8}  load=0x{mainExe.Destination:X8} ");
+        Console.WriteLine(
+            $"[Recompiler] PS-EXE: PC=0x{mainExe.InitialPC:X8}  GP=0x{mainExe.InitialGP:X8}  SP=0x{mainExe.InitialSP:X8}  load=0x{mainExe.Destination:X8} ");
 
         var overlayResults = new List<OverlayResult> { AnalyzeMain(config, mainExe) };
 
@@ -48,7 +56,7 @@ public static class OverlayWriter
         WriteAll(config, outDir, className, mainExe, sysCfg, overlayResults, allFuncs);
     }
 
-    static OverlayResult AnalyzeMain(RecompOneConfig config, PsxExe mainExe)
+    private static OverlayResult AnalyzeMain(RecompOneConfig config, PsxExe mainExe)
     {
         FunctionInfo? rawElf = null;
         if (config.Elf != null)
@@ -56,7 +64,8 @@ public static class OverlayWriter
             if (!File.Exists(config.Elf))
                 throw new FileNotFoundException($"Main ELF not found: {config.Elf}");
 
-            Console.WriteLine($"[Recompiler] Processing main executable with ELF: {config.Elf} (WARNING: 'elf' is deprecated, prefer 'map'/'funcMap')");
+            Console.WriteLine(
+                $"[Recompiler] Processing main executable with ELF: {config.Elf} (WARNING: 'elf' is deprecated, prefer 'map'/'funcMap')");
             rawElf = ElfReader.Read(config.Elf);
         }
 
@@ -77,7 +86,7 @@ public static class OverlayWriter
                 throw new FileNotFoundException($"Main function map not found: {config.FuncMap}");
 
             Console.WriteLine($"[Recompiler] Processing main executable with function map: {config.FuncMap}");
-            uint funcMapBase = rawElf?.TextBase ?? rawMap?.LoadAddress ?? mainExe.Destination;
+            var funcMapBase = rawElf?.TextBase ?? rawMap?.LoadAddress ?? mainExe.Destination;
             rawFuncMap = FunctionMapLoader.Load(config.FuncMap, funcMapBase, mainExe.Code);
         }
 
@@ -89,11 +98,14 @@ public static class OverlayWriter
         {
             elfInfo = FunctionMapLoader.Merge(rawElf, rawMap, rawFuncMap);
             if (elfInfo.TextData.Length == 0) elfInfo.TextData = mainExe.Code;
-            Console.WriteLine($"[Recompiler] main function info: TextBase=0x{elfInfo.TextBase:X8} Functions={elfInfo.Functions.Count}");
+            Console.WriteLine(
+                $"[Recompiler] main function info: TextBase=0x{elfInfo.TextBase:X8} Functions={elfInfo.Functions.Count}");
 
             instrs = MipsDisasm.Disassemble(mainExe.Code, elfInfo.TextBase);
-            
-            funcs = elfInfo.Functions.Count > 0 ? FunctionDetector.DetectFromElf(instrs, elfInfo, "main") : FunctionDetector.DetectFromScan(instrs, elfInfo.LoadAddress, "main");
+
+            funcs = elfInfo.Functions.Count > 0
+                ? FunctionDetector.DetectFromElf(instrs, elfInfo, "main")
+                : FunctionDetector.DetectFromScan(instrs, elfInfo.LoadAddress, "main");
         }
         else
         {
@@ -104,7 +116,7 @@ public static class OverlayWriter
             {
                 TextBase = mainExe.Destination,
                 LoadAddress = mainExe.Destination,
-                TextData = mainExe.Code,
+                TextData = mainExe.Code
             };
         }
 
@@ -115,54 +127,72 @@ public static class OverlayWriter
         }
 
         FunctionPipeline.Run(funcs, instrs, elfInfo, "main",
-            new PipelineOptions(config.Functions, config.LinearSweep, config.PointerScan, config.Stubs, config.Ignored));
+            new PipelineOptions(config.Functions, config.LinearSweep, config.PointerScan, config.Stubs,
+                config.Ignored));
 
         return new OverlayResult("main", funcs, -1, 0, 0, instrs);
     }
 
-    public sealed record OverlayAnalysis(List<MipsFunction> Functions, MipsInstruction[] Instructions, FunctionInfo ElfInfo, byte[] DiscBin, int Lba, uint Base);
+    public sealed record OverlayAnalysis(
+        List<MipsFunction> Functions,
+        MipsInstruction[] Instructions,
+        FunctionInfo ElfInfo,
+        byte[] DiscBin,
+        int Lba,
+        uint Base);
 
     public static OverlayAnalysis? AnalyzeOverlay(RecompOneConfig config, OverlayConfig overlayConfig, DiscFs fs)
     {
-        bool noSymbols = overlayConfig.Elf == null && overlayConfig.Map == null && overlayConfig.FuncMap == null;
+        var noSymbols = overlayConfig.Elf == null && overlayConfig.Map == null && overlayConfig.FuncMap == null;
         if (noSymbols && !((overlayConfig.LinearSweep ?? config.LinearSweep) && overlayConfig.Base != null))
         {
-            Console.WriteLine($"[Recompiler] WARNING: Overlay '{overlayConfig.Name}' has no source defined, this will be skiped");
+            Console.WriteLine(
+                $"[Recompiler] WARNING: Overlay '{overlayConfig.Name}' has no source defined, this will be skiped");
             return null;
         }
+
         if (overlayConfig.Elf != null && !File.Exists(overlayConfig.Elf))
         {
-            Console.WriteLine($"[Recompiler] WARNING: ELF file not found for overlay '{overlayConfig.Name}' ({overlayConfig.Elf}), this will be skiped.");
+            Console.WriteLine(
+                $"[Recompiler] WARNING: ELF file not found for overlay '{overlayConfig.Name}' ({overlayConfig.Elf}), this will be skiped.");
             return null;
         }
+
         if (overlayConfig.Map != null && !File.Exists(overlayConfig.Map))
         {
-            Console.WriteLine($"[Recompiler] WARNING: map file not found for overlay '{overlayConfig.Name}' ({overlayConfig.Map}), this will be skiped.");
+            Console.WriteLine(
+                $"[Recompiler] WARNING: map file not found for overlay '{overlayConfig.Name}' ({overlayConfig.Map}), this will be skiped.");
             return null;
         }
+
         if (overlayConfig.FuncMap != null)
         {
             if (!File.Exists(overlayConfig.FuncMap))
             {
-                Console.WriteLine($"[Recompiler] WARNING: function map not found for overlay '{overlayConfig.Name}' ({overlayConfig.FuncMap}), this will be skiped.");
+                Console.WriteLine(
+                    $"[Recompiler] WARNING: function map not found for overlay '{overlayConfig.Name}' ({overlayConfig.FuncMap}), this will be skiped.");
                 return null;
             }
+
             if (overlayConfig.Elf == null && overlayConfig.Map == null && overlayConfig.Base == null)
             {
-                Console.WriteLine($"[Recompiler] WARNING: overlay '{overlayConfig.Name}' uses 'funcMap' alone but has no 'base' address defined, this will be skiped.");
+                Console.WriteLine(
+                    $"[Recompiler] WARNING: overlay '{overlayConfig.Name}' uses 'funcMap' alone but has no 'base' address defined, this will be skiped.");
                 return null;
             }
         }
 
         if (overlayConfig.Elf != null)
-            Console.WriteLine($"[Recompiler] processing the overlay {overlayConfig.Name} (WARNING: 'elf' is deprecated, prefer 'map'/'funcMap')");
+            Console.WriteLine(
+                $"[Recompiler] processing the overlay {overlayConfig.Name} (WARNING: 'elf' is deprecated, prefer 'map'/'funcMap')");
         else
             Console.WriteLine($"[Recompiler] processing the overlay {overlayConfig.Name}");
 
         var (discBin, overlayLba) = ResolveOverlay(fs, overlayConfig);
         if (discBin == null)
         {
-            Console.WriteLine($"[Recompiler] WARNING: could not resolve disc data for overlay '{overlayConfig.Name}', skipping");
+            Console.WriteLine(
+                $"[Recompiler] WARNING: could not resolve disc data for overlay '{overlayConfig.Name}', skipping");
             return null;
         }
 
@@ -172,7 +202,7 @@ public static class OverlayWriter
         FunctionInfo? rawFuncMap = null;
         if (overlayConfig.FuncMap != null)
         {
-            uint funcMapBase = rawElf?.TextBase ?? rawMap?.LoadAddress ?? Convert.ToUInt32(overlayConfig.Base, 16);
+            var funcMapBase = rawElf?.TextBase ?? rawMap?.LoadAddress ?? Convert.ToUInt32(overlayConfig.Base, 16);
             rawFuncMap = FunctionMapLoader.Load(overlayConfig.FuncMap, funcMapBase, discBin);
         }
 
@@ -191,7 +221,9 @@ public static class OverlayWriter
         var instrs = MipsDisasm.Disassemble(discBin, elfInfo.TextBase);
 
         //elf is weird and doest properly provide all functions (specially asm) so resort to checking it
-        var funcs = elfInfo.Functions.Count > 0 ? FunctionDetector.DetectFromElf(instrs, elfInfo, overlayConfig.Name) : FunctionDetector.DetectFromScan(instrs, elfInfo.LoadAddress, overlayConfig.Name);
+        var funcs = elfInfo.Functions.Count > 0
+            ? FunctionDetector.DetectFromElf(instrs, elfInfo, overlayConfig.Name)
+            : FunctionDetector.DetectFromScan(instrs, elfInfo.LoadAddress, overlayConfig.Name);
 
         FunctionPipeline.Run(funcs, instrs, elfInfo, overlayConfig.Name,
             new PipelineOptions(
@@ -201,25 +233,30 @@ public static class OverlayWriter
                 overlayConfig.Stubs.Concat(config.Stubs),
                 overlayConfig.Ignored.Concat(config.Ignored)));
 
-            
-        uint ovlBase = overlayConfig.Base != null ? Convert.ToUInt32(overlayConfig.Base, 16) + (uint)overlayConfig.Rebase : 0;
+
+        var ovlBase = overlayConfig.Base != null
+            ? Convert.ToUInt32(overlayConfig.Base, 16) + (uint)overlayConfig.Rebase
+            : 0;
         return new OverlayAnalysis(funcs, instrs, elfInfo, discBin, overlayLba, ovlBase);
     }
 
-    static void WriteAll(RecompOneConfig config, string outDir, string className, PsxExe mainExe, SystemCfg sysCfg, List<OverlayResult> overlayResults, List<MipsFunction> allFuncs)
+    private static void WriteAll(RecompOneConfig config, string outDir, string className, PsxExe mainExe,
+        SystemCfg sysCfg, List<OverlayResult> overlayResults, List<MipsFunction> allFuncs)
     {
         var uniqueAddrs = allFuncs.GroupBy(f => f.Start).Where(g => g.Count() == 1).Select(g => g.Key).ToHashSet();
-        var knownFuncs = allFuncs.Where(f => uniqueAddrs.Contains(f.Start)).ToDictionary(f => f.Start, f => $"{className}.{f.EmittedName}");
+        var knownFuncs = allFuncs.Where(f => uniqueAddrs.Contains(f.Start))
+            .ToDictionary(f => f.Start, f => $"{className}.{f.EmittedName}");
 
-        int conflictCount = allFuncs.Count - knownFuncs.Count;
+        var conflictCount = allFuncs.Count - knownFuncs.Count;
         Console.WriteLine($"[Recompiler] total functions: {allFuncs.Count}");
 
         string? mainCall = null;
         if (config.Main != null)
         {
-            uint mainAddr = Convert.ToUInt32(config.Main, 16);
+            var mainAddr = Convert.ToUInt32(config.Main, 16);
             var mainFunc = allFuncs.FirstOrDefault(f => f.Start == mainAddr);
-            if (mainFunc == null) throw new InvalidOperationException($"[recompiler] the main function not found at 0x{mainAddr:X8}");
+            if (mainFunc == null)
+                throw new InvalidOperationException($"[recompiler] the main function not found at 0x{mainAddr:X8}");
             mainCall = $"{className}.{mainFunc.EmittedName}";
             Console.WriteLine($"[Recompiler] main: {mainCall} @ 0x{mainAddr:X8}");
         }
@@ -227,7 +264,8 @@ public static class OverlayWriter
         foreach (var result in overlayResults)
         {
             Console.WriteLine($"[Recompiler] emiting {result.Name}.cs ({result.Functions.Count} functions)");
-            EmitOverlayFile(result.Name, result.Functions, className, knownFuncs, config.Debug, config.AddressComments, config.DisasmComments, result.LbaStart,  result.Base, result.Size, result.Instructions, outDir,
+            EmitOverlayFile(result.Name, result.Functions, className, knownFuncs, config.Debug, config.AddressComments,
+                config.DisasmComments, result.LbaStart, result.Base, result.Size, result.Instructions, outDir,
                 SymbolRelocator.Plan(result.Functions, config.Relocations, result.Name));
         }
 
@@ -237,13 +275,11 @@ public static class OverlayWriter
 
         Console.WriteLine("[Recompiler] finished "); //maybe add time it took
     }
-    
 
 
-
-
-
-    static void EmitOverlayFile(string overlayName, List<MipsFunction> funcs, string className, Dictionary<uint, string> knownFuncs, bool debug, bool addressComments, bool disasmComments, int lbaStart, uint ovlBase, uint ovlSize, MipsInstruction[] instrs, string outDir, Dictionary<uint, uint> relocations)
+    private static void EmitOverlayFile(string overlayName, List<MipsFunction> funcs, string className,
+        Dictionary<uint, string> knownFuncs, bool debug, bool addressComments, bool disasmComments, int lbaStart,
+        uint ovlBase, uint ovlSize, MipsInstruction[] instrs, string outDir, Dictionary<uint, uint> relocations)
     {
         var sb = new StringBuilder();
         sb.AppendLine("using RecompOne.Runtime.Context;");
@@ -296,48 +332,60 @@ public static class OverlayWriter
         File.WriteAllText(Path.Combine(outDir, $"{overlayName}.cs"), sb.ToString());
     }
 
-    static string DispatchTableName(string name) => $"{char.ToUpperInvariant(name[0])}{name[1..]}DispatchTable";
-    
-    static void ResolveCollisions(List<MipsFunction> allFuncs)
+    private static string DispatchTableName(string name)
+    {
+        return $"{char.ToUpperInvariant(name[0])}{name[1..]}DispatchTable";
+    }
+
+    private static void ResolveCollisions(List<MipsFunction> allFuncs)
     {
         var crossOverlayDups = allFuncs.GroupBy(f => f.Name)
             .Where(g => g.Select(f => f.OverlayName).Distinct().Count() > 1)
             .Select(g => g.Key).ToHashSet();
 
         foreach (var func in allFuncs)
-            func.EmittedName = SafeFuncName(crossOverlayDups.Contains(func.Name) && !string.IsNullOrEmpty(func.OverlayName)
-                ? $"{func.Name}_{SafeIdentifier(func.OverlayName)}"
-                : func.Name);
+            func.EmittedName = SafeFuncName(
+                crossOverlayDups.Contains(func.Name) && !string.IsNullOrEmpty(func.OverlayName)
+                    ? $"{func.Name}_{SafeIdentifier(func.OverlayName)}"
+                    : func.Name);
 
         foreach (var group in allFuncs.GroupBy(f => (f.OverlayName, f.EmittedName)).Where(g => g.Count() > 1))
-            foreach (var func in group)
-                func.EmittedName = $"{func.EmittedName}_{func.Start:X8}";
+        foreach (var func in group)
+            func.EmittedName = $"{func.EmittedName}_{func.Start:X8}";
     }
 
-    static string SafeFuncName(string s) => Regex.Replace(s, @"[^A-Za-z0-9_]", "_");
+    private static string SafeFuncName(string s)
+    {
+        return Regex.Replace(s, @"[^A-Za-z0-9_]", "_");
+    }
 
-    static (byte[]? data, int lba) ResolveOverlay(DiscFs fs, Config.OverlayConfig cfg)
+    private static (byte[]? data, int lba) ResolveOverlay(DiscFs fs, OverlayConfig cfg)
     {
         try
         {
             if (cfg.Lba >= 0)
             {
-                int sz = cfg.Size ?? throw new InvalidOperationException($"'size' is required when using 'lba' for overlay '{cfg.Name}'");
+                var sz = cfg.Size ??
+                         throw new InvalidOperationException(
+                             $"'size' is required when using 'lba' for overlay '{cfg.Name}'");
                 return (Gunzip(Decrypt(fs.ReadSectors(cfg.Lba, sz), cfg.Decrypt), cfg.Gzip), cfg.Lba);
             }
+
             if (cfg.File != null)
             {
-                if (!fs.Locate(cfg.File, out int lba, out uint fileSize))
+                if (!fs.Locate(cfg.File, out var lba, out var fileSize))
                 {
                     Console.WriteLine($"[Recompiler] WARNING: disc file not found: {cfg.File}");
                     return (null, -1);
                 }
-                int absLba = lba + (cfg.Offset + cfg.Skip) / 2048;
-                byte[] full = fs.ReadFile(cfg.File);
-                int start = cfg.Offset + cfg.Skip;
-                int length = cfg.Size ?? (full.Length - start);
+
+                var absLba = lba + (cfg.Offset + cfg.Skip) / 2048;
+                var full = fs.ReadFile(cfg.File);
+                var start = cfg.Offset + cfg.Skip;
+                var length = cfg.Size ?? full.Length - start;
                 return (Gunzip(Decrypt(full.AsSpan(start, length).ToArray(), cfg.Decrypt), cfg.Gzip), absLba);
             }
+
             Console.WriteLine($"[Recompiler] WARNING: overlay '{cfg.Name}' has no 'file' or 'lba' source defined");
             return (null, -1);
         }
@@ -348,10 +396,10 @@ public static class OverlayWriter
         }
     }
 
-    
-    static void RebaseElf(FunctionInfo elf, int delta, byte[] discBin)
+
+    private static void RebaseElf(FunctionInfo elf, int delta, byte[] discBin)
     {
-        uint d = (uint)delta;
+        var d = (uint)delta;
         elf.TextBase += d;
         elf.LoadAddress += d;
         foreach (var f in elf.Functions) f.Address += d;
@@ -360,7 +408,7 @@ public static class OverlayWriter
         elf.TextData = discBin;
     }
 
-    static byte[] Gunzip(byte[] data, bool gzip)
+    private static byte[] Gunzip(byte[] data, bool gzip)
     {
         if (!gzip) return data;
         using var input = new MemoryStream(data);
@@ -370,39 +418,41 @@ public static class OverlayWriter
         return output.ToArray();
     } //jersey has gziped ovl
 
-    static byte[] Decrypt(byte[] data, bool decrypt)
+    private static byte[] Decrypt(byte[] data, bool decrypt)
     {
         if (!decrypt) return data;
         uint seed = 0;
-        for (int i = 0; i + 4 <= data.Length; i += 4)
+        for (var i = 0; i + 4 <= data.Length; i += 4)
         {
             seed = (seed + 0x01309125u) * 0x03A452F7u;
-            uint w = BitConverter.ToUInt32(data, i) ^ seed;
+            var w = BitConverter.ToUInt32(data, i) ^ seed;
             BitConverter.GetBytes(w).CopyTo(data, i);
         }
+
         return data;
     }
-    
-    static bool PatchNameMatches(MipsFunction func, string? patchFunction)
+
+    private static bool PatchNameMatches(MipsFunction func, string? patchFunction)
     {
         if (string.IsNullOrEmpty(patchFunction)) return false;
         if (string.Equals(func.Name, patchFunction, StringComparison.Ordinal)) return true;
         if (string.IsNullOrEmpty(func.OverlayName)) return false;
-        return string.Equals(func.Name, $"{func.OverlayName.ToUpperInvariant()}_{patchFunction}", StringComparison.Ordinal);
+        return string.Equals(func.Name, $"{func.OverlayName.ToUpperInvariant()}_{patchFunction}",
+            StringComparison.Ordinal);
     }
 
-    static void ApplyPatches(List<MipsFunction> funcs, Config.PatchEntry[] patches)
+    private static void ApplyPatches(List<MipsFunction> funcs, PatchEntry[] patches)
     {
         if (patches.Length == 0) return;
-        int applied = 0;
+        var applied = 0;
         foreach (var patch in patches)
         {
             uint? addr = string.IsNullOrEmpty(patch.Address) ? null : Convert.ToUInt32(patch.Address, 16);
-            int matched = 0;
+            var matched = 0;
             foreach (var func in funcs)
             {
                 if (!patch.MatchesOverlay(func.OverlayName)) continue;
-                bool hit = addr.HasValue ? func.Start == addr.Value : PatchNameMatches(func, patch.Function);
+                var hit = addr.HasValue ? func.Start == addr.Value : PatchNameMatches(func, patch.Function);
                 if (!hit) continue;
                 matched++;
                 switch (patch.Mode.ToLowerInvariant())
@@ -418,25 +468,30 @@ public static class OverlayWriter
                     default:
                         if (func.IsPatch && !string.Equals(func.PatchTarget, patch.Target, StringComparison.Ordinal))
                         {
-                            Console.WriteLine($"[Recompiler] WARNING: '{func.Name}' @ {func.OverlayName} already replaced by '{func.PatchTarget}', ignoring '{patch.Target}'"); //logeg
+                            Console.WriteLine(
+                                $"[Recompiler] WARNING: '{func.Name}' @ {func.OverlayName} already replaced by '{func.PatchTarget}', ignoring '{patch.Target}'"); //logeg
                             continue;
                         }
+
                         func.IsPatch = true;
                         func.PatchTarget = patch.Target;
                         break;
                 }
+
                 applied++;
             }
+
             if (matched == 0)
-                Console.WriteLine($"[Recompiler] WARNING: patch '{patch.Target}' matched nothing (overlay='{patch.OverlayLabel}' function='{patch.Function}' address='{patch.Address}')");
+                Console.WriteLine(
+                    $"[Recompiler] WARNING: patch '{patch.Target}' matched nothing (overlay='{patch.OverlayLabel}' function='{patch.Function}' address='{patch.Address}')");
         }
+
         Console.WriteLine($"[Recompiler] applied {applied} patches");
     }
 
-    
-    
-    
-    static string SafeIdentifier(string s) => Regex.Replace(s, @"[^a-zA-Z0-9_]", "_").TrimStart('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
-    
-    
+
+    private static string SafeIdentifier(string s)
+    {
+        return Regex.Replace(s, @"[^a-zA-Z0-9_]", "_").TrimStart('0', '1', '2', '3', '4', '5', '6', '7', '8', '9');
+    }
 }

@@ -11,7 +11,7 @@ internal static class ChdMap
 
     private static ChdMapEntry[] ReadUncompressed(Stream stream, ChdHeader header)
     {
-        uint count = header.HunkCount;
+        var count = header.HunkCount;
         var raw = new byte[count * 4];
         stream.Seek((long)header.MapOffset, SeekOrigin.Begin);
         stream.ReadExactly(raw);
@@ -19,9 +19,10 @@ internal static class ChdMap
         var entries = new ChdMapEntry[count];
         for (uint i = 0; i < count; i++)
         {
-            ulong offset = (ulong)ChdBig.U32(raw, (int)(i * 4)) * header.HunkBytes;
+            var offset = (ulong)ChdBig.U32(raw, (int)(i * 4)) * header.HunkBytes;
             entries[i] = new ChdMapEntry(ChdCompression.None, header.HunkBytes, offset, 0);
         }
+
         return entries;
     }
 
@@ -31,8 +32,8 @@ internal static class ChdMap
         stream.Seek((long)header.MapOffset, SeekOrigin.Begin);
         stream.ReadExactly(head);
 
-        uint mapBytes = ChdBig.U32(head, 0);
-        ulong firstOffset = ChdBig.U48(head, 4);
+        var mapBytes = ChdBig.U32(head, 0);
+        var firstOffset = ChdBig.U48(head, 4);
         int lengthBits = head[12];
         int selfBits = head[13];
         int parentBits = head[14];
@@ -44,10 +45,10 @@ internal static class ChdMap
         var reader = new ChdBitReader(compressed);
         var huffman = ChdHuffman.ImportRle(reader, 16, 8);
 
-        uint count = header.HunkCount;
+        var count = header.HunkCount;
         var types = new ChdCompression[count];
 
-        int repeat = 0;
+        var repeat = 0;
         var last = ChdCompression.Type0;
         for (uint i = 0; i < count; i++)
         {
@@ -77,14 +78,14 @@ internal static class ChdMap
         }
 
         var entries = new ChdMapEntry[count];
-        ulong current = firstOffset;
+        var current = firstOffset;
         uint lastSelf = 0;
         ulong lastParent = 0;
 
         for (uint i = 0; i < count; i++)
         {
             var type = types[i];
-            ulong offset = current;
+            var offset = current;
             uint length = 0;
             ushort crc = 0;
 

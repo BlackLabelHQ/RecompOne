@@ -60,7 +60,8 @@ public sealed class PackGame
         if (!string.IsNullOrWhiteSpace(Id)) yield return Id.Trim();
         if (Ids == null) yield break;
         foreach (var s in Ids)
-            if (!string.IsNullOrWhiteSpace(s)) yield return s.Trim();
+            if (!string.IsNullOrWhiteSpace(s))
+                yield return s.Trim();
     }
 }
 

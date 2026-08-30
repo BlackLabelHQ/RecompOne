@@ -2,12 +2,12 @@ namespace RecompOne.Runtime.Host.Window;
 
 public sealed class MenuBuilder
 {
-    readonly MenuNode _node;
-    readonly MenuBuilder? _parent;
+    private readonly MenuNode _node;
+    private readonly MenuBuilder? _parent;
 
-    MenuEntry? _last;
-    MenuItemEntry? _lastItem;
-    MenuNode? _lastNode;
+    private MenuEntry? _last;
+    private MenuItemEntry? _lastItem;
+    private MenuNode? _lastNode;
 
     internal MenuBuilder(MenuNode node, MenuBuilder? parent)
     {
@@ -40,7 +40,10 @@ public sealed class MenuBuilder
     {
         return Check(labelKey,
             () => PanelManager.Get<T>()?.IsOpen == true,
-            open => { if (PanelManager.Get<T>() is { } panel) panel.IsOpen = open; });
+            open =>
+            {
+                if (PanelManager.Get<T>() is { } panel) panel.IsOpen = open;
+            });
     }
 
     public MenuBuilder Popup<T>(string labelKey) where T : Popup
@@ -48,7 +51,10 @@ public sealed class MenuBuilder
         return Item(labelKey, PopupManager.Open<T>);
     }
 
-    public MenuBuilder Label(string labelKey) => Text(() => Localization.T(labelKey));
+    public MenuBuilder Label(string labelKey)
+    {
+        return Text(() => Localization.T(labelKey));
+    }
 
     public MenuBuilder Text(Func<string> text)
     {
@@ -68,14 +74,23 @@ public sealed class MenuBuilder
         return this;
     }
 
-    public MenuBuilder Submenu(string labelKey) => new(_node.Submenu(labelKey), this);
+    public MenuBuilder Submenu(string labelKey)
+    {
+        return new MenuBuilder(_node.Submenu(labelKey), this);
+    }
 
     //the idea is, you can render this before or after a menu label, its better than weird indexing by id
-    public MenuBuilder After(string labelKey) => Anchor(labelKey, false);
+    public MenuBuilder After(string labelKey)
+    {
+        return Anchor(labelKey, false);
+    }
 
-    public MenuBuilder Before(string labelKey) => Anchor(labelKey, true);
+    public MenuBuilder Before(string labelKey)
+    {
+        return Anchor(labelKey, true);
+    }
 
-    MenuBuilder Anchor(string labelKey, bool before) //places the ancho on it
+    private MenuBuilder Anchor(string labelKey, bool before) //places the ancho on it
     {
         var target = _last ?? _node;
         target.AnchorKey = labelKey;
@@ -88,7 +103,10 @@ public sealed class MenuBuilder
         return this;
     }
 
-    public MenuBuilder End() => _parent ?? this;
+    public MenuBuilder End()
+    {
+        return _parent ?? this;
+    }
 
     public MenuBuilder Enabled(Func<bool> predicate)
     {
@@ -97,7 +115,10 @@ public sealed class MenuBuilder
         return this;
     }
 
-    public MenuBuilder Disabled() => Enabled(static () => false);
+    public MenuBuilder Disabled()
+    {
+        return Enabled(static () => false);
+    }
 
     public MenuBuilder Tooltip(string tooltipKey)
     {
@@ -106,9 +127,12 @@ public sealed class MenuBuilder
         return this;
     }
 
-    internal void Invalidate() => _node.Invalidate();
+    internal void Invalidate()
+    {
+        _node.Invalidate();
+    }
 
-    void Track(MenuEntry entry)
+    private void Track(MenuEntry entry)
     {
         _lastItem = null;
         _lastNode = null;

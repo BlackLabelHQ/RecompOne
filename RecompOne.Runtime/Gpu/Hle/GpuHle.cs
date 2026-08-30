@@ -14,23 +14,35 @@ public static class GpuHle
     public static float TargetAspect { get; set; } = 4f / 3f;
     public const float BaseAspect = 4f / 3f;
 
-    public struct DispRect { public int X, Y, W, H; public long Stamp; public bool Valid; }
+    public struct DispRect
+    {
+        public int X, Y, W, H;
+        public long Stamp;
+        public bool Valid;
+    }
 
-    static readonly DispRect[] _rects = new DispRect[2];
-    static long _stamp;
+    private static readonly DispRect[] _rects = new DispRect[2];
+    private static long _stamp;
 
     public static void NotifyDisplay(int x, int y, int w, int h)
     {
         if (w <= 0 || h <= 0) return;
-        int slot = -1;
-        for (int i = 0; i < _rects.Length; i++)
-            if (_rects[i].Valid && _rects[i].X == x && _rects[i].Y == y) { slot = i; break; }
+        var slot = -1;
+        for (var i = 0; i < _rects.Length; i++)
+            if (_rects[i].Valid && _rects[i].X == x && _rects[i].Y == y)
+            {
+                slot = i;
+                break;
+            }
+
         if (slot < 0)
         {
             slot = 0;
-            for (int i = 1; i < _rects.Length; i++)
-                if (!_rects[i].Valid || _rects[i].Stamp < _rects[slot].Stamp) slot = i;
+            for (var i = 1; i < _rects.Length; i++)
+                if (!_rects[i].Valid || _rects[i].Stamp < _rects[slot].Stamp)
+                    slot = i;
         }
+
         _rects[slot] = new DispRect { X = x, Y = y, W = w, H = h, Stamp = ++_stamp, Valid = true };
         RectVersion++;
     }
@@ -39,13 +51,16 @@ public static class GpuHle
 
     public static int RectCount => _rects.Length;
 
-    public static DispRect GetRect(int i) => _rects[i];
+    public static DispRect GetRect(int i)
+    {
+        return _rects[i];
+    }
 
     public static int WideMargin(int w)
     {
         if (WideAspect <= 0f) return 0;
-        float source = SourceAspect > 0f ? SourceAspect : BaseAspect;
-        int wide = (int)MathF.Ceiling(w * WideAspect / source);
+        var source = SourceAspect > 0f ? SourceAspect : BaseAspect;
+        var wide = (int)MathF.Ceiling(w * WideAspect / source);
         return Math.Max(0, (wide - w + 1) / 2);
     }
 }

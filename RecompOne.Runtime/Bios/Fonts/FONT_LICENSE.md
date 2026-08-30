@@ -1,7 +1,8 @@
 # RecompOne BIOS character font
 
-font1 and font2 are generated from the shinonome 16dot font (public domain), each glyph was slightly modifidied to occupie the same size as the stock ps1 font glyphs
-the glyph layout follows a different bios table than the original, only size is matched
+font1 and font2 are generated from the shinonome 16dot font (public domain), each glyph was slightly modifidied to
+occupie the same size as the stock ps1 font glyphs the glyph layout follows a different bios table than the original,
+only size is matched
 
 The Shinonome font carries this information:
 

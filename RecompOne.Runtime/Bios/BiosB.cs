@@ -6,28 +6,41 @@ namespace RecompOne.Runtime.Bios;
 
 public static class BiosB
 {
-    static readonly PadReadEvent _padEvent = new();
-    struct EvCB { public uint Status, Class, Spec, Mode, Func; }
-    const int MaxEvents = 64;
-    static readonly EvCB[] _evCBs = new EvCB[MaxEvents];
-    struct TCB { public bool Used; }
-    const int MaxThreads = 4;
-    static readonly TCB[] _tcbs = new TCB[MaxThreads];
+    private static readonly PadReadEvent _padEvent = new();
 
-    static readonly uint[] _intChain = new uint[4];
+    private struct EvCB
+    {
+        public uint Status, Class, Spec, Mode, Func;
+    }
+
+    private const int MaxEvents = 64;
+    private static readonly EvCB[] _evCBs = new EvCB[MaxEvents];
+
+    private struct TCB
+    {
+        public bool Used;
+    }
+
+    private const int MaxThreads = 4;
+    private static readonly TCB[] _tcbs = new TCB[MaxThreads];
+
+    private static readonly uint[] _intChain = new uint[4];
 
     public static uint IntrEnvInInterruptAddr = 0u;
 
-    public static uint IntChain(int priority) => (uint)priority < 4u ? _intChain[priority] : 0u;
+    public static uint IntChain(int priority)
+    {
+        return (uint)priority < 4u ? _intChain[priority] : 0u;
+    }
 
-    static uint _padBuf;
-    static uint _padCardBuf1, _padCardBuf2;
-    static bool _padCardStarted;
-    static bool _cardPadEnable;
+    private static uint _padBuf;
+    private static uint _padCardBuf1, _padCardBuf2;
+    private static bool _padCardStarted;
+    private static bool _cardPadEnable;
 
-    const uint KernelPadBuf1 = 0x0000E100u;
-    const uint KernelPadBuf2 = 0x0000E140u;
-    const uint PadSlotSize = 0x22u;
+    private const uint KernelPadBuf1 = 0x0000E100u;
+    private const uint KernelPadBuf2 = 0x0000E140u;
+    private const uint PadSlotSize = 0x22u;
 
     public static uint PadBuffer1 => _padCardBuf1;
     public static uint PadBuffer2 => _padCardBuf2;
@@ -46,14 +59,14 @@ public static class BiosB
 
     public static void DeliverEvent(uint @class, uint spec)
     {
-        for (int i = 0; i < MaxEvents; i++)
+        for (var i = 0; i < MaxEvents; i++)
             if (_evCBs[i].Status == 2u && _evCBs[i].Class == @class && _evCBs[i].Spec == spec)
                 _evCBs[i].Status = 4u;
     }
-    
+
     public static void DeliverEventIntr(CpuContext c, IMemory m, uint @class, uint spec)
     {
-        for (int i = 0; i < MaxEvents; i++)
+        for (var i = 0; i < MaxEvents; i++)
         {
             if (_evCBs[i].Status != 2u || _evCBs[i].Class != @class || _evCBs[i].Spec != spec) continue;
             if ((_evCBs[i].Mode & 0x1000u) != 0 && _evCBs[i].Func != 0u)
@@ -68,12 +81,16 @@ public static class BiosB
             }
         }
     }
-    
-    //not sure if the adresses are correct for all games, todo: verify if this is correct, (note to self openbios does this way and seens to be valid with sotn psyq decomp 
-    static readonly uint[] IrqClass = { 0xF0000001u, 0xF0000002u, 0xF0000003u, 0xF0000004u, 0xF0000005u, 0xF0000006u, 0xF0000007u, 0xF0000008u, 0xF000000Bu, 0xF0000009u, 0xF000000Au, };
 
-    const uint EvSpINT = 0x0002u;
-    const uint EvSpGENERAL = 0x1000u;
+    //not sure if the adresses are correct for all games, todo: verify if this is correct, (note to self openbios does this way and seens to be valid with sotn psyq decomp 
+    private static readonly uint[] IrqClass =
+    {
+        0xF0000001u, 0xF0000002u, 0xF0000003u, 0xF0000004u, 0xF0000005u, 0xF0000006u, 0xF0000007u, 0xF0000008u,
+        0xF000000Bu, 0xF0000009u, 0xF000000Au
+    };
+
+    private const uint EvSpINT = 0x0002u;
+    private const uint EvSpGENERAL = 0x1000u;
 
     public static void DeliverIrqEvents(CpuContext c, IMemory m, int irq)
     {
@@ -89,26 +106,35 @@ public static class BiosB
             DeliverEventIntr(c, m, IrqClass[irq], EvSpGENERAL);
     }
 
-    static readonly Queue<uint> _cardEvents = new();
-    static bool _pumpingCard;
-    
-    
-    
-    public static void CardComplete(CpuContext c, IMemory m, uint port) => CardComplete(port);
+    private static readonly Queue<uint> _cardEvents = new();
+    private static bool _pumpingCard;
+
+
+    public static void CardComplete(CpuContext c, IMemory m, uint port)
+    {
+        CardComplete(port);
+    }
 
     public static void CardComplete(uint port)
     {
         var card = (port & 0x10u) != 0 ? Runtime.CardB : Runtime.CardA;
-        uint spec = card.Enabled ? 0x0004u : 0x0100u;
+        var spec = card.Enabled ? 0x0004u : 0x0100u;
 
-        lock (_cardEvents) _cardEvents.Enqueue(spec); //fixes formedievil, needs to raise 7 on irq, is this the intended behaviour?
+        lock (_cardEvents)
+        {
+            _cardEvents.Enqueue(spec); //fixes formedievil, needs to raise 7 on irq, is this the intended behaviour?
+        }
+
         _cardEventFrame = Interrupts.VBlankCount;
         Interrupts.Raise(7);
     }
 
-    static int _cardEventFrame = -1;
+    private static int _cardEventFrame = -1;
 
-    public static void PumpCardEvents(CpuContext c, IMemory m) => PumpCardEvents(c, m, false);
+    public static void PumpCardEvents(CpuContext c, IMemory m)
+    {
+        PumpCardEvents(c, m, false);
+    }
 
     //canr send all in one go otherwise medievil bitches and breaks
     public static void PumpCardEvents(CpuContext c, IMemory m, bool now)
@@ -126,6 +152,7 @@ public static class BiosB
                     if (_cardEvents.Count == 0) break;
                     spec = _cardEvents.Dequeue();
                 }
+
                 //Log.Bios($"  card complete w/ spec {spec:X4}");
                 DeliverEventIntr(c, m, 0xF4000001u, spec);
                 DeliverEventIntr(c, m, 0xF0000011u, spec);
@@ -137,7 +164,7 @@ public static class BiosB
         }
     }
 
-    static void CardRead(CpuContext c, IMemory m)
+    private static void CardRead(CpuContext c, IMemory m)
     {
         var card = (c.A0 & 0x10u) != 0 ? Runtime.CardB : Runtime.CardA;
         if (card.Enabled && c.A2 != 0u)
@@ -146,11 +173,12 @@ public static class BiosB
             card.FrameRead((int)(c.A1 & 0x3FFu), f);
             for (uint i = 0; i < 0x80u; i++) m.WriteU8(c.A2 + i, f[(int)i]);
         }
+
         CardComplete(c, m, c.A0);
         c.V0 = 1u;
     }
 
-    static void CardWrite(CpuContext c, IMemory m)
+    private static void CardWrite(CpuContext c, IMemory m)
     {
         var card = (c.A0 & 0x10u) != 0 ? Runtime.CardB : Runtime.CardA;
         if (card.Enabled && c.A2 != 0u)
@@ -159,43 +187,48 @@ public static class BiosB
             for (uint i = 0; i < 0x80u; i++) f[(int)i] = m.ReadU8(c.A2 + i);
             card.FrameWrite((int)(c.A1 & 0x3FFu), f);
         }
+
         CardComplete(c, m, c.A0);
         c.V0 = 1u;
     }
 
     public static uint GetFreeEvSlot()
     {
-        for (int i = 0; i < MaxEvents; i++) if (_evCBs[i].Status == 0u) return (uint)i;
+        for (var i = 0; i < MaxEvents; i++)
+            if (_evCBs[i].Status == 0u)
+                return (uint)i;
         return 0xFFFFFFFFu;
     }
-    
-    static ushort FirePad(IMemory m, int port, ushort buttons)
+
+    private static ushort FirePad(IMemory m, int port, ushort buttons)
     {
         if (!Event.HasAnyListeners<PadReadEvent>()) return buttons;
         var e = _padEvent;
-        e.Context = Runtime.Cpu!; e.Memory = m;
-        e.Port = port; e.Buttons = buttons;
+        e.Context = Runtime.Cpu!;
+        e.Memory = m;
+        e.Port = port;
+        e.Buttons = buttons;
         Event.Dispatch(e);
         return e.Buttons;
     }
 
-    static void PadRead(IMemory m)
+    private static void PadRead(IMemory m)
     {
         if (_padBuf == 0) return;
-        ushort s = Hardware.Controller.State;
-        ushort swapped = (ushort)((s >> 8) | (s << 8));
-        ushort s2 = Hardware.Controller.State2;
-        ushort swapped2 = (ushort)((s2 >> 8) | (s2 << 8));
+        var s = Hardware.Controller.State;
+        var swapped = (ushort)((s >> 8) | (s << 8));
+        var s2 = Hardware.Controller.State2;
+        var swapped2 = (ushort)((s2 >> 8) | (s2 << 8));
         swapped = FirePad(m, 0, swapped);
         swapped2 = FirePad(m, 1, swapped2);
-        m.WriteU32(_padBuf,     ((uint)swapped2 << 16) | swapped);
+        m.WriteU32(_padBuf, ((uint)swapped2 << 16) | swapped);
         m.WriteU8(_padBuf + 4, Hardware.Controller.RightX);
         m.WriteU8(_padBuf + 5, Hardware.Controller.RightY);
         m.WriteU8(_padBuf + 6, Hardware.Controller.LeftX);
         m.WriteU8(_padBuf + 7, Hardware.Controller.LeftY);
     }
 
-    static void InitPad(IMemory m, uint buf1, uint siz1, uint buf2, uint siz2)
+    private static void InitPad(IMemory m, uint buf1, uint siz1, uint buf2, uint siz2)
     {
         _padCardBuf1 = buf1;
         _padCardBuf2 = buf2;
@@ -203,26 +236,32 @@ public static class BiosB
         for (uint i = 0; i < siz2; i++) m.WriteU8(buf2 + i, 0);
     }
 
-    static void PadCardIrq(IMemory m)
+    private static void PadCardIrq(IMemory m)
     {
         if (!_padCardStarted) return;
 
-        ushort b1 = Unswap(FirePad(m, 0, Swap(Hardware.Controller.State)));
+        var b1 = Unswap(FirePad(m, 0, Swap(Hardware.Controller.State)));
         WritePadSlot(m, _padCardBuf1, true, b1,
             Hardware.Controller.RightX, Hardware.Controller.RightY,
             Hardware.Controller.LeftX, Hardware.Controller.LeftY, Hardware.Controller.Analog);
 
-        ushort b2 = Unswap(FirePad(m, 1, Swap(Hardware.Controller.State2)));
+        var b2 = Unswap(FirePad(m, 1, Swap(Hardware.Controller.State2)));
         WritePadSlot(m, _padCardBuf2, Hardware.Controller.Connected2, b2,
             Hardware.Controller.RightX2, Hardware.Controller.RightY2,
             Hardware.Controller.LeftX2, Hardware.Controller.LeftY2, Hardware.Controller.Analog2);
     }
 
-    static ushort Swap(ushort v) => (ushort)((v >> 8) | (v << 8));
+    private static ushort Swap(ushort v)
+    {
+        return (ushort)((v >> 8) | (v << 8));
+    }
 
-    static ushort Unswap(ushort v) => (ushort)((v >> 8) | (v << 8));
+    private static ushort Unswap(ushort v)
+    {
+        return (ushort)((v >> 8) | (v << 8));
+    }
 
-    static void WritePadSlot(IMemory m, uint buf, bool connected, ushort buttons,
+    private static void WritePadSlot(IMemory m, uint buf, bool connected, ushort buttons,
         byte rx, byte ry, byte lx, byte ly, bool analog = false)
     {
         if (buf == 0) return;
@@ -232,6 +271,7 @@ public static class BiosB
             m.WriteU8(buf + 1, 0);
             return;
         }
+
         m.WriteU8(buf, 0);
         m.WriteU8(buf + 1, analog ? (byte)0x73 : (byte)0x41);
         m.WriteU8(buf + 2, (byte)buttons);
@@ -247,6 +287,7 @@ public static class BiosB
         PadRead(m);
         PadCardIrq(m);
     }
+
     public static void Dispatch(CpuContext c, IMemory m, uint fn)
     {
         Log.Bios($"B({fn:X2}) {BiosNames.B(fn)}");
@@ -259,21 +300,36 @@ public static class BiosB
             case 0x04: break;
             case 0x05: break;
             case 0x06: break;
-            case 0x07: Log.Bios($"  DeliverEvent class={c.A0:X8} spec={c.A1:X4}"); DeliverEventIntr(c, m, c.A0, c.A1); break;
+            case 0x07:
+                Log.Bios($"  DeliverEvent class={c.A0:X8} spec={c.A1:X4}");
+                DeliverEventIntr(c, m, c.A0, c.A1);
+                break;
             case 0x08:
                 c.V0 = OpenEvent(c.A0, c.A1, c.A2, c.A3);
                 Log.Bios($"  OpenEvent class={c.A0:X8} spec={c.A1:X4} mode={c.A2:X4} func={c.A3:X8} -> {c.V0:X8}");
                 break;
-            case 0x09: CloseEvent(c.A0); c.V0 = 1u; break;
+            case 0x09:
+                CloseEvent(c.A0);
+                c.V0 = 1u;
+                break;
             case 0x0A: c.V0 = WaitEvent(c.A0); break;
             case 0x0B:
                 c.V0 = TestEvent(c.A0);
                 Log.Bios($"  TestEvent {c.A0:X8} ({EvClass(c.A0):X8}/{EvSpec(c.A0):X4}) -> {c.V0}");
                 break;
-            case 0x0C: EnableEvent(c.A0); c.V0 = 1u; break;
-            case 0x0D: DisableEvent(c.A0); c.V0 = 1u; break;
+            case 0x0C:
+                EnableEvent(c.A0);
+                c.V0 = 1u;
+                break;
+            case 0x0D:
+                DisableEvent(c.A0);
+                c.V0 = 1u;
+                break;
             case 0x0E: c.V0 = OpenTh(c.A0, c.A1, c.A2); break;
-            case 0x0F: CloseTh(c.A0); c.V0 = 1u; break;
+            case 0x0F:
+                CloseTh(c.A0);
+                c.V0 = 1u;
+                break;
             case 0x10: break;
             case 0x11: break;
             case 0x12: InitPad(m, c.A0, c.A1, c.A2, c.A3); break;
@@ -307,11 +363,20 @@ public static class BiosB
             case 0x38: BiosA.Dispatch(c, m, 0x06); break;
             case 0x39: c.V0 = c.A0 <= 2u ? 2u : 0u; break;
             case 0x3A: c.V0 = 0xFFFFFFFFu; break;
-            case 0x3B: Console.Write((char)(c.A0 & 0xFF)); c.V0 = c.A0; break;
+            case 0x3B:
+                Console.Write((char)(c.A0 & 0xFF));
+                c.V0 = c.A0;
+                break;
             case 0x3C: c.V0 = 0xFFFFFFFFu; break;
-            case 0x3D: Console.Write((char)(c.A0 & 0xFF)); c.V0 = c.A0; break;
+            case 0x3D:
+                Console.Write((char)(c.A0 & 0xFF));
+                c.V0 = c.A0;
+                break;
             case 0x3E: c.V0 = 0u; break;
-            case 0x3F: Console.Write(Bios.ReadString(m, c.A0)); c.V0 = c.A0; break;
+            case 0x3F:
+                Console.Write(Bios.ReadString(m, c.A0));
+                c.V0 = c.A0;
+                break;
             case 0x40: c.V0 = 1u; break;
             case 0x41: c.V0 = BiosA.CardFormat(m, c.A0); break;
             case 0x42: c.V0 = BiosA.FirstFile(m, c.A0, c.A1); break;
@@ -322,14 +387,20 @@ public static class BiosB
             case 0x47: c.V0 = GetFreeEvSlot(); break;
             case 0x48: c.V0 = 0xFFFFFFFFu; break;
             case 0x49: break;
-            case 0x4A: _cardPadEnable = c.A0 != 0u; c.V0 = 1u; break;
+            case 0x4A:
+                _cardPadEnable = c.A0 != 0u;
+                c.V0 = 1u;
+                break;
             case 0x4B:
                 if (_cardPadEnable && _padCardBuf1 == 0u)
                     InitPad(m, KernelPadBuf1, PadSlotSize, KernelPadBuf2, PadSlotSize);
                 if (_cardPadEnable) _padCardStarted = true;
                 c.V0 = 1u;
                 break;
-            case 0x4C: if (_cardPadEnable) _padCardStarted = false; c.V0 = 1u; break;
+            case 0x4C:
+                if (_cardPadEnable) _padCardStarted = false;
+                c.V0 = 1u;
+                break;
             case 0x4D: break;
             case 0x4E: CardWrite(c, m); break;
             case 0x4F: CardRead(c, m); break;
@@ -349,112 +420,132 @@ public static class BiosB
         }
     }
 
-    static uint OpenEvent(uint @class, uint spec, uint mode, uint func)
+    private static uint OpenEvent(uint @class, uint spec, uint mode, uint func)
     {
-        for (int i = 0; i < MaxEvents; i++)
-        {
+        for (var i = 0; i < MaxEvents; i++)
             if (_evCBs[i].Status == 0u)
             {
                 _evCBs[i] = new EvCB { Status = 1u, Class = @class, Spec = spec, Mode = mode, Func = func };
                 return 0xF1000000u | (uint)i;
             }
-        }
+
         return 0xFFFFFFFFu;
     }
 
-    static uint EvClass(uint ev)
+    private static uint EvClass(uint ev)
     {
-        int s = EvSlot(ev);
+        var s = EvSlot(ev);
         return s >= 0 ? _evCBs[s].Class : 0u;
     }
 
-    static uint EvSpec(uint ev)
+    private static uint EvSpec(uint ev)
     {
-        int s = EvSlot(ev);
+        var s = EvSlot(ev);
         return s >= 0 ? _evCBs[s].Spec : 0u;
     }
 
-    static int EvSlot(uint ev)
+    private static int EvSlot(uint ev)
     {
-        int i = (int)(ev & 0xFFFFu);
+        var i = (int)(ev & 0xFFFFu);
         return i < MaxEvents ? i : -1;
     }
 
-    static void CloseEvent(uint ev)
+    private static void CloseEvent(uint ev)
     {
-        int s = EvSlot(ev);
+        var s = EvSlot(ev);
         if (s >= 0) _evCBs[s] = default;
     }
 
-    static uint WaitEvent(uint ev)
+    private static uint WaitEvent(uint ev)
     {
-        int s = EvSlot(ev);
+        var s = EvSlot(ev);
         if (s >= 0 && _evCBs[s].Status == 4u) _evCBs[s].Status = 2u;
         return 1u;
     }
 
-    static uint TestEvent(uint ev)
+    private static uint TestEvent(uint ev)
     {
-        int s = EvSlot(ev);
-        if (s >= 0 && _evCBs[s].Status == 4u) { _evCBs[s].Status = 2u; return 1u; }
+        var s = EvSlot(ev);
+        if (s >= 0 && _evCBs[s].Status == 4u)
+        {
+            _evCBs[s].Status = 2u;
+            return 1u;
+        }
+
         return 0u;
     }
 
-    static void EnableEvent(uint ev)
+    private static void EnableEvent(uint ev)
     {
-        int s = EvSlot(ev);
+        var s = EvSlot(ev);
         if (s >= 0) _evCBs[s].Status = 2u;
     }
 
-    static void DisableEvent(uint ev)
+    private static void DisableEvent(uint ev)
     {
-        int s = EvSlot(ev);
+        var s = EvSlot(ev);
         if (s >= 0 && _evCBs[s].Status != 0u) _evCBs[s].Status = 1u;
     }
 
-    static void UnDeliverEvent(uint @class, uint spec)
+    private static void UnDeliverEvent(uint @class, uint spec)
     {
-        for (int i = 0; i < MaxEvents; i++)
+        for (var i = 0; i < MaxEvents; i++)
             if (_evCBs[i].Status == 4u && _evCBs[i].Class == @class && _evCBs[i].Spec == spec)
                 _evCBs[i].Status = 2u;
     }
-    static uint OpenTh(uint pc, uint spFp, uint gp)
+
+    private static uint OpenTh(uint pc, uint spFp, uint gp)
     {
-        for (int i = 0; i < MaxThreads; i++)
-            if (!_tcbs[i].Used) { _tcbs[i] = new TCB { Used = true }; return 0xFF000000u | (uint)i; }
+        for (var i = 0; i < MaxThreads; i++)
+            if (!_tcbs[i].Used)
+            {
+                _tcbs[i] = new TCB { Used = true };
+                return 0xFF000000u | (uint)i;
+            }
+
         return 0xFFFFFFFFu;
     }
-    static void CloseTh(uint handle)
+
+    private static void CloseTh(uint handle)
     {
-        int i = (int)(handle & 0xFFu);
+        var i = (int)(handle & 0xFFu);
         if (i < MaxThreads) _tcbs[i] = default;
     }
 
     public static void SysEnqIntRP(CpuContext c, IMemory m)
     {
-        uint priority = c.A0 & 3u;
-        uint struc = c.A1;
+        var priority = c.A0 & 3u;
+        var struc = c.A1;
         c.V0 = _intChain[priority];
         m.WriteU32(struc, _intChain[priority]);
         _intChain[priority] = struc;
     }
+
     public static void SysDeqIntRP(CpuContext c, IMemory m)
     {
-        uint priority = c.A0 & 3u;
-        uint struc = c.A1;
+        var priority = c.A0 & 3u;
+        var struc = c.A1;
         if (_intChain[priority] == struc)
         {
             _intChain[priority] = m.ReadU32(struc);
             c.V0 = 1u;
             return;
         }
-        uint cur = _intChain[priority];
+
+        var cur = _intChain[priority];
         while (cur != 0u)
         {
-            uint next = m.ReadU32(cur);
-            if (next == struc) { m.WriteU32(cur, m.ReadU32(struc)); c.V0 = 1u; return; }
+            var next = m.ReadU32(cur);
+            if (next == struc)
+            {
+                m.WriteU32(cur, m.ReadU32(struc));
+                c.V0 = 1u;
+                return;
+            }
+
             cur = next;
         }
+
         c.V0 = 0u;
     }
 }

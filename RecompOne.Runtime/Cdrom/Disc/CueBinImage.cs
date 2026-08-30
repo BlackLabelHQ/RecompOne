@@ -16,7 +16,9 @@ public sealed class CueBinImage : IDiscImage
     private readonly object _ioGate = new();
     private int _lastOobLba = int.MinValue;
 
-    private CueBinImage() { }
+    private CueBinImage()
+    {
+    }
 
     public static CueBinImage Open(string cuePath)
     {
@@ -67,6 +69,7 @@ public sealed class CueBinImage : IDiscImage
             lba = 0;
             return false;
         }
+
         lba = t.StartLba;
         return true;
     }
@@ -75,16 +78,16 @@ public sealed class CueBinImage : IDiscImage
     {
         var t = DataTrack();
         var stream = GetStream(t.BinPath);
-        int offset = t.SectorSize == 2352
+        var offset = t.SectorSize == 2352
             ? size switch { >= 2340 => 12, >= 2329 => 16, _ => 24 }
             : t.DataOffset;
-        long pos = t.FileOffset + (long)lba * t.SectorSize + offset;
+        var pos = t.FileOffset + (long)lba * t.SectorSize + offset;
         var buf = new byte[size];
         if (lba < 0) return buf;
-        int want = Math.Min(size, t.SectorSize - offset);
+        var want = Math.Min(size, t.SectorSize - offset);
         lock (_ioGate)
         {
-            int dataSectors = DataTrackSectors(t, stream);
+            var dataSectors = DataTrackSectors(t, stream);
             if (lba >= dataSectors || pos >= stream.Length)
             {
                 if (lba != _lastOobLba)
@@ -92,21 +95,24 @@ public sealed class CueBinImage : IDiscImage
                     _lastOobLba = lba;
                     Console.WriteLine($"[DiscImage] read outside data track: lba={lba}");
                 }
+
                 return buf;
             }
-            int avail = (int)Math.Min(want, stream.Length - pos);
+
+            var avail = (int)Math.Min(want, stream.Length - pos);
             stream.Seek(pos, SeekOrigin.Begin);
             stream.ReadExactly(buf, 0, avail);
         }
+
         return buf;
     }
 
     private void Parse(string cuePath)
     {
-        string dir = Path.GetDirectoryName(Path.GetFullPath(cuePath)) ?? "";
+        var dir = Path.GetDirectoryName(Path.GetFullPath(cuePath)) ?? "";
         string? currentFile = null;
-        int trackNum = 0;
-        string mode = "MODE2/2352";
+        var trackNum = 0;
+        var mode = "MODE2/2352";
         long fileBaseSectors = 0;
 
         foreach (var raw in File.ReadLines(cuePath))
@@ -114,8 +120,8 @@ public sealed class CueBinImage : IDiscImage
             var line = raw.Trim();
             if (line.StartsWith("FILE ", StringComparison.OrdinalIgnoreCase))
             {
-                int a = line.IndexOf('"') + 1;
-                int b = line.LastIndexOf('"');
+                var a = line.IndexOf('"') + 1;
+                var b = line.LastIndexOf('"');
                 if (currentFile != null && File.Exists(currentFile)) fileBaseSectors += FileLength(currentFile) / 2352;
                 currentFile = Path.Combine(dir, line[a..b]);
             }
@@ -127,9 +133,9 @@ public sealed class CueBinImage : IDiscImage
             }
             else if (line.StartsWith("INDEX 01 ", StringComparison.OrdinalIgnoreCase))
             {
-                long sectorsWithinFile = MsfToSectors(line[9..].Trim());
-                int sectorSize = GetSectorSize(mode);
-                int startLba = (int)(fileBaseSectors + sectorsWithinFile);
+                var sectorsWithinFile = MsfToSectors(line[9..].Trim());
+                var sectorSize = GetSectorSize(mode);
+                var startLba = (int)(fileBaseSectors + sectorsWithinFile);
                 _tracks.Add(new Track(
                     currentFile!,
                     trackNum,
@@ -148,15 +154,17 @@ public sealed class CueBinImage : IDiscImage
         return fs.Length;
     }
 
-    private Track DataTrack() =>
-        _tracks.Find(t => KindOf(t.Mode) == DiscTrackKind.Data)
-        ?? throw new InvalidOperationException("no data track was found in cue sheet");
+    private Track DataTrack()
+    {
+        return _tracks.Find(t => KindOf(t.Mode) == DiscTrackKind.Data)
+               ?? throw new InvalidOperationException("no data track was found in cue sheet");
+    }
 
     private int DataTrackSectors(Track dataTrack, FileStream stream)
     {
-        int byFile = (int)((stream.Length - dataTrack.FileOffset) / dataTrack.SectorSize);
+        var byFile = (int)((stream.Length - dataTrack.FileOffset) / dataTrack.SectorSize);
 
-        int next = int.MaxValue;
+        var next = int.MaxValue;
         foreach (var t in _tracks)
             if (t.BinPath == dataTrack.BinPath && t.StartLba > dataTrack.StartLba && t.StartLba < next)
                 next = t.StartLba;
@@ -174,8 +182,10 @@ public sealed class CueBinImage : IDiscImage
         }
     }
 
-    private static DiscTrackKind KindOf(string mode) =>
-        mode.Equals("AUDIO", StringComparison.OrdinalIgnoreCase) ? DiscTrackKind.Audio : DiscTrackKind.Data;
+    private static DiscTrackKind KindOf(string mode)
+    {
+        return mode.Equals("AUDIO", StringComparison.OrdinalIgnoreCase) ? DiscTrackKind.Audio : DiscTrackKind.Data;
+    }
 
     private static long MsfToSectors(string msf)
     {
@@ -183,20 +193,26 @@ public sealed class CueBinImage : IDiscImage
         return long.Parse(p[0]) * 60 * 75 + long.Parse(p[1]) * 75 + long.Parse(p[2]);
     }
 
-    private static int GetSectorSize(string mode) => mode switch
+    private static int GetSectorSize(string mode)
     {
-        "MODE1/2048" => 2048,
-        "MODE2/2336" => 2336,
-        _ => 2352,
-    };
+        return mode switch
+        {
+            "MODE1/2048" => 2048,
+            "MODE2/2336" => 2336,
+            _ => 2352
+        };
+    }
 
-    private static int GetDataOffset(string mode) => mode switch
+    private static int GetDataOffset(string mode)
     {
-        "MODE1/2352" => 16,
-        "MODE2/2352" => 24,
-        "MODE2/2336" => 8,
-        _ => 0,
-    };
+        return mode switch
+        {
+            "MODE1/2352" => 16,
+            "MODE2/2352" => 24,
+            "MODE2/2336" => 8,
+            _ => 0
+        };
+    }
 
     public void Dispose()
     {

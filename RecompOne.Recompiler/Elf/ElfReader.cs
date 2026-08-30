@@ -12,13 +12,11 @@ public static class ElfReader
         var info = new FunctionInfo();
 
         foreach (var seg in elf.Segments)
-        {
             if (seg.Type == ElfSegmentTypeCore.Load)
             {
                 info.LoadAddress = (uint)seg.VirtualAddress;
                 break;
             }
-        }
 
         ElfSymbolTable? symTab = null;
 
@@ -61,11 +59,11 @@ public static class ElfReader
 
         foreach (var sec in elf.Sections)
         {
-            bool alloc = (sec.Flags & ElfSectionFlags.Alloc)  != 0;
-            bool exec=  (sec.Flags & ElfSectionFlags.Executable) != 0;
+            var alloc = (sec.Flags & ElfSectionFlags.Alloc) != 0;
+            var exec = (sec.Flags & ElfSectionFlags.Executable) != 0;
             if (!alloc) continue;
 
-            string name = sec.Name.ToString();
+            var name = sec.Name.ToString();
 
             if (exec)
             {
@@ -74,18 +72,20 @@ public static class ElfReader
             }
             else if (sec.Type == ElfSectionType.NoBits)
             {
-                info.DataSections.Add(new DataSection { Name = name, Va = (uint)sec.VirtualAddress, IsZero = true, ZeroSize = (uint)sec.Size });
+                info.DataSections.Add(new DataSection
+                    { Name = name, Va = (uint)sec.VirtualAddress, IsZero = true, ZeroSize = (uint)sec.Size });
             }
             else
             {
-                info.DataSections.Add(new DataSection { Name = name, Va = (uint)sec.VirtualAddress, Data = ReadBytes(sec) });
+                info.DataSections.Add(new DataSection
+                    { Name = name, Va = (uint)sec.VirtualAddress, Data = ReadBytes(sec) });
             }
         }
 
         return info;
     }
 
-    static byte[] ReadBytes(ElfSection sec)
+    private static byte[] ReadBytes(ElfSection sec)
     {
         if (sec is ElfStreamSection ss)
         {
@@ -94,6 +94,7 @@ public static class ElfReader
             ss.Stream.ReadExactly(buf);
             return buf;
         }
+
         return [];
     }
 }

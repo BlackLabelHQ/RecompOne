@@ -2,38 +2,56 @@ namespace RecompOne.Runtime.Assets.Xa;
 
 public static class XaRouter
 {
-    const int MaxGap = 512;
-    const int NewRunLbaSlack = 64;
-    const int ResumeWindowMs = 2000;
+    private const int MaxGap = 512;
+    private const int NewRunLbaSlack = 64;
+    private const int ResumeWindowMs = 2000;
 
-    static readonly object _gate = new();
-    static readonly int[] _frames = new int[4032];
+    private static readonly object _gate = new();
+    private static readonly int[] _frames = new int[4032];
 
-    static XaEntry? _entry;
-    static ReplacementStream? _stream;
-    static byte _file, _channel;
-    static int _lastLba = int.MinValue;
-    static int _startLba;
-    static int _accepted;
-    static int _outRate = 37800;
-    static bool _outStereo = true;
-    static bool _exhausted;
-    static long _tailDeadline;
-    static long _lastSectorTick;
+    private static XaEntry? _entry;
+    private static ReplacementStream? _stream;
+    private static byte _file, _channel;
+    private static int _lastLba = int.MinValue;
+    private static int _startLba;
+    private static int _accepted;
+    private static int _outRate = 37800;
+    private static bool _outStereo = true;
+    private static bool _exhausted;
+    private static long _tailDeadline;
+    private static long _lastSectorTick;
 
     public static bool Active
     {
-        get { lock (_gate) return _stream != null; }
+        get
+        {
+            lock (_gate)
+            {
+                return _stream != null;
+            }
+        }
     }
 
     public static string? ActiveName
     {
-        get { lock (_gate) return _stream?.Name; }
+        get
+        {
+            lock (_gate)
+            {
+                return _stream?.Name;
+            }
+        }
     }
 
     public static string? ActiveEntry
     {
-        get { lock (_gate) return _entry?.ToString(); }
+        get
+        {
+            lock (_gate)
+            {
+                return _entry?.ToString();
+            }
+        }
     }
 
     public static void Reset()
@@ -52,14 +70,14 @@ public static class XaRouter
 
     public static void Sector(int lba, byte[] sec, bool fromStr)
     {
-        byte file = sec[0];
-        byte channel = sec[1];
-        byte coding = sec[3];
+        var file = sec[0];
+        var channel = sec[1];
+        var coding = sec[3];
 
         lock (_gate)
         {
-            bool newRun = _lastLba == int.MinValue || file != _file || channel != _channel ||
-                          lba < _lastLba || lba > _lastLba + MaxGap;
+            var newRun = _lastLba == int.MinValue || file != _file || channel != _channel ||
+                         lba < _lastLba || lba > _lastLba + MaxGap;
 
             if (newRun) BeginRun(lba, file, channel, sec, fromStr);
 
@@ -70,9 +88,9 @@ public static class XaRouter
             if (_entry != null && _accepted > 8 && lba > _startLba)
                 _entry.Interleave = (lba - _startLba) / (double)(_accepted - 1);
 
-            bool stereo = (coding & 0x01) != 0;
-            int rate = (coding & 0x04) != 0 ? 18900 : 37800;
-            int want = stereo ? 2016 : 4032;
+            var stereo = (coding & 0x01) != 0;
+            var rate = (coding & 0x04) != 0 ? 18900 : 37800;
+            var want = stereo ? 2016 : 4032;
             _outRate = rate;
             _outStereo = stereo;
 
@@ -83,9 +101,8 @@ public static class XaRouter
                 return;
             }
 
-            int got = _stream.ReadPacked(_frames, want, rate);
+            var got = _stream.ReadPacked(_frames, want, rate);
             if (got < want)
-            {
                 switch (_stream.Options.OnShorter)
                 {
                     case ShortPolicy.Loop:
@@ -101,7 +118,6 @@ public static class XaRouter
                         Array.Clear(_frames, got, want - got);
                         break;
                 }
-            }
 
             XaAudio.PushFrames(_frames, want, rate);
             AssetReplacerManager.Instance.Stats.XaReplaced++;
@@ -111,7 +127,7 @@ public static class XaRouter
         }
     }
 
-    static void BeginRun(int lba, byte file, byte channel, byte[] sec, bool fromStr)
+    private static void BeginRun(int lba, byte file, byte channel, byte[] sec, bool fromStr)
     {
         var mgr = AssetReplacerManager.Instance;
         mgr.Stats.XaRuns++;
@@ -119,7 +135,7 @@ public static class XaRouter
         var entry = mgr.ResolveXa(file, channel, lba);
         if (entry == null)
         {
-            ulong probe = AssetHash.XaPayload(sec.AsSpan(8, Math.Min(2304, Math.Max(0, sec.Length - 8))));
+            var probe = AssetHash.XaPayload(sec.AsSpan(8, Math.Min(2304, Math.Max(0, sec.Length - 8))));
             entry = mgr.ResolveXaByPayload(probe);
         }
 
@@ -154,13 +170,14 @@ public static class XaRouter
         if (stream == null) return;
 
         double seek = 0;
-        int delta = lba - entry.StartLba;
+        var delta = lba - entry.StartLba;
         if (delta > NewRunLbaSlack)
         {
             double framesPerSector = 2016;
-            double interleave = entry.Interleave <= 0 ? 1 : entry.Interleave;
+            var interleave = entry.Interleave <= 0 ? 1 : entry.Interleave;
             seek = delta / interleave * framesPerSector / 37800.0;
         }
+
         if (seek > 0) stream.SeekSeconds(seek);
 
         _entry = entry;
@@ -192,13 +209,14 @@ public static class XaRouter
             if (_tailDeadline == 0 || Environment.TickCount64 > _tailDeadline) return false;
             if (XaAudio.BufferedSamples > 4096) return true;
 
-            int want = _outStereo ? 2016 : 4032;
-            int got = _stream.ReadPacked(_frames, want, _outRate);
+            var want = _outStereo ? 2016 : 4032;
+            var got = _stream.ReadPacked(_frames, want, _outRate);
             if (got <= 0)
             {
                 _tailDeadline = 0;
                 return false;
             }
+
             if (got < want) Array.Clear(_frames, got, want - got);
             XaAudio.PushFrames(_frames, want, _outRate);
             return true;

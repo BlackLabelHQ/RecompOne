@@ -12,18 +12,18 @@ internal sealed class TextureInspectorPanel : IPanel
     public string TitleKey => "panel.texture_inspector";
     public bool IsOpen { get; set; }
 
-    string _filter = "";
-    bool _onlyReplaced;
-    bool _onlyPages;
-    bool _group = true;
-    bool _recentFirst;
-    int _thumbSize = 64;
+    private string _filter = "";
+    private bool _onlyReplaced;
+    private bool _onlyPages;
+    private bool _group = true;
+    private bool _recentFirst;
+    private int _thumbSize = 64;
 
     public void Draw()
     {
         ImGui.SetNextWindowSize(new Vector2(760, 520), ImGuiCond.FirstUseEver);
 
-        bool open = IsOpen;
+        var open = IsOpen;
         if (!ImGui.Begin(this.Title(), ref open))
         {
             IsOpen = open;
@@ -43,14 +43,14 @@ internal sealed class TextureInspectorPanel : IPanel
         ImGui.End();
     }
 
-    void DrawToolbar()
+    private void DrawToolbar()
     {
-        bool dumpTiles = TextureDumper.Tiles;
+        var dumpTiles = TextureDumper.Tiles;
         if (ImGui.Checkbox("dump tiles", ref dumpTiles)) TextureDumper.SetTiles(dumpTiles);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("write each sampled tile to dump/<game>/textures");
 
         ImGui.SameLine();
-        bool dumpPages = TextureDumper.Pages;
+        var dumpPages = TextureDumper.Pages;
         if (ImGui.Checkbox("dump pages", ref dumpPages)) TextureDumper.SetPages(dumpPages);
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("write whole texture pages to dump/<game>/pages");
 
@@ -85,7 +85,7 @@ internal sealed class TextureInspectorPanel : IPanel
                              "listed = currently held in the table (oldest are evicted)");
     }
 
-    void DrawTable()
+    private void DrawTable()
     {
         var snapshot = TextureRegistry.Snapshot();
 
@@ -96,12 +96,13 @@ internal sealed class TextureInspectorPanel : IPanel
             var best = new Dictionary<ulong, SeenTexture>();
             foreach (var t in snapshot)
             {
-                ulong key = t.IndexHash ^ (t.IsPage ? 1UL : 0UL);
+                var key = t.IndexHash ^ (t.IsPage ? 1UL : 0UL);
                 variants[key] = variants.GetValueOrDefault(key) + 1;
                 if (!best.TryGetValue(key, out var cur) || t.FirstSeen < cur.FirstSeen ||
                     (!cur.Replaced && t.Replaced))
                     best[key] = t;
             }
+
             all = best.Values.ToArray();
         }
         else
@@ -113,7 +114,8 @@ internal sealed class TextureInspectorPanel : IPanel
             ? b.LastSeen.CompareTo(a.LastSeen)
             : a.FirstSeen.CompareTo(b.FirstSeen));
 
-        var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY |ImGuiTableFlags.SizingFixedFit;
+        var flags = ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders | ImGuiTableFlags.ScrollY |
+                    ImGuiTableFlags.SizingFixedFit;
         if (!ImGui.BeginTable("##textures", 5, flags)) return;
 
         ImGui.TableSetupScrollFreeze(0, 1);
@@ -153,7 +155,7 @@ internal sealed class TextureInspectorPanel : IPanel
 
             ImGui.TableNextColumn();
             HashCell($"{t.ClutHash:x16}", false);
-            if (_group && variants.TryGetValue(t.IndexHash ^ (t.IsPage ? 1UL : 0UL), out int n) && n > 1)
+            if (_group && variants.TryGetValue(t.IndexHash ^ (t.IsPage ? 1UL : 0UL), out var n) && n > 1)
                 ImGui.TextDisabled($"+{n - 1} palette{(n > 2 ? "s" : "")}");
 
             ImGui.TableNextColumn();
@@ -164,15 +166,15 @@ internal sealed class TextureInspectorPanel : IPanel
         ImGui.EndTable();
     }
 
-    static void ReleaseOrphans()
+    private static void ReleaseOrphans()
     {
         var gl = GpuGlAccess.Gl;
         var ids = TextureRegistry.TakeOrphanTextures();
         if (gl == null || ids.Length == 0) return;
-        foreach (uint id in ids) gl.DeleteTexture(id);
+        foreach (var id in ids) gl.DeleteTexture(id);
     }
 
-    void HashCell(string hash, bool replaced)
+    private void HashCell(string hash, bool replaced)
     {
         if (replaced) ImGui.TextColored(new Vector4(0.45f, 0.9f, 0.5f, 1f), hash);
         else ImGui.Text(hash);
@@ -181,7 +183,7 @@ internal sealed class TextureInspectorPanel : IPanel
         if (ImGui.IsItemHovered()) ImGui.SetTooltip("click to copy");
     }
 
-    unsafe void DrawThumb(SeenTexture t)
+    private unsafe void DrawThumb(SeenTexture t)
     {
         var gl = GpuGlAccess.Gl;
         if (gl == null || t.Thumb.Length == 0)
@@ -203,13 +205,13 @@ internal sealed class TextureInspectorPanel : IPanel
             gl.BindTexture(TextureTarget.Texture2D, 0);
         }
 
-        float scale = _thumbSize / (float)Math.Max(t.W, t.H);
+        var scale = _thumbSize / (float)Math.Max(t.W, t.H);
         var size = new Vector2(Math.Max(1, t.W * scale), Math.Max(1, t.H * scale));
         ImGui.Image((nint)t.GlTex, size);
 
         if (!ImGui.IsItemHovered()) return;
         ImGui.BeginTooltip();
-        float big = 256f / Math.Max(t.W, t.H);
+        var big = 256f / Math.Max(t.W, t.H);
         ImGui.Image((nint)t.GlTex, new Vector2(t.W * big, t.H * big));
         ImGui.EndTooltip();
     }

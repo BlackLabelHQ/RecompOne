@@ -6,9 +6,9 @@ namespace RecompOne.Runtime.Host.Window;
 
 public sealed class StartupNoticePopup : Popup
 {
-    static string _message = "";
-    static string _title = "common.notice";
-    static string _ackKey = "StartupNoticeAck";
+    private static string _message = "";
+    private static string _title = "common.notice";
+    private static string _ackKey = "StartupNoticeAck";
 
     protected override string TitleKey => _title;
     protected override Vector2 Size => new(500f, 0f);

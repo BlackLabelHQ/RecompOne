@@ -11,14 +11,19 @@ internal sealed class SpuViewerPanel : IPanel
     public string TitleKey => "panel.spu_viewer";
     public bool IsOpen { get; set; }
 
-    readonly Spu.VoiceDebug[] _voices = new Spu.VoiceDebug[24];
-    static readonly StringBuilder _flagsSb = new(8);
+    private readonly Spu.VoiceDebug[] _voices = new Spu.VoiceDebug[24];
+    private static readonly StringBuilder _flagsSb = new(8);
 
     public void Draw()
     {
         ImGui.SetNextWindowSize(new Vector2(860, 520), ImGuiCond.FirstUseEver);
-        bool open = IsOpen;
-        if (!ImGui.Begin(this.Title(), ref open)) { IsOpen = open; ImGui.End(); return; }
+        var open = IsOpen;
+        if (!ImGui.Begin(this.Title(), ref open))
+        {
+            IsOpen = open;
+            ImGui.End();
+            return;
+        }
 
         var spu = Runtime.Spu;
         spu.CaptureDebug(_voices, out var st);
@@ -32,18 +37,26 @@ internal sealed class SpuViewerPanel : IPanel
         ImGui.End();
     }
 
-    static void DrawGlobals(Spu.SpuDebug st)
+    private static void DrawGlobals(Spu.SpuDebug st)
     {
         Pair("Main", $"{st.MainVolL:X4} {st.MainVolR:X4}");
-        ImGui.SameLine(); ImGui.Spacing(); ImGui.SameLine();
+        ImGui.SameLine();
+        ImGui.Spacing();
+        ImGui.SameLine();
         Pair("CD", $"{st.CdVolL:X4} {st.CdVolR:X4}");
-        ImGui.SameLine(); ImGui.Spacing(); ImGui.SameLine();
+        ImGui.SameLine();
+        ImGui.Spacing();
+        ImGui.SameLine();
         Pair("Ext", $"{st.ExtVolL:X4} {st.ExtVolR:X4}");
-        ImGui.SameLine(); ImGui.Spacing(); ImGui.SameLine();
+        ImGui.SameLine();
+        ImGui.Spacing();
+        ImGui.SameLine();
         Pair("Reverb", $"{st.ReverbVolL:X4} {st.ReverbVolR:X4} @ {st.ReverbStartAddr:X5}");
 
         Pair("SPUCNT", $"{st.Spucnt:X4}");
-        ImGui.SameLine(); ImGui.Spacing(); ImGui.SameLine();
+        ImGui.SameLine();
+        ImGui.Spacing();
+        ImGui.SameLine();
         Flag("Enable", (st.Spucnt & 0x8000) != 0);
         ImGui.SameLine();
         Flag("Unmute", (st.Spucnt & 0x4000) != 0);
@@ -51,25 +64,31 @@ internal sealed class SpuViewerPanel : IPanel
         Flag("Reverb", (st.Spucnt & 0x0080) != 0);
         ImGui.SameLine();
         Flag("CD audio", (st.Spucnt & 0x0001) != 0);
-        ImGui.SameLine(); ImGui.Spacing(); ImGui.SameLine();
+        ImGui.SameLine();
+        ImGui.Spacing();
+        ImGui.SameLine();
         Pair("Transfer", $"{st.TransferAddr:X5}");
     }
 
-    static void DrawXa()
+    private static void DrawXa()
     {
-        bool playing = XaAudio.Playing;
-        int buffered = XaAudio.BufferedSamples;
-        int rate = XaAudio.SourceRate;
-        float ms = rate > 0 ? buffered * 1000f / rate : 0f;
+        var playing = XaAudio.Playing;
+        var buffered = XaAudio.BufferedSamples;
+        var rate = XaAudio.SourceRate;
+        var ms = rate > 0 ? buffered * 1000f / rate : 0f;
 
         Pair("XA", playing ? "playing" : "stopped");
-        ImGui.SameLine(); ImGui.Spacing(); ImGui.SameLine();
+        ImGui.SameLine();
+        ImGui.Spacing();
+        ImGui.SameLine();
         Pair("Rate", $"{rate} Hz");
-        ImGui.SameLine(); ImGui.Spacing(); ImGui.SameLine();
+        ImGui.SameLine();
+        ImGui.Spacing();
+        ImGui.SameLine();
         Pair("Buffered", $"{buffered} ({ms:F0} ms)");
     }
 
-    void DrawVoices(Spu.SpuDebug st)
+    private void DrawVoices(Spu.SpuDebug st)
     {
         var tableFlags = ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersOuter | ImGuiTableFlags.BordersInnerV |
                          ImGuiTableFlags.SizingFixedFit | ImGuiTableFlags.ScrollY;
@@ -89,10 +108,10 @@ internal sealed class SpuViewerPanel : IPanel
         ImGui.TableSetupColumn("Flags", ImGuiTableColumnFlags.WidthStretch);
         ImGui.TableHeadersRow();
 
-        for (int i = 0; i < 24; i++)
+        for (var i = 0; i < 24; i++)
         {
             var v = _voices[i];
-            bool on = v.Phase != Spu.AdsrPhase.Off;
+            var on = v.Phase != Spu.AdsrPhase.Off;
 
             ImGui.TableNextRow();
             ImGui.TableSetColumnIndex(0);
@@ -132,14 +151,14 @@ internal sealed class SpuViewerPanel : IPanel
         ImGui.EndTable();
     }
 
-    static void Pair(string label, string value)
+    private static void Pair(string label, string value)
     {
         ImGui.TextDisabled(label);
         ImGui.SameLine();
         ImGui.TextUnformatted(value);
     }
 
-    static void Flag(string label, bool set)
+    private static void Flag(string label, bool set)
     {
         if (set) ImGui.TextUnformatted(label);
         else ImGui.TextDisabled(label);

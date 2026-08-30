@@ -17,29 +17,47 @@ public sealed class SeenTexture
 
 public static class TextureRegistry
 {
-    const int MaxEntries = 4096; //size of tabl
+    private const int MaxEntries = 4096; //size of tabl
 
-    static readonly Dictionary<ulong, SeenTexture> _seen = [];
-    static readonly HashSet<ulong> _everSeen = [];
-    static readonly HashSet<ulong> _everSeenArt = [];
-    static readonly object _gate = new();
-    static long _clock;
+    private static readonly Dictionary<ulong, SeenTexture> _seen = [];
+    private static readonly HashSet<ulong> _everSeen = [];
+    private static readonly HashSet<ulong> _everSeenArt = [];
+    private static readonly object _gate = new();
+    private static long _clock;
 
     public static int UniqueKeys
     {
-        get { lock (_gate) return _everSeen.Count; }
+        get
+        {
+            lock (_gate)
+            {
+                return _everSeen.Count;
+            }
+        }
     }
 
     public static int UniqueArtworks
     {
-        get { lock (_gate) return _everSeenArt.Count; }
+        get
+        {
+            lock (_gate)
+            {
+                return _everSeenArt.Count;
+            }
+        }
     }
 
     public static bool Enabled { get; set; }
 
     public static int Count
     {
-        get { lock (_gate) return _seen.Count; }
+        get
+        {
+            lock (_gate)
+            {
+                return _seen.Count;
+            }
+        }
     }
 
     public static void Clear()
@@ -47,7 +65,8 @@ public static class TextureRegistry
         lock (_gate)
         {
             foreach (var entry in _seen.Values)
-                if (entry.GlTex != 0) _orphanTextures.Add(entry.GlTex);
+                if (entry.GlTex != 0)
+                    _orphanTextures.Add(entry.GlTex);
             _seen.Clear();
             _everSeen.Clear();
             _everSeenArt.Clear();
@@ -59,7 +78,7 @@ public static class TextureRegistry
     {
         if (!Enabled) return;
 
-        ulong id = indexHash ^ (clutHash * 1099511628211UL) ^ (isPage ? 0x5BF03635UL : 0);
+        var id = indexHash ^ (clutHash * 1099511628211UL) ^ (isPage ? 0x5BF03635UL : 0);
         lock (_gate)
         {
             if (_seen.TryGetValue(id, out var known))
@@ -69,6 +88,7 @@ public static class TextureRegistry
                 known.Replaced = replaced;
                 return;
             }
+
             if (_seen.Count >= MaxEntries) Evict();
         }
 
@@ -87,7 +107,7 @@ public static class TextureRegistry
             Dynamic = dynamic,
             Replaced = replaced,
             Hits = 1,
-            Thumb = TextureTile.Decode(vram, rect),
+            Thumb = TextureTile.Decode(vram, rect)
         };
 
         lock (_gate)
@@ -102,14 +122,17 @@ public static class TextureRegistry
 
     public static SeenTexture[] Snapshot()
     {
-        lock (_gate) return _seen.Values.ToArray();
+        lock (_gate)
+        {
+            return _seen.Values.ToArray();
+        }
     }
 
-    static readonly List<uint> _orphanTextures = [];
+    private static readonly List<uint> _orphanTextures = [];
 
-    static void Evict()
+    private static void Evict()
     {
-        int drop = Math.Max(1, MaxEntries / 8);
+        var drop = Math.Max(1, MaxEntries / 8);
         var oldest = _seen.OrderBy(p => p.Value.LastSeen).Take(drop).ToArray();
         foreach (var (id, entry) in oldest)
         {

@@ -31,7 +31,7 @@ internal sealed class ChdBitReader
 
     public uint Read(int count)
     {
-        uint value = Peek(count);
+        var value = Peek(count);
         Remove(count);
         return value;
     }
@@ -50,10 +50,14 @@ internal sealed class ChdBitReader
                 next = 0;
                 Overflow = true;
             }
+
             _accumulator = (_accumulator << 8) | next;
             _available += 8;
         }
     }
 
-    private static ulong Mask(int bits) => bits >= 64 ? ulong.MaxValue : (1UL << bits) - 1;
+    private static ulong Mask(int bits)
+    {
+        return bits >= 64 ? ulong.MaxValue : (1UL << bits) - 1;
+    }
 }

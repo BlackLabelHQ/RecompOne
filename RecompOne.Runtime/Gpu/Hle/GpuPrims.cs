@@ -9,31 +9,55 @@ public struct PrimVertex
 
     public PrimVertex(float x, float y)
     {
-        X = x; Y = y; U = 0f; V = 0f; R = 128; G = 128; B = 128;
+        X = x;
+        Y = y;
+        U = 0f;
+        V = 0f;
+        R = 128;
+        G = 128;
+        B = 128;
     }
 
     public PrimVertex(float x, float y, float u, float v)
     {
-        X = x; Y = y; U = u; V = v; R = 128; G = 128; B = 128;
+        X = x;
+        Y = y;
+        U = u;
+        V = v;
+        R = 128;
+        G = 128;
+        B = 128;
     }
 
     public PrimVertex(float x, float y, byte r, byte g, byte b)
     {
-        X = x; Y = y; U = 0f; V = 0f; R = r; G = g; B = b;
+        X = x;
+        Y = y;
+        U = 0f;
+        V = 0f;
+        R = r;
+        G = g;
+        B = b;
     }
 
     public PrimVertex(float x, float y, float u, float v, byte r, byte g, byte b)
     {
-        X = x; Y = y; U = u; V = v; R = r; G = g; B = b;
+        X = x;
+        Y = y;
+        U = u;
+        V = v;
+        R = r;
+        G = g;
+        B = b;
     }
 }
 
 public static class GpuPrims
 {
     public const int MaxOrder = 0x800;
-    const int MaxEntries = 0x4000;
+    private const int MaxEntries = 0x4000;
 
-    struct Entry
+    private struct Entry
     {
         public int Next;
         public int Count;
@@ -42,14 +66,14 @@ public static class GpuPrims
         public PrimVertex V0, V1, V2, V3;
     }
 
-    static Entry[] _entries = new Entry[256];
-    static int _n;
+    private static Entry[] _entries = new Entry[256];
+    private static int _n;
 
-    static readonly int[] _heads = NewLinks();
-    static readonly int[] _tails = NewLinks();
-    static readonly List<int> _used = [];
+    private static readonly int[] _heads = NewLinks();
+    private static readonly int[] _tails = NewLinks();
+    private static readonly List<int> _used = [];
 
-    static int[] NewLinks()
+    private static int[] NewLinks()
     {
         var a = new int[MaxOrder];
         Array.Fill(a, -1);
@@ -68,15 +92,18 @@ public static class GpuPrims
     }
 
     public static int RegisterImage(ReadOnlySpan<byte> rgba, int width, int height)
-        => GpuHle.Backend?.RegisterImage(rgba, width, height) ?? -1;
+    {
+        return GpuHle.Backend?.RegisterImage(rgba, width, height) ?? -1;
+    }
 
     public static void Clear()
     {
-        for (int i = 0; i < _used.Count; i++)
+        for (var i = 0; i < _used.Count; i++)
         {
             _heads[_used[i]] = -1;
             _tails[_used[i]] = -1;
         }
+
         _used.Clear();
         _n = 0;
     }
@@ -84,21 +111,26 @@ public static class GpuPrims
     public static void Tri(int order, in PrimVertex a, in PrimVertex b, in PrimVertex c,
         int image = -1, bool semiTrans = false, int blend = 0, bool raw = true, bool gouraud = false)
     {
-        int i = Alloc(order, image, semiTrans, blend, raw, gouraud);
+        var i = Alloc(order, image, semiTrans, blend, raw, gouraud);
         if (i < 0) return;
         ref var e = ref _entries[i];
         e.Count = 3;
-        e.V0 = a; e.V1 = b; e.V2 = c;
+        e.V0 = a;
+        e.V1 = b;
+        e.V2 = c;
     }
 
     public static void Quad(int order, in PrimVertex a, in PrimVertex b, in PrimVertex c, in PrimVertex d,
         int image = -1, bool semiTrans = false, int blend = 0, bool raw = true, bool gouraud = false)
     {
-        int i = Alloc(order, image, semiTrans, blend, raw, gouraud);
+        var i = Alloc(order, image, semiTrans, blend, raw, gouraud);
         if (i < 0) return;
         ref var e = ref _entries[i];
         e.Count = 4;
-        e.V0 = a; e.V1 = b; e.V2 = c; e.V3 = d;
+        e.V0 = a;
+        e.V1 = b;
+        e.V2 = c;
+        e.V3 = d;
     }
 
     public static void Sprite(int order, int image, float x, float y, float w, float h,
@@ -113,13 +145,13 @@ public static class GpuPrims
             image, semiTrans, blend);
     }
 
-    static int Alloc(int order, int image, bool semiTrans, int blend, bool raw, bool gouraud)
+    private static int Alloc(int order, int image, bool semiTrans, int blend, bool raw, bool gouraud)
     {
         if ((uint)order >= MaxOrder || _n >= MaxEntries) return -1;
 
         if (_n == _entries.Length) Array.Resize(ref _entries, _entries.Length * 2);
 
-        int idx = _n++;
+        var idx = _n++;
         ref var e = ref _entries[idx];
         e.Next = -1;
         e.UseImage = image >= 0;
@@ -134,7 +166,11 @@ public static class GpuPrims
             _heads[order] = idx;
             _used.Add(order);
         }
-        else _entries[_tails[order]].Next = idx;
+        else
+        {
+            _entries[_tails[order]].Next = idx;
+        }
+
         _tails[order] = idx;
 
         return idx;
@@ -143,7 +179,7 @@ public static class GpuPrims
     internal static void Emit(int order, Gpu gpu)
     {
         if ((uint)order >= MaxOrder) return;
-        for (int i = _heads[order]; i >= 0; i = _entries[i].Next)
+        for (var i = _heads[order]; i >= 0; i = _entries[i].Next)
         {
             ref var e = ref _entries[i];
             gpu.EmitPrim(e.Count, in e.V0, in e.V1, in e.V2, in e.V3,

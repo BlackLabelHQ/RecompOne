@@ -6,23 +6,23 @@ namespace RecompOne.Runtime.Host;
 
 internal static unsafe class Audio
 {
-    static ALContext? _alc;
-    static AL? _al;
-    static ALDevice* _device;
-    static ALCtx* _context;
+    private static ALContext? _alc;
+    private static AL? _al;
+    private static ALDevice* _device;
+    private static ALCtx* _context;
 
 
-    const int NumBuffers = 8;
-    const int FramesPerBuffer = 256;
+    private const int NumBuffers = 8;
+    private const int FramesPerBuffer = 256;
 
-    static uint _source;
-    static uint[] _buffers = new uint[NumBuffers];
-    static short[] _sampleBuf = new short[FramesPerBuffer * 2];
+    private static uint _source;
+    private static uint[] _buffers = new uint[NumBuffers];
+    private static short[] _sampleBuf = new short[FramesPerBuffer * 2];
 
-    static Thread? _mixerThread;
-    static Spu? _spu;
-    static volatile bool _running;
-    static float _masterVolume = 1.0f;
+    private static Thread? _mixerThread;
+    private static Spu? _spu;
+    private static volatile bool _running;
+    private static float _masterVolume = 1.0f;
 
     public static void Initialize()
     {
@@ -36,19 +36,22 @@ internal static unsafe class Audio
                 Console.Error.WriteLine("[Host] no audio device, audio disabled");
                 return;
             }
+
             _context = _alc.CreateContext(_device, null);
             _alc.MakeContextCurrent(_context);
 
             _source = _al.GenSource();
             _al.SetSourceProperty(_source, SourceFloat.Gain, _masterVolume);
             fixed (uint* ptr = _buffers)
+            {
                 _al.GenBuffers(NumBuffers, ptr);
+            }
 
             //initial empty rihgt
-            for (int i = 0; i < _buffers.Length; i++)
+            for (var i = 0; i < _buffers.Length; i++)
             {
                 _al.BufferData(_buffers[i], BufferFormat.Stereo16, _sampleBuf, 44100);
-                uint b = _buffers[i];
+                var b = _buffers[i];
                 _al.SourceQueueBuffers(_source, 1, &b);
             }
 
@@ -72,7 +75,10 @@ internal static unsafe class Audio
         spu.XaGain = Config.ConfigManager.Game.XaVolume;
     }
 
-    public static void Detach() => _spu = null;
+    public static void Detach()
+    {
+        _spu = null;
+    }
 
     public static void SetMasterVolume(float volume)
     {
@@ -80,10 +86,10 @@ internal static unsafe class Audio
         if (_al != null && _source != 0)
             _al.SetSourceProperty(_source, SourceFloat.Gain, _masterVolume);
     }
-    
-    static readonly int BufferMs = Math.Max(1, FramesPerBuffer * 1000 / 44100);
 
-    static void MixerLoop()
+    private static readonly int BufferMs = Math.Max(1, FramesPerBuffer * 1000 / 44100);
+
+    private static void MixerLoop()
     {
         while (_running)
         {
@@ -93,9 +99,9 @@ internal static unsafe class Audio
         }
     }
 
-    static void FillBuffers(Spu spu)
+    private static void FillBuffers(Spu spu)
     {
-        _al!.GetSourceProperty(_source, GetSourceInteger.BuffersProcessed, out int processed);
+        _al!.GetSourceProperty(_source, GetSourceInteger.BuffersProcessed, out var processed);
         while (processed > 0)
         {
             uint buf = 0;
@@ -108,7 +114,7 @@ internal static unsafe class Audio
             processed--;
         }
 
-        _al.GetSourceProperty(_source, GetSourceInteger.SourceState, out int state);
+        _al.GetSourceProperty(_source, GetSourceInteger.SourceState, out var state);
         if (state != (int)SourceState.Playing)
             _al.SourcePlay(_source);
     }
@@ -124,6 +130,7 @@ internal static unsafe class Audio
             _al.DeleteSource(_source);
             _al.DeleteBuffers(_buffers);
         }
+
         if (_context != null) _alc.DestroyContext(_context);
         if (_device != null) _alc.CloseDevice(_device);
     }

@@ -17,7 +17,7 @@ public interface IGpuBackend
     void CopyVram(int sx, int sy, int dx, int dy, int w, int h);
     void WriteVram(int x, int y, int w, int h, ReadOnlySpan<ushort> px);
     void ReadVram(int x, int y, int w, int h, Span<ushort> px);
-    
+
     //add other stuff
     int RegisterImage(ReadOnlySpan<byte> rgba, int width, int height);
 

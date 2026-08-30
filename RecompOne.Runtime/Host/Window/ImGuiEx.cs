@@ -27,5 +27,8 @@ internal static class ImGuiEx
         ImGui.PopStyleColor();
     }
 
-    public static string Title(string titleKey, string id) => $"{Localization.T(titleKey)}###{id}";
+    public static string Title(string titleKey, string id)
+    {
+        return $"{Localization.T(titleKey)}###{id}";
+    }
 }

@@ -33,7 +33,7 @@ public sealed class ChdFile : IDisposable
         _header = header;
         _map = map;
         _codecs = new ChdCodecSet(header);
-        for (int i = 0; i < HunkCacheSize; i++)
+        for (var i = 0; i < HunkCacheSize; i++)
         {
             _cacheIndex[i] = -1;
             _cacheData[i] = new byte[header.HunkBytes];
@@ -50,10 +50,11 @@ public sealed class ChdFile : IDisposable
             if (!raw.AsSpan(0, 8).SequenceEqual(Magic))
                 throw new InvalidDataException("not a chd file");
 
-            uint headerLength = ChdBig.U32(raw, 8);
-            uint version = ChdBig.U32(raw, 12);
+            var headerLength = ChdBig.U32(raw, 8);
+            var version = ChdBig.U32(raw, 12);
             if (version != 5)
-                throw new NotSupportedException($"chd version {version} is not supported, only v5 is supported currently");
+                throw new NotSupportedException(
+                    $"chd version {version} is not supported, only v5 is supported currently");
             if (headerLength != ChdHeader.V5Length)
                 throw new InvalidDataException($"unexpected chd v5 header length {headerLength}");
 
@@ -87,10 +88,11 @@ public sealed class ChdFile : IDisposable
     {
         lock (_gate)
         {
-            for (int i = 0; i < HunkCacheSize; i++)
-                if (_cacheIndex[i] == index) return _cacheData[i];
+            for (var i = 0; i < HunkCacheSize; i++)
+                if (_cacheIndex[i] == index)
+                    return _cacheData[i];
 
-            int slot = _cacheCursor;
+            var slot = _cacheCursor;
             _cacheCursor = (_cacheCursor + 1) % HunkCacheSize;
             var dest = _cacheData[slot];
             _cacheIndex[slot] = -1;
@@ -150,7 +152,7 @@ public sealed class ChdFile : IDisposable
 
     private void ReadMetadata()
     {
-        ulong offset = _header.MetaOffset;
+        var offset = _header.MetaOffset;
         var head = new byte[MetadataHeaderSize];
 
         while (offset != 0 && offset < (ulong)_stream.Length)
@@ -158,9 +160,9 @@ public sealed class ChdFile : IDisposable
             _stream.Seek((long)offset, SeekOrigin.Begin);
             _stream.ReadExactly(head, 0, MetadataHeaderSize);
 
-            uint tag = ChdBig.U32(head, 0);
-            uint length = ChdBig.U32(head, 4) & 0x00FFFFFF;
-            ulong next = ChdBig.U64(head, 8);
+            var tag = ChdBig.U32(head, 0);
+            var length = ChdBig.U32(head, 4) & 0x00FFFFFF;
+            var next = ChdBig.U64(head, 8);
 
             var data = new byte[length];
             _stream.ReadExactly(data, 0, (int)length);
@@ -170,5 +172,8 @@ public sealed class ChdFile : IDisposable
         }
     }
 
-    public void Dispose() => _stream.Dispose();
+    public void Dispose()
+    {
+        _stream.Dispose();
+    }
 }

@@ -1,48 +1,47 @@
 namespace RecompOne.Runtime.Hardware;
 
-
 public sealed class Sio0
 {
-    const ushort StatTxDataClear = 0x0001;
-    const ushort StatRxNotEmpty = 0x0002;
-    const ushort StatTxFinished = 0x0004;
-    const ushort StatAck = 0x0080;
-    const ushort StatIrq = 0x0200;
-    const ushort CtrlTxEnable = 0x0001;
-    const ushort CtrlSelect = 0x0002;
-    const ushort CtrlResetErr = 0x0010;
-    const ushort CtrlReset = 0x0040;
-    const ushort CtrlAckIrqEn = 0x1000;
-    const ushort CtrlPort2 = 0x2000;
-    const byte DeviceNone = 0x00;
-    const byte DevicePad = 0x01;
-    const byte DeviceCard = 0x81;
-    const byte CardId1 = 0x5A;
-    const byte CardId2 = 0x5D;
-    const byte CardAck1 = 0x5C;
-    const byte CardAck2 = 0x5D;
-    const byte CardGood = 0x47;
-    const byte CardBadChecksum = 0x4E;
-    const byte CardBadSector = 0xFF;
-    const int CardFrameSize = 128;
-    byte _cardCmd;
-    int _cardSector;
-    int _cardOffset;
-    byte _cardChecksum;
-    byte _cardPrev;
-    readonly byte[] _cardFrame = new byte[CardFrameSize];
-    static byte _dirFlagA = 0x08;
-    static byte _dirFlagB = 0x08;
+    private const ushort StatTxDataClear = 0x0001;
+    private const ushort StatRxNotEmpty = 0x0002;
+    private const ushort StatTxFinished = 0x0004;
+    private const ushort StatAck = 0x0080;
+    private const ushort StatIrq = 0x0200;
+    private const ushort CtrlTxEnable = 0x0001;
+    private const ushort CtrlSelect = 0x0002;
+    private const ushort CtrlResetErr = 0x0010;
+    private const ushort CtrlReset = 0x0040;
+    private const ushort CtrlAckIrqEn = 0x1000;
+    private const ushort CtrlPort2 = 0x2000;
+    private const byte DeviceNone = 0x00;
+    private const byte DevicePad = 0x01;
+    private const byte DeviceCard = 0x81;
+    private const byte CardId1 = 0x5A;
+    private const byte CardId2 = 0x5D;
+    private const byte CardAck1 = 0x5C;
+    private const byte CardAck2 = 0x5D;
+    private const byte CardGood = 0x47;
+    private const byte CardBadChecksum = 0x4E;
+    private const byte CardBadSector = 0xFF;
+    private const int CardFrameSize = 128;
+    private byte _cardCmd;
+    private int _cardSector;
+    private int _cardOffset;
+    private byte _cardChecksum;
+    private byte _cardPrev;
+    private readonly byte[] _cardFrame = new byte[CardFrameSize];
+    private static byte _dirFlagA = 0x08;
+    private static byte _dirFlagB = 0x08;
 
-    ushort _status = StatTxDataClear | StatTxFinished;
-    ushort _mode;
-    ushort _ctrl;
-    ushort _baud;
+    private ushort _status = StatTxDataClear | StatTxFinished;
+    private ushort _mode;
+    private ushort _ctrl;
+    private ushort _baud;
 
-    byte _rx = 0xFF;
-    int _irqDelay;
+    private byte _rx = 0xFF;
+    private int _irqDelay;
 
-    static bool _ackPending;
+    private static bool _ackPending;
 
     public static bool ConsumeAck()
     {
@@ -50,10 +49,14 @@ public sealed class Sio0
         _ackPending = false;
         return true;
     }
-    byte _device = DeviceNone;
-    int _step;
 
-    public static bool InRange(uint phys) => phys >= 0x1F801040u && phys <= 0x1F80104Fu;
+    private byte _device = DeviceNone;
+    private int _step;
+
+    public static bool InRange(uint phys)
+    {
+        return phys >= 0x1F801040u && phys <= 0x1F80104Fu;
+    }
 
     public uint Read(uint phys)
     {
@@ -80,22 +83,22 @@ public sealed class Sio0
         }
     }
 
-    ushort ReadStatus()
+    private ushort ReadStatus()
     {
         if (_irqDelay > 0 && --_irqDelay == 0)
             _status |= StatIrq;
         return _status;
     }
 
-    byte ReadData()
+    private byte ReadData()
     {
-        byte v = _rx;
+        var v = _rx;
         _status &= unchecked((ushort)~StatRxNotEmpty);
         _rx = 0xFF;
         return v;
     }
 
-    void WriteData(byte value)
+    private void WriteData(byte value)
     {
         _status &= unchecked((ushort)~StatTxDataClear);
         if ((_ctrl & CtrlTxEnable) == 0 || (_status & StatTxFinished) == 0)
@@ -104,10 +107,10 @@ public sealed class Sio0
         _status |= StatTxDataClear | StatTxFinished;
     }
 
-    void WriteCtrl(ushort value)
+    private void WriteCtrl(ushort value)
     {
-        bool deselected = (_ctrl & CtrlSelect) != 0 && (value & CtrlSelect) == 0;
-        bool portChanged = (_ctrl & CtrlPort2) != 0 && (value & CtrlPort2) == 0;
+        var deselected = (_ctrl & CtrlSelect) != 0 && (value & CtrlSelect) == 0;
+        var portChanged = (_ctrl & CtrlPort2) != 0 && (value & CtrlPort2) == 0;
 
         _ctrl = value;
 
@@ -133,7 +136,7 @@ public sealed class Sio0
         }
     }
 
-    void Transfer(byte value)
+    private void Transfer(byte value)
     {
         if (_device == DeviceNone)
         {
@@ -142,11 +145,11 @@ public sealed class Sio0
         }
 
         byte rx = 0xFF;
-        bool ack = _device switch
+        var ack = _device switch
         {
             DevicePad => PadTransfer(value, out rx),
             DeviceCard => CardTransfer(value, out rx),
-            _ => false,
+            _ => false
         };
 
         _cardPrev = value;
@@ -159,9 +162,9 @@ public sealed class Sio0
         _ackPending = true;
     }
 
-    bool CardTransfer(byte value, out byte rx)
+    private bool CardTransfer(byte value, out byte rx)
     {
-        bool port2 = (_ctrl & CtrlPort2) != 0;
+        var port2 = (_ctrl & CtrlPort2) != 0;
         var card = port2 ? Runtime.CardB : Runtime.CardA;
         rx = 0xFF;
         if (card == null || !card.Enabled)
@@ -171,7 +174,7 @@ public sealed class Sio0
             return false;
         }
 
-        int step = _step++;
+        var step = _step++;
         if (step == 0) return true;
 
         if (step == 1)
@@ -187,11 +190,11 @@ public sealed class Sio0
         {
             0x52 => CardRead(value, step, card, port2, out rx),
             0x57 => CardWrite(value, step, card, port2, out rx),
-            _ => EndCard(out rx),
+            _ => EndCard(out rx)
         };
     }
 
-    bool EndCard(out byte rx)
+    private bool EndCard(out byte rx)
     {
         rx = 0xFF;
         _step = 0;
@@ -199,22 +202,35 @@ public sealed class Sio0
         return false;
     }
 
-    bool CardRead(byte value, int step, MemoryCard card, bool port2, out byte rx)
+    private bool CardRead(byte value, int step, MemoryCard card, bool port2, out byte rx)
     {
         switch (step)
         {
-            case 2: rx = CardId1; return true;
-            case 3: rx = CardId2; return true;
-            case 4: _cardSector = value << 8; rx = 0x00; return true;
+            case 2:
+                rx = CardId1;
+                return true;
+            case 3:
+                rx = CardId2;
+                return true;
+            case 4:
+                _cardSector = value << 8;
+                rx = 0x00;
+                return true;
             case 5:
                 _cardSector |= value;
                 _cardOffset = 0;
                 rx = _cardPrev;
                 if (_cardSector < 1024) card.FrameRead(_cardSector, _cardFrame);
                 return true;
-            case 6: rx = CardAck1; return true;
-            case 7: rx = CardAck2; return true;
-            case 8: rx = (byte)(_cardSector >> 8); return true;
+            case 6:
+                rx = CardAck1;
+                return true;
+            case 7:
+                rx = CardAck2;
+                return true;
+            case 8:
+                rx = (byte)(_cardSector >> 8);
+                return true;
             case 9:
                 rx = (byte)_cardSector;
                 _cardChecksum = (byte)((_cardSector >> 8) ^ (_cardSector & 0xFF));
@@ -226,19 +242,37 @@ public sealed class Sio0
                     _cardChecksum ^= rx;
                     return true;
                 }
-                if (step == 10 + CardFrameSize) { rx = _cardChecksum; return true; }
-                if (step == 11 + CardFrameSize) { rx = CardGood; return EndCard(out _) || true; }
+
+                if (step == 10 + CardFrameSize)
+                {
+                    rx = _cardChecksum;
+                    return true;
+                }
+
+                if (step == 11 + CardFrameSize)
+                {
+                    rx = CardGood;
+                    return EndCard(out _) || true;
+                }
+
                 return EndCard(out rx);
         }
     }
 
-    bool CardWrite(byte value, int step, MemoryCard card, bool port2, out byte rx)
+    private bool CardWrite(byte value, int step, MemoryCard card, bool port2, out byte rx)
     {
         switch (step)
         {
-            case 2: rx = CardId1; return true;
-            case 3: rx = CardId2; return true;
-            case 4: _cardSector = value << 8; rx = 0x00; return true;
+            case 2:
+                rx = CardId1;
+                return true;
+            case 3:
+                rx = CardId2;
+                return true;
+            case 4:
+                _cardSector = value << 8;
+                rx = 0x00;
+                return true;
             case 5:
                 _cardSector |= value;
                 _cardOffset = 0;
@@ -253,29 +287,43 @@ public sealed class Sio0
                     rx = _cardPrev;
                     return true;
                 }
+
                 if (step == 6 + CardFrameSize)
                 {
-                    if (_cardSector >= 1024) { rx = CardBadSector; return EndCard(out _) || true; }
+                    if (_cardSector >= 1024)
+                    {
+                        rx = CardBadSector;
+                        return EndCard(out _) || true;
+                    }
+
                     rx = value == _cardChecksum ? CardAck1 : CardBadChecksum;
                     if (value != _cardChecksum) return EndCard(out _) || true;
                     return true;
                 }
-                if (step == 7 + CardFrameSize) { rx = CardAck2; return true; }
+
+                if (step == 7 + CardFrameSize)
+                {
+                    rx = CardAck2;
+                    return true;
+                }
+
                 if (step == 8 + CardFrameSize)
                 {
                     card.FrameWrite(_cardSector, _cardFrame);
-                    if (port2) _dirFlagB = 0x00; else _dirFlagA = 0x00;
+                    if (port2) _dirFlagB = 0x00;
+                    else _dirFlagA = 0x00;
                     rx = CardGood;
                     EndCard(out _);
                     return false;
                 }
+
                 return EndCard(out rx);
         }
     }
 
-    bool PadTransfer(byte value, out byte rx)
+    private bool PadTransfer(byte value, out byte rx)
     {
-        bool port2 = (_ctrl & CtrlPort2) != 0;
+        var port2 = (_ctrl & CtrlPort2) != 0;
         if (port2 && !Controller.Connected2)
         {
             rx = 0xFF;
@@ -283,27 +331,45 @@ public sealed class Sio0
             return false;
         }
 
-        ushort buttons = port2 ? Controller.State2 : Controller.State;
-        bool analog = port2 ? Controller.Analog2 : Controller.Analog;
-        int step = _step++;
+        var buttons = port2 ? Controller.State2 : Controller.State;
+        var analog = port2 ? Controller.Analog2 : Controller.Analog;
+        var step = _step++;
         switch (step)
         {
-            case 0: rx = 0xFF; return true;
+            case 0:
+                rx = 0xFF;
+                return true;
             case 1:
-                if (value != 0x42) { rx = 0xFF; _step = 0; return false; }
+                if (value != 0x42)
+                {
+                    rx = 0xFF;
+                    _step = 0;
+                    return false;
+                }
+
                 rx = analog ? (byte)0x73 : (byte)0x41;
                 return true;
-            case 2: rx = 0x5A; return true;
-            case 3: rx = (byte)buttons; return true;
+            case 2:
+                rx = 0x5A;
+                return true;
+            case 3:
+                rx = (byte)buttons;
+                return true;
             case 4:
                 rx = (byte)(buttons >> 8);
                 if (analog) return true;
                 _step = 0;
                 _device = DeviceNone;
                 return false;
-            case 5: rx = port2 ? Controller.RightX2 : Controller.RightX; return true;
-            case 6: rx = port2 ? Controller.RightY2 : Controller.RightY; return true;
-            case 7: rx = port2 ? Controller.LeftX2 : Controller.LeftX; return true;
+            case 5:
+                rx = port2 ? Controller.RightX2 : Controller.RightX;
+                return true;
+            case 6:
+                rx = port2 ? Controller.RightY2 : Controller.RightY;
+                return true;
+            case 7:
+                rx = port2 ? Controller.LeftX2 : Controller.LeftX;
+                return true;
             case 8:
                 rx = port2 ? Controller.LeftY2 : Controller.LeftY;
                 _step = 0;

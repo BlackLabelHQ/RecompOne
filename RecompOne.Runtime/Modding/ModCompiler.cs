@@ -10,17 +10,20 @@ namespace RecompOne.Runtime.Modding;
 
 public static class ModCompiler
 {
-    static List<MetadataReference>? _references;
+    private static List<MetadataReference>? _references;
 
     public static byte[]? Compile(string modId, IReadOnlyList<(string Path, string Text)> sources)
     {
         var parseOptions = CSharpParseOptions.Default.WithLanguageVersion(LanguageVersion.Latest);
-        var trees = sources.Select(s => CSharpSyntaxTree.ParseText(SourceText.From(s.Text, Encoding.UTF8), parseOptions, s.Path)).ToList();
-        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithAllowUnsafe(true).WithOptimizationLevel(OptimizationLevel.Release);
+        var trees = sources.Select(s =>
+            CSharpSyntaxTree.ParseText(SourceText.From(s.Text, Encoding.UTF8), parseOptions, s.Path)).ToList();
+        var options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary).WithAllowUnsafe(true)
+            .WithOptimizationLevel(OptimizationLevel.Release);
 
         var compilation = CSharpCompilation.Create($"mod-{modId}", trees, References(), options);
         using var ms = new MemoryStream();
-        var result = compilation.Emit(ms, options: new EmitOptions(debugInformationFormat: DebugInformationFormat.Embedded));
+        var result = compilation.Emit(ms,
+            options: new EmitOptions(debugInformationFormat: DebugInformationFormat.Embedded));
         if (!result.Success)
         {
             foreach (var diag in result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error))
@@ -31,7 +34,7 @@ public static class ModCompiler
         return ms.ToArray();
     }
 
-    static unsafe List<MetadataReference> References()
+    private static unsafe List<MetadataReference> References()
     {
         if (_references != null) return _references;
 
@@ -46,8 +49,10 @@ public static class ModCompiler
                 continue;
             }
 
-           //use the budnled dll instead of trying to find ones that odnt exist, should fix mod on single file publish
-            if (a.TryGetRawMetadata(out byte* blob, out int length)) refs.Add(AssemblyMetadata.Create(ModuleMetadata.CreateFromMetadata((IntPtr)blob, length)).GetReference());
+            //use the budnled dll instead of trying to find ones that odnt exist, should fix mod on single file publish
+            if (a.TryGetRawMetadata(out var blob, out var length))
+                refs.Add(
+                    AssemblyMetadata.Create(ModuleMetadata.CreateFromMetadata((IntPtr)blob, length)).GetReference());
         }
 
         _references = refs;

@@ -20,7 +20,14 @@ public static class Display
         set => GpuHle.TargetAspect = value > 0f ? value : 16f / 9f;
     }
 
-    public static int WideMargin(int width) => GpuHle.WideMargin(width);
+    public static int WideMargin(int width)
+    {
+        return GpuHle.WideMargin(width);
+    }
 
-    public static float SourceAspect { get => GpuHle.SourceAspect; set => GpuHle.SourceAspect = value; }
+    public static float SourceAspect
+    {
+        get => GpuHle.SourceAspect;
+        set => GpuHle.SourceAspect = value;
+    }
 }

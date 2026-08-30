@@ -28,27 +28,27 @@ public static class Log
 
     public static void Spu(string m)
     {
-        if (SpuOn)  Console.WriteLine($"[SPU] {m}");
+        if (SpuOn) Console.WriteLine($"[SPU] {m}");
     }
 
     public static void Gpu(string m)
     {
-        if (GpuOn)  
+        if (GpuOn)
             Console.WriteLine($"[GPU] {m}");
     }
 
     public static void Dma(string m)
     {
-        if (DmaOn)  Console.WriteLine($"[DMA] {m}");
+        if (DmaOn) Console.WriteLine($"[DMA] {m}");
     }
 
     public static void Cd(string m)
     {
-        if (CdOn)   Console.WriteLine($"[CD] {m}");
+        if (CdOn) Console.WriteLine($"[CD] {m}");
     }
 
     public static void Sdk(string m)
     {
-        if (SdkOn)  Console.WriteLine($"[SDK] {m}");
+        if (SdkOn) Console.WriteLine($"[SDK] {m}");
     }
 }

@@ -6,38 +6,44 @@ using RecompOne.Runtime.Host.Window;
 
 namespace RecompOne.Runtime.Config;
 
-static file class PanelDefaults
+file static class PanelDefaults
 {
-    public static bool IsOpenByDefault(IPanel p) => p.Name == "Output";
+    public static bool IsOpenByDefault(IPanel p)
+    {
+        return p.Name == "Output";
+    }
 }
 
 public static class ConfigManager
 {
-    static readonly JsonSerializerOptions _opts = new()
+    private static readonly JsonSerializerOptions _opts = new()
     {
         WriteIndented = true,
-        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never
     };
 
-    const string GameConfigPath = "settings.json";
-    const string InterfaceFile = "interface.ini";
+    private const string GameConfigPath = "settings.json";
+    private const string InterfaceFile = "interface.ini";
 
     public static GameConfig Game { get; private set; } = new();
-    public static ViewConfig  View { get; private set; } = new();
+    public static ViewConfig View { get; private set; } = new();
 
-    static string? _pendingImGuiIni;
+    private static string? _pendingImGuiIni;
 
     public static void Load()
     {
         if (File.Exists(GameConfigPath))
-        {
-            try { Game = JsonSerializer.Deserialize<GameConfig>(File.ReadAllText(GameConfigPath), _opts) ?? new(); }
-            catch { Game = new(); }
-        }
+            try
+            {
+                Game = JsonSerializer.Deserialize<GameConfig>(File.ReadAllText(GameConfigPath), _opts) ??
+                       new GameConfig();
+            }
+            catch
+            {
+                Game = new GameConfig();
+            }
         else
-        {
             SaveGame();
-        }
 
         if (File.Exists(InterfaceFile))
         {
@@ -47,7 +53,7 @@ public static class ConfigManager
         }
     }
 
-    
+
     public static bool ApplyImGuiLayout()
     {
         if (_pendingImGuiIni == null) return false;
@@ -59,10 +65,8 @@ public static class ConfigManager
     public static void ApplyViewToPanels(IReadOnlyList<IPanel> panels)
     {
         foreach (var p in panels)
-        {
             if (View.Panels.TryGetValue(p.Name, out var state))
                 p.IsOpen = state.Open;
-        }
     }
 
     public static void SaveView(IReadOnlyList<IPanel> panels)
@@ -84,7 +88,7 @@ public static class ConfigManager
 
     public static void ResetView(IReadOnlyList<IPanel> panels)
     {
-        View = new();
+        View = new ViewConfig();
         foreach (var p in panels)
             p.IsOpen = PanelDefaults.IsOpenByDefault(p);
         ImGui.LoadIniSettingsFromMemory("");
@@ -96,11 +100,11 @@ public static class ConfigManager
         File.WriteAllText(GameConfigPath, JsonSerializer.Serialize(Game, _opts));
     }
 
-    static (ViewConfig view, string imguiIni) ParseInterfaceFile(string content)
+    private static (ViewConfig view, string imguiIni) ParseInterfaceFile(string content)
     {
         var view = new ViewConfig();
         var imguiLines = new List<string>();
-        bool inRecompOne = false;
+        var inRecompOne = false;
 
         foreach (var rawLine in content.Split('\n'))
         {
@@ -118,7 +122,7 @@ public static class ConfigManager
             if (inRecompOne)
             {
                 if (line.Length == 0) continue;
-                int eq = line.IndexOf('=');
+                var eq = line.IndexOf('=');
                 if (eq <= 0) continue;
                 var key = line[..eq];
                 var value = line[(eq + 1)..];

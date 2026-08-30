@@ -1,8 +1,19 @@
 namespace RecompOne.Runtime.Events;
 
-public enum MouseButton { None = -1, Left = 0, Right = 1, Middle = 2 }
+public enum MouseButton
+{
+    None = -1,
+    Left = 0,
+    Right = 1,
+    Middle = 2
+}
 
-public enum MouseAction { Move, Button, Wheel }
+public enum MouseAction
+{
+    Move,
+    Button,
+    Wheel
+}
 
 /// <summary>
 /// the host mouse moved clicked or scrolled

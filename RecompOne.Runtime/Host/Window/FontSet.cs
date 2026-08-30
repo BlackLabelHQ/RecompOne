@@ -3,13 +3,14 @@ using System.Runtime.InteropServices;
 using ImGuiNET;
 
 namespace RecompOne.Runtime.Host.Window;
+
 public static class FontSet
 {
-    const string IconResource = "RecompOne.Runtime.Host.Window.Assets.fa-solid-900.ttf";
-    const string BaseFontResource = "RecompOne.Runtime.Host.Window.Assets.NotoSans-Regular.ttf";
-    const string CjkFontResource = "RecompOne.Runtime.Host.Window.Assets.NotoSansCJK-Regular.otf";
-    const ushort RangeMin = 0xE005;
-    const ushort RangeMax = 0xF8FF;
+    private const string IconResource = "RecompOne.Runtime.Host.Window.Assets.fa-solid-900.ttf";
+    private const string BaseFontResource = "RecompOne.Runtime.Host.Window.Assets.NotoSans-Regular.ttf";
+    private const string CjkFontResource = "RecompOne.Runtime.Host.Window.Assets.NotoSansCJK-Regular.otf";
+    private const ushort RangeMin = 0xE005;
+    private const ushort RangeMax = 0xF8FF;
 
     public const string Gear = "";
     public const string Ellipsis = "";
@@ -27,8 +28,8 @@ public static class FontSet
     public const string Download = "";
     public const string Info = ""; //need to pull the rest later?
 
-    static readonly List<GCHandle> _pinned = [];
-    static readonly List<IntPtr> _unmanaged = [];
+    private static readonly List<GCHandle> _pinned = [];
+    private static readonly List<IntPtr> _unmanaged = [];
 
     public static bool Loaded { get; private set; }
 
@@ -41,8 +42,9 @@ public static class FontSet
             var baseCfg = ImGuiNative.ImFontConfig_ImFontConfig();
             baseCfg->SizePixels = sizePixels;
             baseCfg->FontDataOwnedByAtlas = 0;
-            
-            var baseRange = BuildRange(io.Fonts.GetGlyphRangesDefault(), io.Fonts.GetGlyphRangesCyrillic(), io.Fonts.GetGlyphRangesGreek(), io.Fonts.GetGlyphRangesVietnamese());
+
+            var baseRange = BuildRange(io.Fonts.GetGlyphRangesDefault(), io.Fonts.GetGlyphRangesCyrillic(),
+                io.Fonts.GetGlyphRangesGreek(), io.Fonts.GetGlyphRangesVietnamese());
             var baseData = LoadResource(BaseFontResource);
             if (baseData != null)
                 io.Fonts.AddFontFromMemoryTTF(Pin(baseData), baseData.Length, sizePixels, baseCfg, baseRange);
@@ -61,8 +63,10 @@ public static class FontSet
 
                 var iconRange = GCHandle.Alloc(new ushort[] { RangeMin, RangeMax, 0 }, GCHandleType.Pinned);
                 _pinned.Add(iconRange);
-                io.Fonts.AddFontFromMemoryTTF(Pin(iconData), iconData.Length, sizePixels, iconCfg, iconRange.AddrOfPinnedObject());
+                io.Fonts.AddFontFromMemoryTTF(Pin(iconData), iconData.Length, sizePixels, iconCfg,
+                    iconRange.AddrOfPinnedObject());
             }
+
             var cjkData = LoadResource(CjkFontResource);
             if (cjkData != null)
             {
@@ -71,7 +75,8 @@ public static class FontSet
                 cjkCfg->PixelSnapH = 1;
                 cjkCfg->FontDataOwnedByAtlas = 0;
 
-                var cjkRange = BuildRange(io.Fonts.GetGlyphRangesJapanese(), io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
+                var cjkRange = BuildRange(io.Fonts.GetGlyphRangesJapanese(),
+                    io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
                 io.Fonts.AddFontFromMemoryTTF(Pin(cjkData), cjkData.Length, sizePixels, cjkCfg, cjkRange);
             }
 
@@ -84,7 +89,7 @@ public static class FontSet
         }
     }
 
-    static byte[]? LoadResource(string name)
+    private static byte[]? LoadResource(string name)
     {
         var asm = Assembly.GetExecutingAssembly();
         using var s = asm.GetManifestResourceStream(name);
@@ -98,17 +103,17 @@ public static class FontSet
         s.ReadExactly(bytes);
         return bytes;
     }
-    
-    static IntPtr Pin(byte[] bytes)
+
+    private static IntPtr Pin(byte[] bytes)
     {
         var ptr = Marshal.AllocHGlobal(bytes.Length);
         Marshal.Copy(bytes, 0, ptr, bytes.Length);
         _unmanaged.Add(ptr);
         return ptr;
     }
-     
-    
-    static unsafe IntPtr BuildRange(params IntPtr[] ranges)
+
+
+    private static unsafe IntPtr BuildRange(params IntPtr[] ranges)
     {
         var merged = new List<ushort>();
         foreach (var range in ranges)
@@ -121,6 +126,7 @@ public static class FontSet
                 cursor += 2;
             }
         }
+
         merged.Add(0);
 
         var handle = GCHandle.Alloc(merged.ToArray(), GCHandleType.Pinned);
@@ -128,7 +134,13 @@ public static class FontSet
         return handle.AddrOfPinnedObject();
     }
 
-    public static string With(string icon, string label) => Loaded ? $"{icon}  {label}" : label;
+    public static string With(string icon, string label)
+    {
+        return Loaded ? $"{icon}  {label}" : label;
+    }
 
-    public static string Or(string icon, string fallback) => Loaded ? icon : fallback;
+    public static string Or(string icon, string fallback)
+    {
+        return Loaded ? icon : fallback;
+    }
 }

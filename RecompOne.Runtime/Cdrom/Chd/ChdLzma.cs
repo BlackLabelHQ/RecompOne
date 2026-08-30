@@ -21,7 +21,9 @@ internal static class ChdLzma
     private const int MatchMinLen = 2;
 
     public static void Decode(byte[] src, int srcOffset, int srcLength, byte[] dst, int dstOffset, int dstLength)
-        => new Decoder(src, srcOffset, srcLength, dst, dstOffset, dstLength).Run();
+    {
+        new Decoder(src, srcOffset, srcLength, dst, dstOffset, dstLength).Run();
+    }
 
     private sealed class Decoder
     {
@@ -72,11 +74,11 @@ internal static class ChdLzma
 
             while (_dstPos < _dstEnd)
             {
-                uint posState = (uint)(_dstPos - _dstStart) & ((1u << Pb) - 1);
+                var posState = (uint)(_dstPos - _dstStart) & ((1u << Pb) - 1);
 
                 if (DecodeBit(_isMatch, (state << NumPosBitsMax) + posState) == 0)
                 {
-                    uint literalIndex = ((uint)(_dstPos - _dstStart) & ((1u << Lp) - 1)) << Lc;
+                    var literalIndex = ((uint)(_dstPos - _dstStart) & ((1u << Lp) - 1)) << Lc;
                     literalIndex += (uint)previous >> (8 - Lc);
                     literalIndex *= 0x300;
 
@@ -121,8 +123,10 @@ internal static class ChdLzma
                                 distance = rep3;
                                 rep3 = rep2;
                             }
+
                             rep2 = rep1;
                         }
+
                         rep1 = rep0;
                         rep0 = distance;
                     }
@@ -152,21 +156,23 @@ internal static class ChdLzma
 
         private byte PeekBack(uint distance)
         {
-            long index = _dstPos - (long)distance - 1;
+            var index = _dstPos - (long)distance - 1;
             return index < _dstStart ? (byte)0 : _dst[index];
         }
 
         private uint DecodeDistance(uint len)
         {
-            uint lenState = len < NumLenToPosStates ? len : NumLenToPosStates - 1;
-            uint posSlot = BitTreeDecode(_posSlot, lenState << 6, 6);
+            var lenState = len < NumLenToPosStates ? len : NumLenToPosStates - 1;
+            var posSlot = BitTreeDecode(_posSlot, lenState << 6, 6);
             if (posSlot < 4) return posSlot;
 
-            int numDirectBits = (int)((posSlot >> 1) - 1);
-            uint distance = (2 | (posSlot & 1)) << numDirectBits;
+            var numDirectBits = (int)((posSlot >> 1) - 1);
+            var distance = (2 | (posSlot & 1)) << numDirectBits;
 
             if (posSlot < EndPosModelIndex)
+            {
                 distance += BitTreeReverseDecode(_specPos, (int)(distance - posSlot - 1), numDirectBits);
+            }
             else
             {
                 distance += DecodeDirectBits(numDirectBits - NumAlignBits) << NumAlignBits;
@@ -179,8 +185,11 @@ internal static class ChdLzma
         private byte DecodeLiteral(uint index)
         {
             uint symbol = 1;
-            do symbol = (symbol << 1) | DecodeBit(_literal, index + symbol);
-            while (symbol < 0x100);
+            do
+            {
+                symbol = (symbol << 1) | DecodeBit(_literal, index + symbol);
+            } while (symbol < 0x100);
+
             return (byte)symbol;
         }
 
@@ -189,9 +198,9 @@ internal static class ChdLzma
             uint symbol = 1;
             do
             {
-                uint matchBit = (uint)(matchByte >> 7) & 1;
+                var matchBit = (uint)(matchByte >> 7) & 1;
                 matchByte <<= 1;
-                uint bit = DecodeBit(_literal, index + ((1 + matchBit) << 8) + symbol);
+                var bit = DecodeBit(_literal, index + ((1 + matchBit) << 8) + symbol);
                 symbol = (symbol << 1) | bit;
                 if (matchBit != bit)
                 {
@@ -199,8 +208,8 @@ internal static class ChdLzma
                         symbol = (symbol << 1) | DecodeBit(_literal, index + symbol);
                     break;
                 }
-            }
-            while (symbol < 0x100);
+            } while (symbol < 0x100);
+
             return (byte)symbol;
         }
 
@@ -209,16 +218,19 @@ internal static class ChdLzma
             _code = 0;
             _range = 0xFFFFFFFF;
             NextByte();
-            for (int i = 0; i < 4; i++)
+            for (var i = 0; i < 4; i++)
                 _code = (_code << 8) | NextByte();
         }
 
-        private byte NextByte() => _srcPos < _srcEnd ? _src[_srcPos++] : (byte)0;
+        private byte NextByte()
+        {
+            return _srcPos < _srcEnd ? _src[_srcPos++] : (byte)0;
+        }
 
         internal uint DecodeBit(ushort[] probs, uint index)
         {
-            ushort prob = probs[index];
-            uint bound = (_range >> NumBitModelTotalBits) * prob;
+            var prob = probs[index];
+            var bound = (_range >> NumBitModelTotalBits) * prob;
             uint result;
 
             if (_code < bound)
@@ -247,10 +259,10 @@ internal static class ChdLzma
         private uint DecodeDirectBits(int count)
         {
             uint result = 0;
-            for (int i = count; i > 0; i--)
+            for (var i = count; i > 0; i--)
             {
                 _range >>= 1;
-                uint bit = (_code - _range) >> 31;
+                var bit = (_code - _range) >> 31;
                 if (bit == 0) _code -= _range;
                 result = (result << 1) | (1 - bit);
 
@@ -260,13 +272,14 @@ internal static class ChdLzma
                     _code = (_code << 8) | NextByte();
                 }
             }
+
             return result;
         }
 
         internal uint BitTreeDecode(ushort[] probs, uint offset, int levels)
         {
             uint m = 1;
-            for (int i = 0; i < levels; i++)
+            for (var i = 0; i < levels; i++)
                 m = (m << 1) + DecodeBit(probs, offset + m);
             return m - ((uint)1 << levels);
         }
@@ -275,12 +288,13 @@ internal static class ChdLzma
         {
             uint m = 1;
             uint symbol = 0;
-            for (int i = 0; i < levels; i++)
+            for (var i = 0; i < levels; i++)
             {
-                uint bit = DecodeBit(probs, (uint)offset + m);
+                var bit = DecodeBit(probs, (uint)offset + m);
                 m = (m << 1) + bit;
                 symbol |= bit << i;
             }
+
             return symbol;
         }
 

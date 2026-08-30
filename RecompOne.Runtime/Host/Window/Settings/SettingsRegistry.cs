@@ -2,9 +2,9 @@ namespace RecompOne.Runtime.Host.Window;
 
 public static class SettingsRegistry
 {
-    static readonly List<ISettingsSection> _sections = [];
-    static readonly Dictionary<string, List<Action>> _extensions = new(StringComparer.OrdinalIgnoreCase);
-    static bool _dirty;
+    private static readonly List<ISettingsSection> _sections = [];
+    private static readonly Dictionary<string, List<Action>> _extensions = new(StringComparer.OrdinalIgnoreCase);
+    private static bool _dirty;
 
     public static void Register(ISettingsSection section)
     {
@@ -26,11 +26,14 @@ public static class SettingsRegistry
             list = [];
             _extensions[sectionId] = list;
         }
+
         list.Add(draw);
     }
 
     internal static IReadOnlyList<Action> GetExtensions(string sectionId)
-        => _extensions.TryGetValue(sectionId, out var list) ? list : [];
+    {
+        return _extensions.TryGetValue(sectionId, out var list) ? list : [];
+    }
 
     public static IReadOnlyList<ISettingsSection> Sections
     {
@@ -43,6 +46,7 @@ public static class SettingsRegistry
                     : string.Compare(a.TitleKey, b.TitleKey, StringComparison.Ordinal));
                 _dirty = false;
             }
+
             return _sections;
         }
     }

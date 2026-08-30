@@ -7,10 +7,14 @@ internal static class UiText
 {
     public static void CenteredWrapped(string text)
     {
-        float avail = ImGui.GetContentRegionAvail().X;
+        var avail = ImGui.GetContentRegionAvail().X;
         foreach (var para in text.Split('\n'))
         {
-            if (para.Length == 0) { ImGui.Spacing(); continue; }
+            if (para.Length == 0)
+            {
+                ImGui.Spacing();
+                continue;
+            }
 
             var line = new StringBuilder();
             foreach (var word in para.Split(' '))
@@ -28,14 +32,15 @@ internal static class UiText
                     line.Append(word);
                 }
             }
+
             if (line.Length > 0) DrawLine(line.ToString(), avail);
         }
     }
 
-    static void DrawLine(string line, float avail)
+    private static void DrawLine(string line, float avail)
     {
-        float w = ImGui.CalcTextSize(line).X;
-        float off = (avail - w) * 0.5f;
+        var w = ImGui.CalcTextSize(line).X;
+        var off = (avail - w) * 0.5f;
         if (off > 0) ImGui.SetCursorPosX(ImGui.GetCursorPosX() + off);
         ImGui.TextUnformatted(line);
     }

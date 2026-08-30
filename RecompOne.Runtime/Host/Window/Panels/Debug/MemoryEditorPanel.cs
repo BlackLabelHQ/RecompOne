@@ -11,24 +11,37 @@ internal sealed class MemoryEditorPanel : IPanel
     public string Name => "Memory Editor";
     public string TitleKey => "panel.memory_editor";
     public bool IsOpen { get; set; }
-    const int BytesPerRow = 16;
+    private const int BytesPerRow = 16;
 
-    uint _baseAddr;
-    string _addrInput = "80000000";
-    bool _scrollPending;
+    private uint _baseAddr;
+    private string _addrInput = "80000000";
+    private bool _scrollPending;
 
-    int _editAddr = -1;
-    string _editBuf = "";
-    bool _editFocusPending;
-    
-    int _selStart = -1, _selEnd = -1;
+    private int _editAddr = -1;
+    private string _editBuf = "";
+    private bool _editFocusPending;
+
+    private int _selStart = -1, _selEnd = -1;
     private bool _selecting;
 
-    (int lo, int hi) Sel() => _selStart < 0 ? (-1, -1) : (Math.Min(_selStart, _selEnd), Math.Max(_selStart, _selEnd));
-    bool InSelection(int idx) { var (lo, hi) = Sel(); return lo >= 0 && idx >= lo && idx <= hi; }
-    static uint Rgba(float r, float g, float b, float a) => ((uint)(a * 255) << 24) | ((uint)(b * 255) << 16) | ((uint)(g * 255) << 8) | (uint)(r * 255);
-    static readonly uint FrozenBg = Rgba(1f, 0.35f, 0.7f, 0.55f);
-    static readonly uint SelBg = Rgba(0.35f, 0.55f, 1f, 0.35f);
+    private (int lo, int hi) Sel()
+    {
+        return _selStart < 0 ? (-1, -1) : (Math.Min(_selStart, _selEnd), Math.Max(_selStart, _selEnd));
+    }
+
+    private bool InSelection(int idx)
+    {
+        var (lo, hi) = Sel();
+        return lo >= 0 && idx >= lo && idx <= hi;
+    }
+
+    private static uint Rgba(float r, float g, float b, float a)
+    {
+        return ((uint)(a * 255) << 24) | ((uint)(b * 255) << 16) | ((uint)(g * 255) << 8) | (uint)(r * 255);
+    }
+
+    private static readonly uint FrozenBg = Rgba(1f, 0.35f, 0.7f, 0.55f);
+    private static readonly uint SelBg = Rgba(0.35f, 0.55f, 1f, 0.35f);
 
 
     public void JumpTo(uint physAddr)
@@ -41,11 +54,22 @@ internal sealed class MemoryEditorPanel : IPanel
     public void Draw()
     {
         ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
-        bool open = IsOpen;
-        if (!ImGui.Begin(this.Title(), ref open)) { IsOpen = open; ImGui.End(); return; }
+        var open = IsOpen;
+        if (!ImGui.Begin(this.Title(), ref open))
+        {
+            IsOpen = open;
+            ImGui.End();
+            return;
+        }
 
         var mem = Runtime.Mem as PSMemory;
-        if (mem == null) { ImGui.TextDisabled("No memory"); ImGui.End(); IsOpen = open; return; }
+        if (mem == null)
+        {
+            ImGui.TextDisabled("No memory");
+            ImGui.End();
+            IsOpen = open;
+            return;
+        }
 
         DrawToolbar();
         ImGui.Separator();
@@ -55,18 +79,17 @@ internal sealed class MemoryEditorPanel : IPanel
         ImGui.End();
     }
 
-    void DrawToolbar()
+    private void DrawToolbar()
     {
         ImGui.SetNextItemWidth(160);
         if (ImGui.InputText("##addr", ref _addrInput, 10,
-            ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.EnterReturnsTrue))
-        {
-            if (uint.TryParse(_addrInput, NumberStyles.HexNumber, null, out uint parsed))
+                ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.EnterReturnsTrue))
+            if (uint.TryParse(_addrInput, NumberStyles.HexNumber, null, out var parsed))
             {
-                uint phys = parsed & 0x1FFFFFFFu;
+                var phys = parsed & 0x1FFFFFFFu;
                 if (phys < 0x200000u) JumpTo(phys);
             }
-        }
+
         ImGui.SameLine();
         ImGui.TextDisabled("Go to address (hex)");
         ImGui.SameLine();
@@ -75,10 +98,10 @@ internal sealed class MemoryEditorPanel : IPanel
         ImGui.TextDisabled("Click a byte to edit");
     }
 
-    void DrawHexContent(PSMemory mem)
+    private void DrawHexContent(PSMemory mem)
     {
         var ram = mem.Ram;
-        int totalRows = (ram.Length + BytesPerRow - 1) / BytesPerRow;
+        var totalRows = (ram.Length + BytesPerRow - 1) / BytesPerRow;
 
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 1));
 
@@ -89,27 +112,27 @@ internal sealed class MemoryEditorPanel : IPanel
             return;
         }
 
-        float rowH = ImGui.GetTextLineHeightWithSpacing();
+        var rowH = ImGui.GetTextLineHeightWithSpacing();
 
         if (_scrollPending)
         {
-            int targetRow = (int)(_baseAddr / BytesPerRow);
+            var targetRow = (int)(_baseAddr / BytesPerRow);
             ImGui.SetScrollY(targetRow * rowH - ImGui.GetWindowHeight() * 0.4f);
             _scrollPending = false;
         }
 
-        float scrollY = ImGui.GetScrollY();
-        int firstRow = Math.Max(0, (int)(scrollY / rowH) - 1);
-        int visRows = (int)(ImGui.GetWindowHeight() / rowH) + 2;
-        int lastRow = Math.Min(totalRows, firstRow + visRows);
+        var scrollY = ImGui.GetScrollY();
+        var firstRow = Math.Max(0, (int)(scrollY / rowH) - 1);
+        var visRows = (int)(ImGui.GetWindowHeight() / rowH) + 2;
+        var lastRow = Math.Min(totalRows, firstRow + visRows);
 
         if (firstRow > 0)
             ImGui.Dummy(new Vector2(1f, firstRow * rowH));
 
-        for (int row = firstRow; row < lastRow; row++)
+        for (var row = firstRow; row < lastRow; row++)
             DrawRow(mem, row);
 
-        float remaining = (totalRows - lastRow) * rowH;
+        var remaining = (totalRows - lastRow) * rowH;
         if (remaining > 0f)
             ImGui.Dummy(new Vector2(1f, remaining));
 
@@ -121,28 +144,29 @@ internal sealed class MemoryEditorPanel : IPanel
         ImGui.PopStyleVar();
     }
 
-    void DrawContextMenu(PSMemory mem)
+    private void DrawContextMenu(PSMemory mem)
     {
         if (!ImGui.BeginPopup("memctx")) return;
         var (lo, hi) = Sel();
-        int len = lo < 0 ? 0 : hi - lo + 1;
+        var len = lo < 0 ? 0 : hi - lo + 1;
         if (len > 0)
         {
             if (ImGui.MenuItem($"Freeze {len} byte(s)")) mem.Freeze((uint)lo, len);
             if (ImGui.MenuItem("Unfreeze")) mem.Unfreeze((uint)lo, len);
             ImGui.Separator();
         }
+
         if (ImGui.MenuItem("Clear all freezes")) mem.ClearFreezes();
         ImGui.EndPopup();
     }
 
-    static readonly StringBuilder _asciiSb = new(BytesPerRow);
+    private static readonly StringBuilder _asciiSb = new(BytesPerRow);
 
-    void DrawRow(PSMemory mem, int row)
+    private void DrawRow(PSMemory mem, int row)
     {
         var ram = mem.Ram;
-        int baseOff = row * BytesPerRow;
-        uint virtAddr = 0x80000000u + (uint)baseOff;
+        var baseOff = row * BytesPerRow;
+        var virtAddr = 0x80000000u + (uint)baseOff;
         var log = Runtime.RamLog;
 
         ImGuiEx.TextDisabled($"{virtAddr:X8}  ");
@@ -150,10 +174,10 @@ internal sealed class MemoryEditorPanel : IPanel
 
         _asciiSb.Clear();
 
-        for (int col = 0; col < BytesPerRow; col++)
+        for (var col = 0; col < BytesPerRow; col++)
         {
-            int idx = baseOff + col;
-            byte b = idx < ram.Length ? ram[idx] : (byte)0;
+            var idx = baseOff + col;
+            var b = idx < ram.Length ? ram[idx] : (byte)0;
 
             if (idx == _editAddr)
                 DrawEditCell(mem, idx);
@@ -175,18 +199,19 @@ internal sealed class MemoryEditorPanel : IPanel
         ImGuiEx.TextDisabled($"  {_asciiSb}");
     }
 
-    void DrawByteCell(PSMemory mem, RamLogger log, int idx, byte b)
+    private void DrawByteCell(PSMemory mem, RamLogger log, int idx, byte b)
     {
-        bool frozen = mem.IsFrozen((uint)idx);
+        var frozen = mem.IsFrozen((uint)idx);
         if (frozen || InSelection(idx))
         {
             var pos = ImGui.GetCursorScreenPos();
             var sz = ImGui.CalcTextSize("FF");
-            ImGui.GetWindowDrawList().AddRectFilled(pos, new Vector2(pos.X + sz.X, pos.Y + sz.Y), frozen ? FrozenBg : SelBg);
+            ImGui.GetWindowDrawList()
+                .AddRectFilled(pos, new Vector2(pos.X + sz.X, pos.Y + sz.Y), frozen ? FrozenBg : SelBg);
         }
 
-        float wHeat = log.HeatAt(idx);
-        float rHeat = log.ReadHeatAt(idx);
+        var wHeat = log.HeatAt(idx);
+        var rHeat = log.ReadHeatAt(idx);
 
         if (wHeat > 0.01f)
         {
@@ -209,8 +234,17 @@ internal sealed class MemoryEditorPanel : IPanel
 
         if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenBlockedByActiveItem))
         {
-            if (ImGui.IsMouseClicked(ImGuiMouseButton.Left)) { _selStart = _selEnd = idx; _selecting = true; }
-            else if (_selecting && ImGui.IsMouseDown(ImGuiMouseButton.Left) && idx != _selEnd) { _selEnd = idx; _editAddr = -1; }
+            if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            {
+                _selStart = _selEnd = idx;
+                _selecting = true;
+            }
+            else if (_selecting && ImGui.IsMouseDown(ImGuiMouseButton.Left) && idx != _selEnd)
+            {
+                _selEnd = idx;
+                _editAddr = -1;
+            }
+
             if (ImGui.IsMouseClicked(ImGuiMouseButton.Right))
             {
                 if (!InSelection(idx)) _selStart = _selEnd = idx;
@@ -226,7 +260,7 @@ internal sealed class MemoryEditorPanel : IPanel
         }
     }
 
-    void DrawEditCell(PSMemory mem, int idx)
+    private void DrawEditCell(PSMemory mem, int idx)
     {
         ImGui.PushID(idx);
         ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Vector2.Zero);
@@ -238,7 +272,7 @@ internal sealed class MemoryEditorPanel : IPanel
             _editFocusPending = false;
         }
 
-        bool commit = ImGui.InputText("##edit", ref _editBuf, 2,
+        var commit = ImGui.InputText("##edit", ref _editBuf, 2,
             ImGuiInputTextFlags.CharsHexadecimal | ImGuiInputTextFlags.CharsUppercase |
             ImGuiInputTextFlags.EnterReturnsTrue | ImGuiInputTextFlags.AutoSelectAll |
             ImGuiInputTextFlags.NoHorizontalScroll);
@@ -246,7 +280,7 @@ internal sealed class MemoryEditorPanel : IPanel
         if (commit)
         {
             CommitEdit(mem, idx);
-            int next = idx + 1;
+            var next = idx + 1;
             if (next < mem.Ram.Length)
             {
                 _editAddr = next;
@@ -269,12 +303,10 @@ internal sealed class MemoryEditorPanel : IPanel
     }
 
     //the edit needs to be writeen to ram after bf
-    void CommitEdit(PSMemory mem, int idx)
+    private void CommitEdit(PSMemory mem, int idx)
     {
-        if (byte.TryParse(_editBuf, NumberStyles.HexNumber, null, out byte val))
-        {
+        if (byte.TryParse(_editBuf, NumberStyles.HexNumber, null, out var val))
             if (idx < mem.Ram.Length && mem.Ram[idx] != val)
                 mem.Poke((uint)idx, val);
-        }
     }
 }

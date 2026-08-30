@@ -9,11 +9,11 @@ internal sealed class DisplaySettingsSection : ISettingsSection
     public string TitleKey => "settings.display";
     public int Order => 5;
 
-    static readonly string[] Backends = ["auto", "gl45", "gl33", "gl21"];
+    private static readonly string[] Backends = ["auto", "gl45", "gl33", "gl21"];
 
     public void Draw()
     {
-        bool fullscreen = ConfigManager.View.Fullscreen;
+        var fullscreen = ConfigManager.View.Fullscreen;
         if (ImGui.Checkbox(Localization.T("settings.display.fullscreen"), ref fullscreen))
         {
             ConfigManager.View.Fullscreen = fullscreen;
@@ -21,26 +21,28 @@ internal sealed class DisplaySettingsSection : ISettingsSection
             ConfigManager.SaveView(PanelManager.Panels);
         }
 
-        bool vsync = ConfigManager.View.VSync;
+        var vsync = ConfigManager.View.VSync;
         if (ImGui.Checkbox(Localization.T("settings.display.vsync"), ref vsync))
         {
             ConfigManager.View.VSync = vsync;
             HostWindow.SetVSync(vsync);
             ConfigManager.SaveView(PanelManager.Panels);
         }
+
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.display.vsync_hint"));
 
-        int scale = ConfigManager.View.RenderScale;
+        var scale = ConfigManager.View.RenderScale;
         if (ImGui.SliderInt(Localization.T("settings.display.render_scale"), ref scale, 1, 8, "%dx"))
         {
             ConfigManager.View.RenderScale = scale;
             ConfigManager.SaveView(PanelManager.Panels);
             NoticePopup.Show(Localization.T("common.restart_required"));
         }
+
         if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.display.render_scale_hint"));
 
-        int lines = Hle.GpuHle.LastDisplayH;
-        int width = Hle.GpuHle.LastDisplayW;
+        var lines = Hle.GpuHle.LastDisplayH;
+        var width = Hle.GpuHle.LastDisplayW;
         if (lines > 0)
             ImGui.TextDisabled(Localization.T("settings.display.render_scale_lines",
                 width, lines, width * scale, lines * scale, scale));
@@ -50,7 +52,7 @@ internal sealed class DisplaySettingsSection : ISettingsSection
 
         ImGui.Separator();
 
-        int index = Array.IndexOf(Backends, ConfigManager.View.GpuBackend);
+        var index = Array.IndexOf(Backends, ConfigManager.View.GpuBackend);
         if (index < 0) index = 0;
         if (ImGui.Combo(Localization.T("settings.display.backend"), ref index, Backends, Backends.Length))
         {
@@ -58,6 +60,7 @@ internal sealed class DisplaySettingsSection : ISettingsSection
             ConfigManager.SaveView(PanelManager.Panels);
             NoticePopup.Show(Localization.T("common.restart_required"));
         }
+
         ImGui.TextDisabled(Localization.T("settings.display.backend_running", Hle.GpuBackendFactory.Selected));
     }
 }

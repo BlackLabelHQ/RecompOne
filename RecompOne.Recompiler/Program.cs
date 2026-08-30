@@ -8,14 +8,15 @@ using RecompOne.Runtime.Cdrom;
 if (args.Length == 0)
 {
     Console.Error.WriteLine("usage: recompone <config.json>");
-    Console.Error.WriteLine("       recompone --generate-function-file -elf <path> -map <path> -out <output.json> [-rebase <hex>]");
+    Console.Error.WriteLine(
+        "       recompone --generate-function-file -elf <path> -map <path> -out <output.json> [-rebase <hex>]");
     return 1;
 }
 
 if (string.Equals(args[0], "--generate-function-file", StringComparison.OrdinalIgnoreCase))
     return GenerateFunctionFile(args);
 
-string configPath = Path.GetFullPath(args[0]);
+var configPath = Path.GetFullPath(args[0]);
 if (!File.Exists(configPath))
 {
     Console.Error.WriteLine($"config not found: {configPath}");
@@ -23,9 +24,12 @@ if (!File.Exists(configPath))
 }
 
 var config = ConfigLoader.Load(configPath);
-string configDir = Path.GetDirectoryName(configPath)!;
+var configDir = Path.GetDirectoryName(configPath)!;
 
-string? ResolvePath(string? p) => p == null ? null : Path.IsPathRooted(p) ? p : Path.GetFullPath(Path.Combine(configDir, p));
+string? ResolvePath(string? p)
+{
+    return p == null ? null : Path.IsPathRooted(p) ? p : Path.GetFullPath(Path.Combine(configDir, p));
+}
 
 config.Elf = ResolvePath(config.Elf);
 config.Map = ResolvePath(config.Map);
@@ -37,7 +41,7 @@ foreach (var overlay in config.Overlays)
     overlay.FuncMap = ResolvePath(overlay.FuncMap);
 }
 
-string cuePath = Path.GetFullPath(Path.Combine(configDir, config.Cue));
+var cuePath = Path.GetFullPath(Path.Combine(configDir, config.Cue));
 
 if (!File.Exists(cuePath))
 {
@@ -49,7 +53,7 @@ Console.WriteLine($"[RecompOne] Game: {config.Game.Name} ({config.Game.Id})");
 Console.WriteLine($"[RecompOne] Disc file: {cuePath}");
 
 var fs = DiscFs.Open(cuePath);
-string outDir = Path.GetFullPath(Path.Combine(configDir, config.Game.Output));
+var outDir = Path.GetFullPath(Path.Combine(configDir, config.Game.Output));
 Directory.CreateDirectory(outDir);
 
 Console.WriteLine($"[RecompOne] Output Path: {outDir}");
@@ -71,14 +75,13 @@ static int GenerateFunctionFile(string[] args)
 {
     string? elfPath = null, mapPath = null, outPath = null;
     string? discPath = null, discFile = null, baseAddr = null;
-    bool linearSweep = false;
+    var linearSweep = false;
     int offset = 0, skip = 0, lba = -1, size = -1;
-    bool decrypt = false;
-    bool gzip = false;
-    int rebase = 0;
+    var decrypt = false;
+    var gzip = false;
+    var rebase = 0;
 
-    for (int i = 1; i < args.Length; i++)
-    {
+    for (var i = 1; i < args.Length; i++)
         switch (args[i].ToLowerInvariant())
         {
             case "-elf": elfPath = args[++i]; break;
@@ -99,7 +102,6 @@ static int GenerateFunctionFile(string[] args)
                 Console.Error.WriteLine($"unknown argument: {args[i]}");
                 return 1;
         }
-    }
 
     if (outPath == null)
     {
@@ -111,10 +113,13 @@ static int GenerateFunctionFile(string[] args)
     {
         if (discPath == null || baseAddr == null || (discFile == null && lba < 0))
         {
-            Console.Error.WriteLine("-linear-sweep needs -disc <cue>, -base <hex> and eiter -file <path in disc> or -lba <n> -size <hex>");
+            Console.Error.WriteLine(
+                "-linear-sweep needs -disc <cue>, -base <hex> and eiter -file <path in disc> or -lba <n> -size <hex>");
             return 1;
         }
-        return GenerateFromLinearSweep(discPath, discFile, baseAddr, offset, skip, lba, size, decrypt, gzip, rebase, outPath);
+
+        return GenerateFromLinearSweep(discPath, discFile, baseAddr, offset, skip, lba, size, decrypt, gzip, rebase,
+            outPath);
     }
 
     if (elfPath == null && mapPath == null)
@@ -131,9 +136,11 @@ static int GenerateFunctionFile(string[] args)
             Console.Error.WriteLine($"elf not found: {elfPath}");
             return 1;
         }
+
         Console.WriteLine($"[RecompOne] reading ELF: {elfPath}");
         elfInfo = ElfReader.Read(elfPath);
-        Console.WriteLine($"[RecompOne] ELF: {elfInfo.Functions.Count} function(s), {elfInfo.NoTypeSymbols.Count} label(s)");
+        Console.WriteLine(
+            $"[RecompOne] ELF: {elfInfo.Functions.Count} function(s), {elfInfo.NoTypeSymbols.Count} label(s)");
     }
 
     FunctionInfo? mapInfo = null;
@@ -144,6 +151,7 @@ static int GenerateFunctionFile(string[] args)
             Console.Error.WriteLine($"map not found: {mapPath}");
             return 1;
         }
+
         Console.WriteLine($"[RecompOne] reading MAP: {mapPath}");
         mapInfo = MapReader.Read(mapPath);
         Console.WriteLine($"[RecompOne] MAP: {mapInfo.Functions.Count} function(s)");
@@ -153,13 +161,14 @@ static int GenerateFunctionFile(string[] args)
 
     if (rebase != 0)
     {
-        uint delta = (uint)rebase;
+        var delta = (uint)rebase;
         foreach (var f in merged.Functions) f.Address += delta;
         foreach (var f in merged.NoTypeSymbols) f.Address += delta;
     }
 
     FunctionMapLoader.Save(outPath, merged);
-    Console.WriteLine($"[RecompOne] wrote {merged.Functions.Count} function(s), {merged.NoTypeSymbols.Count} label(s) -> {outPath}");
+    Console.WriteLine(
+        $"[RecompOne] wrote {merged.Functions.Count} function(s), {merged.NoTypeSymbols.Count} label(s) -> {outPath}");
     return 0;
 }
 
@@ -185,7 +194,7 @@ static int GenerateFromLinearSweep(string discPath, string? discFile, string bas
         Decrypt = decrypt,
         Gzip = gzip,
         Rebase = rebase,
-        LinearSweep = true,
+        LinearSweep = true
     };
 
     Console.WriteLine($"[RecompOne] sweeping {discFile ?? $"lba {lba}"} from {discPath}");
@@ -201,18 +210,19 @@ static int GenerateFromLinearSweep(string discPath, string? discFile, string bas
     var info = new FunctionInfo
     {
         TextBase = analysis.ElfInfo.TextBase,
-        LoadAddress = analysis.ElfInfo.LoadAddress,
+        LoadAddress = analysis.ElfInfo.LoadAddress
     };
     foreach (var f in analysis.Functions.OrderBy(f => f.Start))
         info.Functions.Add(new RecompOne.Recompiler.Symbols.FunctionEntry
         {
             Name = f.Name,
             Address = f.Start,
-            Size = f.End - f.Start,
+            Size = f.End - f.Start
         });
     info.NoTypeSymbols.AddRange(analysis.ElfInfo.NoTypeSymbols);
 
     FunctionMapLoader.Save(outPath, info);
-    Console.WriteLine($"[RecompOne] wrote {info.Functions.Count} function(s), {info.NoTypeSymbols.Count} label(s) -> {outPath}");
+    Console.WriteLine(
+        $"[RecompOne] wrote {info.Functions.Count} function(s), {info.NoTypeSymbols.Count} label(s) -> {outPath}");
     return 0;
 }

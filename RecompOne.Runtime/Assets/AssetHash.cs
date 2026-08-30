@@ -2,33 +2,35 @@ namespace RecompOne.Runtime.Assets;
 
 public static class AssetHash
 {
-    const byte Salt = 1;
+    private const byte Salt = 1;
 
-    const ulong Offset = 14695981039346656037UL;
-    const ulong Prime = 1099511628211UL;
+    private const ulong Offset = 14695981039346656037UL;
+    private const ulong Prime = 1099511628211UL;
 
-    const byte DomainXa = 0x30;
-    const byte DomainXaNoLba = 0x31;
-    const byte DomainSample = 0x20;
-    const byte DomainPayload = 0x32;
+    private const byte DomainXa = 0x30;
+    private const byte DomainXaNoLba = 0x31;
+    private const byte DomainSample = 0x20;
+    private const byte DomainPayload = 0x32;
 
-    public static ulong Fnv1a64(ReadOnlySpan<byte> data) //hash fnv1a, its simple enough dont need more advanced hashing for this
+    public static ulong
+        Fnv1a64(ReadOnlySpan<byte> data) //hash fnv1a, its simple enough dont need more advanced hashing for this
     {
-        ulong h = Offset;
-        for (int i = 0; i < data.Length; i++)
+        var h = Offset;
+        for (var i = 0; i < data.Length; i++)
         {
             h ^= data[i];
             h *= Prime;
         }
+
         return h;
     }
 
-    static ulong Frame(byte domain, ReadOnlySpan<byte> body)
+    private static ulong Frame(byte domain, ReadOnlySpan<byte> body)
     {
         Span<byte> buf = stackalloc byte[2 + 32];
         buf[0] = domain;
         buf[1] = Salt;
-        int n = Math.Min(body.Length, buf.Length - 2);
+        var n = Math.Min(body.Length, buf.Length - 2);
         body[..n].CopyTo(buf[2..]);
         return Fnv1a64(buf[..(2 + n)]);
     }
@@ -50,9 +52,15 @@ public static class AssetHash
         return Frame(DomainXaNoLba, b);
     }
 
-    public static ulong Sample(ReadOnlySpan<byte> adpcm) => Frame(DomainSample, BitConverter.GetBytes(Fnv1a64(adpcm)));
+    public static ulong Sample(ReadOnlySpan<byte> adpcm)
+    {
+        return Frame(DomainSample, BitConverter.GetBytes(Fnv1a64(adpcm)));
+    }
 
-    public static ulong XaPayload(ReadOnlySpan<byte> payload) => Frame(DomainPayload, BitConverter.GetBytes(Fnv1a64(payload)));
+    public static ulong XaPayload(ReadOnlySpan<byte> payload)
+    {
+        return Frame(DomainPayload, BitConverter.GetBytes(Fnv1a64(payload)));
+    }
 
     public static bool TryParseHex(string? s, out ulong value)
     {

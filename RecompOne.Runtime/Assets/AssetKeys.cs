@@ -5,7 +5,7 @@ public enum AssetKind : byte
     Texture = 1,
     Sample = 2,
     Xa = 3,
-    Clut = 5,
+    Clut = 5
 }
 
 public readonly struct AssetId : IEquatable<AssetId>
@@ -19,10 +19,25 @@ public readonly struct AssetId : IEquatable<AssetId>
         Hash = hash;
     }
 
-    public bool Equals(AssetId other) => Hash == other.Hash && Kind == other.Kind;
-    public override bool Equals(object? o) => o is AssetId a && Equals(a);
-    public override int GetHashCode() => (int)(Hash ^ (Hash >> 32)) ^ ((int)Kind << 28);
-    public override string ToString() => $"{Kind}:{Hash:x16}";
+    public bool Equals(AssetId other)
+    {
+        return Hash == other.Hash && Kind == other.Kind;
+    }
+
+    public override bool Equals(object? o)
+    {
+        return o is AssetId a && Equals(a);
+    }
+
+    public override int GetHashCode()
+    {
+        return (int)(Hash ^ (Hash >> 32)) ^ ((int)Kind << 28);
+    }
+
+    public override string ToString()
+    {
+        return $"{Kind}:{Hash:x16}";
+    }
 }
 
 public readonly struct XaKey : IEquatable<XaKey>
@@ -38,10 +53,25 @@ public readonly struct XaKey : IEquatable<XaKey>
         Channel = channel;
     }
 
-    public bool Equals(XaKey other) => StartLba == other.StartLba && File == other.File && Channel == other.Channel;
-    public override bool Equals(object? o) => o is XaKey k && Equals(k);
-    public override int GetHashCode() => HashCode.Combine(StartLba, File, Channel);
-    public override string ToString() => $"f{File}c{Channel}@{StartLba}";
+    public bool Equals(XaKey other)
+    {
+        return StartLba == other.StartLba && File == other.File && Channel == other.Channel;
+    }
+
+    public override bool Equals(object? o)
+    {
+        return o is XaKey k && Equals(k);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(StartLba, File, Channel);
+    }
+
+    public override string ToString()
+    {
+        return $"f{File}c{Channel}@{StartLba}";
+    }
 }
 
 public readonly struct TextureKey : IEquatable<TextureKey>
@@ -60,10 +90,23 @@ public readonly struct TextureKey : IEquatable<TextureKey>
         H = h;
     }
 
-    public bool Equals(TextureKey other) =>
-        Index == other.Index && Clut == other.Clut && Bpp == other.Bpp && W == other.W && H == other.H;
+    public bool Equals(TextureKey other)
+    {
+        return Index == other.Index && Clut == other.Clut && Bpp == other.Bpp && W == other.W && H == other.H;
+    }
 
-    public override bool Equals(object? o) => o is TextureKey k && Equals(k);
-    public override int GetHashCode() => HashCode.Combine(Index, Clut, Bpp, W, H);
-    public override string ToString() => $"{Index:x16}_{Clut:x16}_{Bpp}bpp_{W}x{H}";
+    public override bool Equals(object? o)
+    {
+        return o is TextureKey k && Equals(k);
+    }
+
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(Index, Clut, Bpp, W, H);
+    }
+
+    public override string ToString()
+    {
+        return $"{Index:x16}_{Clut:x16}_{Bpp}bpp_{W}x{H}";
+    }
 }

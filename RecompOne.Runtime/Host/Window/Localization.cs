@@ -9,19 +9,21 @@ public static class Localization
 {
     public readonly record struct Language(string Code, string Name);
 
-    const string Resource = "RecompOne.Runtime.Host.Window.Assets.languages.json";
-    const string FallbackCode = "en";
+    private const string Resource = "RecompOne.Runtime.Host.Window.Assets.languages.json";
+    private const string FallbackCode = "en";
 
-    static readonly Dictionary<string, string> _names = new(StringComparer.OrdinalIgnoreCase);
-    static readonly List<string> _codes = [];
-    static readonly Dictionary<string, Dictionary<string, string>> _tables = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, string> _names = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly List<string> _codes = [];
 
-    static readonly HashSet<string> _warned = [];
+    private static readonly Dictionary<string, Dictionary<string, string>> _tables =
+        new(StringComparer.OrdinalIgnoreCase);
 
-    static bool _baseLoaded;
+    private static readonly HashSet<string> _warned = [];
 
-    static Dictionary<string, string> _active = [];
-    static Dictionary<string, string> _fallback = [];
+    private static bool _baseLoaded;
+
+    private static Dictionary<string, string> _active = [];
+    private static Dictionary<string, string> _fallback = [];
 
     public static string CurrentCode { get; private set; } = FallbackCode;
 
@@ -44,7 +46,7 @@ public static class Localization
         SetLanguage(Config.ConfigManager.View.Language);
     }
 
-    static void EnsureBase()
+    private static void EnsureBase()
     {
         if (_baseLoaded) return;
         _baseLoaded = true;
@@ -121,49 +123,58 @@ public static class Localization
     public static string T(string key, params object?[] args)
     {
         var format = T(key);
-        try { return string.Format(CultureInfo.CurrentCulture, format, args); }
-        catch (FormatException) { return format; }
+        try
+        {
+            return string.Format(CultureInfo.CurrentCulture, format, args);
+        }
+        catch (FormatException)
+        {
+            return format;
+        }
     }
 
-    static void Warn(string message)
+    private static void Warn(string message)
     {
         if (!_warned.Add(message)) return;
         Console.Error.WriteLine($"[Localization] {message}");
     }
 
-    static Dictionary<string, string> Table(string code)
+    private static Dictionary<string, string> Table(string code)
     {
         if (_tables.TryGetValue(code, out var table)) return table;
         Declare(code, code);
         return _tables[code];
     }
 
-    static void Declare(string code, string name)
+    private static void Declare(string code, string name)
     {
         if (!_tables.ContainsKey(code))
         {
             _tables[code] = new Dictionary<string, string>(StringComparer.Ordinal);
             _codes.Add(code);
         }
+
         _names[code] = name;
     }
 
-    static void RefreshTables()
+    private static void RefreshTables()
     {
         _active = _tables.TryGetValue(CurrentCode, out var active) ? active : [];
         _fallback = _tables.TryGetValue(FallbackCode, out var fallback) ? fallback : [];
         _warned.Clear();
     }
 
-    static string? Resolve(string? code)
+    private static string? Resolve(string? code)
     {
         if (string.IsNullOrWhiteSpace(code)) return null;
         foreach (var known in _codes)
-            if (string.Equals(known, code, StringComparison.OrdinalIgnoreCase)) return known;
+            if (string.Equals(known, code, StringComparison.OrdinalIgnoreCase))
+                return known;
 
         var prefix = code.Split('-')[0];
         foreach (var known in _codes)
-            if (string.Equals(known.Split('-')[0], prefix, StringComparison.OrdinalIgnoreCase)) return known;
+            if (string.Equals(known.Split('-')[0], prefix, StringComparison.OrdinalIgnoreCase))
+                return known;
 
         return null;
     }

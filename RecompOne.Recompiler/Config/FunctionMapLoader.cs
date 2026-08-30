@@ -24,32 +24,35 @@ public static class FunctionMapLoader
         ReadCommentHandling = JsonCommentHandling.Skip,
         AllowTrailingCommas = true,
         PropertyNameCaseInsensitive = true,
-        WriteIndented = true,
+        WriteIndented = true
     };
 
     public static FunctionInfo Load(string path, uint textBase, byte[] textData)
     {
         using var stream = File.OpenRead(path);
         var file = JsonSerializer.Deserialize<FuncMapFile>(stream, Options)
-            ?? throw new InvalidDataException($"failed to parse function map {path}");
+                   ?? throw new InvalidDataException($"failed to parse function map {path}");
 
         var info = new FunctionInfo
         {
             LoadAddress = textBase,
             TextBase = textBase,
-            TextData = textData,
+            TextData = textData
         };
 
         foreach (var e in file.Functions)
         {
             if (e.Size is not > 0)
-                throw new InvalidDataException($"function map {path}: function '{e.Name}' at {e.Address} is missing a 'size'");
+                throw new InvalidDataException(
+                    $"function map {path}: function '{e.Name}' at {e.Address} is missing a 'size'");
 
-            info.Functions.Add(new Symbols.FunctionEntry { Name = e.Name, Address = Convert.ToUInt32(e.Address, 16), Size = (uint)e.Size.Value });
+            info.Functions.Add(new Symbols.FunctionEntry
+                { Name = e.Name, Address = Convert.ToUInt32(e.Address, 16), Size = (uint)e.Size.Value });
         }
 
         foreach (var e in file.Labels)
-            info.NoTypeSymbols.Add(new Symbols.FunctionEntry { Name = e.Name, Address = Convert.ToUInt32(e.Address, 16), Size = (uint)(e.Size ?? 0) });
+            info.NoTypeSymbols.Add(new Symbols.FunctionEntry
+                { Name = e.Name, Address = Convert.ToUInt32(e.Address, 16), Size = (uint)(e.Size ?? 0) });
 
         return info;
     }
@@ -88,8 +91,9 @@ public static class FunctionMapLoader
                 .Select(f => new FuncMapEntry { Address = $"0x{f.Address:X8}", Name = f.Name, Size = (int)f.Size })
                 .ToArray(),
             Labels = info.NoTypeSymbols.OrderBy(f => f.Address)
-                .Select(f => new FuncMapEntry { Address = $"0x{f.Address:X8}", Name = f.Name, Size = f.Size > 0 ? (int)f.Size : null })
-                .ToArray(),
+                .Select(f => new FuncMapEntry
+                    { Address = $"0x{f.Address:X8}", Name = f.Name, Size = f.Size > 0 ? (int)f.Size : null })
+                .ToArray()
         };
 
         File.WriteAllText(path, JsonSerializer.Serialize(file, Options));

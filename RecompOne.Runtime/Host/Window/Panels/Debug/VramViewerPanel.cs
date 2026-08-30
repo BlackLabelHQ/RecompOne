@@ -9,27 +9,36 @@ internal sealed class VramViewerPanel : IPanel
     public string TitleKey => "panel.vram_viewer";
     public bool IsOpen { get; set; }
 
-    static uint _texId;
-    static int _texW, _texH;
+    private static uint _texId;
+    private static int _texW, _texH;
 
-    public static void SetTexture(uint id, int w, int h) => (_texId, _texW, _texH) = (id, w, h);
+    public static void SetTexture(uint id, int w, int h)
+    {
+        (_texId, _texW, _texH) = (id, w, h);
+    }
 
-    readonly TextureView _view = new();
+    private readonly TextureView _view = new();
 
     public void Draw()
     {
         var flags = ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse | ImGuiWindowFlags.MenuBar;
         ImGui.SetNextWindowSize(new Vector2(800, 450), ImGuiCond.FirstUseEver);
 
-        bool open = IsOpen;
-        if (!ImGui.Begin(this.Title(), ref open, flags)) { IsOpen = open; ImGui.End(); return; }
+        var open = IsOpen;
+        if (!ImGui.Begin(this.Title(), ref open, flags))
+        {
+            IsOpen = open;
+            ImGui.End();
+            return;
+        }
+
         DrawMenuBar();
         DrawImage();
         IsOpen = open;
         ImGui.End();
     }
 
-    void DrawMenuBar()
+    private void DrawMenuBar()
     {
         if (!ImGui.BeginMenuBar()) return;
 
@@ -39,9 +48,14 @@ internal sealed class VramViewerPanel : IPanel
         ImGui.EndMenuBar();
     }
 
-    void DrawImage()
+    private void DrawImage()
     {
-        if (_texId == 0 || _texW <= 0 || _texH <= 0) { ImGui.TextDisabled("Waiting for VRAM texture..."); return; }
+        if (_texId == 0 || _texW <= 0 || _texH <= 0)
+        {
+            ImGui.TextDisabled("Waiting for VRAM texture...");
+            return;
+        }
+
         _view.Draw(_texId, _texW, _texH, 0.25f, 32f);
     }
 }

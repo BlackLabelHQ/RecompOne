@@ -26,18 +26,23 @@ public sealed class ModEntry
     public void DrawSettings()
     {
         foreach (var inst in Instances)
-        {
-            try { inst.DrawSettings(); }
-            catch (Exception ex) { Console.Error.WriteLine($"[Mods] {Info.Id}: DrawSettings threw: {ex.Message}"); }
-        }
+            try
+            {
+                inst.DrawSettings();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Mods] {Info.Id}: DrawSettings threw: {ex.Message}");
+            }
     }
 }
 
 public static class ModLoader
 {
-    static readonly List<ModEntry> _mods = [];
-    static string _cacheDir = "";
-    static readonly JsonSerializerOptions _json = new()
+    private static readonly List<ModEntry> _mods = [];
+    private static string _cacheDir = "";
+
+    private static readonly JsonSerializerOptions _json = new()
     {
         PropertyNameCaseInsensitive = true,
         ReadCommentHandling = JsonCommentHandling.Skip,
@@ -46,20 +51,32 @@ public static class ModLoader
 
     public static IReadOnlyList<ModEntry> Mods
     {
-        get { lock (_mods) return _mods.ToArray(); }
+        get
+        {
+            lock (_mods)
+            {
+                return _mods.ToArray();
+            }
+        }
     }
 
     public static IReadOnlyList<ModInfo> LoadedMods
     {
-        get { lock (_mods) return _mods.Where(m => m.Loaded).Select(m => m.Info).ToArray(); }
+        get
+        {
+            lock (_mods)
+            {
+                return _mods.Where(m => m.Loaded).Select(m => m.Info).ToArray();
+            }
+        }
     }
 
     public static string Root { get; private set; } = "";
 
-    static bool _loaded;
-    static FileSystemWatcher? _watcher;
-    static int _dirty;
-    static DateTime _dirtyAt;
+    private static bool _loaded;
+    private static FileSystemWatcher? _watcher;
+    private static int _dirty;
+    private static DateTime _dirtyAt;
 
     public static void LoadAll(string? root = null)
     {
@@ -72,7 +89,12 @@ public static class ModLoader
         _cacheDir = Path.Combine(root, ".cache");
 
         var discovered = Order(Discover(root));
-        lock (_mods) { _mods.Clear(); _mods.AddRange(discovered); }
+        lock (_mods)
+        {
+            _mods.Clear();
+            _mods.AddRange(discovered);
+        }
+
         foreach (var e in discovered) e.Enabled = IsEnabled(e.Info.Id);
 
         StartWatching();
@@ -84,14 +106,21 @@ public static class ModLoader
 
         var work = Task.Run(() =>
         {
-            for (int i = 0; i < toLoad.Count; i++)
+            for (var i = 0; i < toLoad.Count; i++)
             {
                 ModLoadingPopup.Update(i, toLoad[i].Info.Name);
                 LoadEntry(toLoad[i]);
             }
+
             ModLoadingPopup.Update(toLoad.Count, "");
-            try { HookManager.Commit(); }
-            catch (Exception ex) { Console.Error.WriteLine($"[Mods] hook install failed: {ex.Message}"); }
+            try
+            {
+                HookManager.Commit();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"[Mods] hook install failed: {ex.Message}");
+            }
         });
 
         while (!work.IsCompleted)
@@ -99,12 +128,14 @@ public static class ModLoader
             HostWindow.Pump();
             Thread.Sleep(16);
         }
+
         ModLoadingPopup.End();
 
-        Console.WriteLine($"[Mods] loaded {toLoad.Count(e => e.Loaded)}/{toLoad.Count} mod(s), {HookManager.HookedFunctionCount} function(s) hooked");
+        Console.WriteLine(
+            $"[Mods] loaded {toLoad.Count(e => e.Loaded)}/{toLoad.Count} mod(s), {HookManager.HookedFunctionCount} function(s) hooked");
     }
 
-    static void StartWatching()
+    private static void StartWatching()
     {
         if (_watcher != null || string.IsNullOrEmpty(Root)) return;
 
@@ -113,7 +144,7 @@ public static class ModLoader
             _watcher = new FileSystemWatcher(Root)
             {
                 IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite,
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite
             };
             _watcher.Created += OnFolderChanged;
             _watcher.Deleted += OnFolderChanged;
@@ -128,7 +159,7 @@ public static class ModLoader
         }
     }
 
-    static void OnFolderChanged(object sender, FileSystemEventArgs e)
+    private static void OnFolderChanged(object sender, FileSystemEventArgs e)
     {
         if (!string.IsNullOrEmpty(_cacheDir) && e.FullPath.StartsWith(_cacheDir, StringComparison.OrdinalIgnoreCase))
             return;
@@ -151,14 +182,17 @@ public static class ModLoader
         if (!_loaded || string.IsNullOrEmpty(Root)) return false;
 
         List<ModEntry> found;
-        try { found = Order(Discover(Root)); }
+        try
+        {
+            found = Order(Discover(Root));
+        }
         catch (Exception ex)
         {
             Console.Error.WriteLine($"[Mods] rescan failed: {ex.Message}");
             return false;
         }
 
-        bool changed = false;
+        var changed = false;
 
         lock (_mods)
         {
@@ -174,7 +208,7 @@ public static class ModLoader
                 Console.WriteLine($"[Mods] got {entry.Info.Name}");
             }
 
-            for (int i = _mods.Count - 1; i >= 0; i--)
+            for (var i = _mods.Count - 1; i >= 0; i--)
             {
                 if (present.Contains(_mods[i].Info.Id)) continue;
                 var gone = _mods[i];
@@ -216,34 +250,45 @@ public static class ModLoader
         SafeCommit();
     }
 
-    static void SafeCommit()
+    private static void SafeCommit()
     {
-        try { HookManager.Commit(); }
-        catch (Exception ex) { Console.Error.WriteLine($"[Mods] hook install failed: {ex.Message}"); }
+        try
+        {
+            HookManager.Commit();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[Mods] hook install failed: {ex.Message}");
+        }
     }
 
-    static ModEntry? Find(string id)
+    private static ModEntry? Find(string id)
     {
-        lock (_mods) return _mods.FirstOrDefault(m => string.Equals(m.Info.Id, id, StringComparison.OrdinalIgnoreCase));
+        lock (_mods)
+        {
+            return _mods.FirstOrDefault(m => string.Equals(m.Info.Id, id, StringComparison.OrdinalIgnoreCase));
+        }
     }
 
-    static bool IsEnabled(string id) => RecompOne.Runtime.Runtime.View.GetBool($"mods.{id}.enabled", false);
-
-    static void SaveEnabled(string id, bool enabled)
+    private static bool IsEnabled(string id)
     {
-        RecompOne.Runtime.Runtime.View.SetBool($"mods.{id}.enabled", enabled);
-        RecompOne.Runtime.Runtime.SaveView();
+        return Runtime.View.GetBool($"mods.{id}.enabled", false);
     }
 
-    const int MaxDepth = 4;
+    private static void SaveEnabled(string id, bool enabled)
+    {
+        Runtime.View.SetBool($"mods.{id}.enabled", enabled);
+        Runtime.SaveView();
+    }
 
-    static List<ModEntry> Discover(string root)
+    private const int MaxDepth = 4;
+
+    private static List<ModEntry> Discover(string root)
     {
         var list = new List<ModEntry>();
         DiscoverFolders(root, list, 0);
 
         foreach (var zipPath in Directory.EnumerateFiles(root, "*.zip", SearchOption.AllDirectories))
-        {
             try
             {
                 string? json;
@@ -255,9 +300,11 @@ public static class ModLoader
                         Console.Error.WriteLine($"[Mods] mod.json not found for {Path.GetFileName(zipPath)}, skipping");
                         continue;
                     }
+
                     using var reader = new StreamReader(entry.Open());
                     json = reader.ReadToEnd();
                 }
+
                 var info = ParseInfo(json, zipPath);
                 if (info == null) continue;
                 list.Add(new ModEntry
@@ -265,20 +312,19 @@ public static class ModLoader
                     Info = info,
                     IsZip = true,
                     Sources = ReadSources(zipPath, true),
-                    IconData = LoadIcon(zipPath, true),
+                    IconData = LoadIcon(zipPath, true)
                 });
             }
             catch (Exception ex)
             {
                 Console.Error.WriteLine($"[Mods] failed to read {Path.GetFileName(zipPath)}: {ex.Message}");
             }
-        }
 
         return list;
     }
-    
+
     //recursive folders, mod cna have its dependencies inside it if needed
-    static void DiscoverFolders(string dir, List<ModEntry> list, int depth)
+    private static void DiscoverFolders(string dir, List<ModEntry> list, int depth)
     {
         if (depth > MaxDepth) return;
 
@@ -301,12 +347,12 @@ public static class ModLoader
                 Info = info,
                 IsZip = false,
                 Sources = ReadSources(sub, false),
-                IconData = LoadIcon(sub, false),
+                IconData = LoadIcon(sub, false)
             });
         }
     }
 
-    static List<(string, string)> ReadSources(string sourcePath, bool isZip)
+    private static List<(string, string)> ReadSources(string sourcePath, bool isZip)
     {
         var sources = new List<(string, string)>();
         try
@@ -327,7 +373,8 @@ public static class ModLoader
                 foreach (var file in Directory.EnumerateFiles(sourcePath, "*.cs", SearchOption.AllDirectories))
                 {
                     var rel = Path.GetRelativePath(sourcePath, file);
-                    if (rel.Split(Path.DirectorySeparatorChar).Any(p => p is "obj" or "bin" || p.StartsWith('.'))) continue;
+                    if (rel.Split(Path.DirectorySeparatorChar)
+                        .Any(p => p is "obj" or "bin" || p.StartsWith('.'))) continue;
                     sources.Add((file, File.ReadAllText(file)));
                 }
             }
@@ -336,12 +383,13 @@ public static class ModLoader
         {
             Console.Error.WriteLine($"[Mods] failed to read sources for {Path.GetFileName(sourcePath)}: {ex.Message}");
         }
+
         return sources;
     }
 
-    const string IconName = "mod-icon.png";
+    private const string IconName = "mod-icon.png";
 
-    static byte[]? LoadIcon(string sourcePath, bool isZip)
+    private static byte[]? LoadIcon(string sourcePath, bool isZip)
     {
         try
         {
@@ -355,22 +403,28 @@ public static class ModLoader
                 s.CopyTo(ms);
                 return ms.ToArray();
             }
+
             var path = Path.Combine(sourcePath, IconName);
             return File.Exists(path) ? File.ReadAllBytes(path) : null;
         }
-        catch { return null; }
+        catch
+        {
+            return null;
+        }
     }
 
-    static ModInfo? ParseInfo(string json, string sourcePath)
+    private static ModInfo? ParseInfo(string json, string sourcePath)
     {
         try
         {
             var info = JsonSerializer.Deserialize<ModInfo>(json, _json);
             if (info == null || string.IsNullOrWhiteSpace(info.Id))
             {
-                Console.Error.WriteLine($"[Mods] malformed mod.json for {Path.GetFileName(sourcePath)}: missing id, skipping");
+                Console.Error.WriteLine(
+                    $"[Mods] malformed mod.json for {Path.GetFileName(sourcePath)}: missing id, skipping");
                 return null;
             }
+
             if (string.IsNullOrWhiteSpace(info.Name)) info.Name = info.Id;
             info.SourcePath = sourcePath;
             return info;
@@ -382,14 +436,12 @@ public static class ModLoader
         }
     }
 
-    static List<ModEntry> Order(List<ModEntry> mods)
+    private static List<ModEntry> Order(List<ModEntry> mods)
     {
         var byId = new Dictionary<string, ModEntry>(StringComparer.OrdinalIgnoreCase);
         foreach (var mod in mods)
-        {
             if (!byId.TryAdd(mod.Info.Id, mod))
                 Console.Error.WriteLine($"[Mods] duplicate mod id {mod.Info.Id} at {mod.Info.SourcePath}, skipping");
-        }
 
         var queue = byId.Values.OrderBy(m => m.Info.Id, StringComparer.OrdinalIgnoreCase).ToList();
         foreach (var mod in queue.ToList())
@@ -413,14 +465,16 @@ public static class ModLoader
                     Console.Error.WriteLine($"[Mods] {mod.Info.Id}: dependency cycle, skipping");
                 break;
             }
+
             queue.Remove(next);
             placed.Add(next.Info.Id);
             result.Add(next);
         }
+
         return result;
     }
 
-    static void LoadEntry(ModEntry mod)
+    private static void LoadEntry(ModEntry mod)
     {
         try
         {
@@ -441,7 +495,12 @@ public static class ModLoader
             {
                 Console.WriteLine($"[Mods] building {mod.Info.Id}...");
                 bytes = ModCompiler.Compile(mod.Info.Id, mod.Sources);
-                if (bytes == null) { mod.LoadError = "compilation failed, check the console"; return; }
+                if (bytes == null)
+                {
+                    mod.LoadError = "compilation failed, check the console";
+                    return;
+                }
+
                 try
                 {
                     Directory.CreateDirectory(_cacheDir);
@@ -455,9 +514,12 @@ public static class ModLoader
                 }
             }
 
-            var alc = new AssemblyLoadContext($"mod-{mod.Info.Id}-{Guid.NewGuid():N}", isCollectible: true);
+            var alc = new AssemblyLoadContext($"mod-{mod.Info.Id}-{Guid.NewGuid():N}", true);
             Assembly asm;
-            using (var ms = new MemoryStream(bytes)) asm = alc.LoadFromStream(ms);
+            using (var ms = new MemoryStream(bytes))
+            {
+                asm = alc.LoadFromStream(ms);
+            }
 
             mod.HookCount = RegisterHooks(mod.Info, asm);
             mod.Instances = CreateInstances(mod.Info, asm);
@@ -475,24 +537,29 @@ public static class ModLoader
         }
     }
 
-    static bool OverridesDrawSettings(IMod inst)
+    private static bool OverridesDrawSettings(IMod inst)
     {
         var map = inst.GetType().GetInterfaceMap(typeof(IMod));
-        for (int i = 0; i < map.InterfaceMethods.Length; i++)
+        for (var i = 0; i < map.InterfaceMethods.Length; i++)
             if (map.InterfaceMethods[i].Name == nameof(IMod.DrawSettings))
                 return map.TargetMethods[i].DeclaringType != typeof(IMod);
         return false;
     }
 
-    static void UnloadEntry(ModEntry mod)
+    private static void UnloadEntry(ModEntry mod)
     {
         try
         {
             foreach (var inst in mod.Instances)
-            {
-                try { inst.OnUnload(); }
-                catch (Exception ex) { Console.Error.WriteLine($"[Mods] {mod.Info.Id}: OnUnload failed: {ex.Message}"); }
-            }
+                try
+                {
+                    inst.OnUnload();
+                }
+                catch (Exception ex)
+                {
+                    Console.Error.WriteLine($"[Mods] {mod.Info.Id}: OnUnload failed: {ex.Message}");
+                }
+
             HookManager.RemoveMod(mod.Info);
             mod.Instances = [];
             mod.HookCount = 0;
@@ -508,9 +575,9 @@ public static class ModLoader
         }
     }
 
-    static int RegisterHooks(ModInfo info, Assembly asm)
+    private static int RegisterHooks(ModInfo info, Assembly asm)
     {
-        int count = 0;
+        var count = 0;
         foreach (var type in asm.GetTypes())
         foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static))
         foreach (var attr in method.GetCustomAttributes<FunctionHookAttribute>())
@@ -523,7 +590,7 @@ public static class ModLoader
                 continue;
             }
 
-            bool ok = attr switch
+            var ok = attr switch
             {
                 ReplaceAttribute => HookManager.AddReplace(info, target, method),
                 PreHookAttribute => HookManager.AddPre(info, target, method),
@@ -532,10 +599,11 @@ public static class ModLoader
             };
             if (ok) count++;
         }
+
         return count;
     }
 
-    static string CacheKey(ModInfo info, List<(string Path, string Text)> sources)
+    private static string CacheKey(ModInfo info, List<(string Path, string Text)> sources)
     {
         var sb = new StringBuilder();
         sb.Append(typeof(ModLoader).Assembly.ManifestModule.ModuleVersionId);
@@ -546,11 +614,12 @@ public static class ModLoader
             sb.Append(Path.GetFileName(path));
             sb.Append(text);
         }
+
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
         return Convert.ToHexString(hash)[..16].ToLowerInvariant();
     }
 
-    static IMod[] CreateInstances(ModInfo info, Assembly asm)
+    private static IMod[] CreateInstances(ModInfo info, Assembly asm)
     {
         var instances = new List<IMod>();
         foreach (var type in asm.GetTypes())
@@ -565,6 +634,7 @@ public static class ModLoader
                 Console.Error.WriteLine($"[Mods] {info.Id}: failed to create {type.Name}: {ex.Message}");
             }
         }
+
         return instances.ToArray();
     }
 }

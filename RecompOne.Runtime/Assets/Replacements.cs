@@ -6,7 +6,7 @@ public enum ShortPolicy : byte
 {
     Silence = 0,
     Loop = 1,
-    EndStream = 2,
+    EndStream = 2
 }
 
 public sealed class XaOptions
@@ -21,26 +21,29 @@ public sealed class XaOptions
     public int TailMs;
     public bool AllowStr;
 
-    public XaOptions Clone() => (XaOptions)MemberwiseClone();
+    public XaOptions Clone()
+    {
+        return (XaOptions)MemberwiseClone();
+    }
 }
 
 public sealed class ReplacementStream : IDisposable
 {
-    readonly IPcmDecoder _dec;
-    readonly XaOptions _opt;
-    readonly short[] _src;
-    readonly int _srcChannels;
+    private readonly IPcmDecoder _dec;
+    private readonly XaOptions _opt;
+    private readonly short[] _src;
+    private readonly int _srcChannels;
 
-    int _srcCount, _srcIndex;
-    double _frac;
-    int _outRate;
-    double _step;
+    private int _srcCount, _srcIndex;
+    private double _frac;
+    private int _outRate;
+    private double _step;
 
-    short _l0, _r0, _l1, _r1;
-    bool _primed;
-    bool _ended;
+    private short _l0, _r0, _l1, _r1;
+    private bool _primed;
+    private bool _ended;
 
-    long _framesOut;
+    private long _framesOut;
 
     public string Name { get; }
     public bool Ended => _ended;
@@ -68,11 +71,11 @@ public sealed class ReplacementStream : IDisposable
         _framesOut = (long)(seconds * (_outRate > 0 ? _outRate : _dec.SampleRate));
     }
 
-    bool NextSourceFrame(out short l, out short r)
+    private bool NextSourceFrame(out short l, out short r)
     {
         if (_srcIndex >= _srcCount)
         {
-            int frames = _dec.ReadFrames(_src, _src.Length / _srcChannels);
+            var frames = _dec.ReadFrames(_src, _src.Length / _srcChannels);
             if (frames <= 0)
             {
                 if (_opt.Loop)
@@ -80,6 +83,7 @@ public sealed class ReplacementStream : IDisposable
                     _dec.SeekFrames((long)(_opt.LoopStart * _dec.SampleRate));
                     frames = _dec.ReadFrames(_src, _src.Length / _srcChannels);
                 }
+
                 if (frames <= 0)
                 {
                     l = r = 0;
@@ -87,11 +91,12 @@ public sealed class ReplacementStream : IDisposable
                     return false;
                 }
             }
+
             _srcCount = frames;
             _srcIndex = 0;
         }
 
-        int b = _srcIndex * _srcChannels;
+        var b = _srcIndex * _srcChannels;
         _srcIndex++;
 
         if (_srcChannels == 1)
@@ -109,12 +114,19 @@ public sealed class ReplacementStream : IDisposable
             l = Sat((int)(l * _opt.Gain));
             r = Sat((int)(r * _opt.Gain));
         }
+
         return true;
     }
 
-    static short Sat(int v) => (short)(v < -32768 ? -32768 : v > 32767 ? 32767 : v);
+    private static short Sat(int v)
+    {
+        return (short)(v < -32768 ? -32768 : v > 32767 ? 32767 : v);
+    }
 
-    public int ReadPacked(int[] dst, int frames, int outRate) => ReadPacked(dst, 0, frames, outRate);
+    public int ReadPacked(int[] dst, int frames, int outRate)
+    {
+        return ReadPacked(dst, 0, frames, outRate);
+    }
 
     public int ReadPacked(int[] dst, int offset, int frames, int outRate)
     {
@@ -134,7 +146,7 @@ public sealed class ReplacementStream : IDisposable
             _frac = 0;
         }
 
-        int produced = 0;
+        var produced = 0;
         while (produced < frames)
         {
             while (_frac >= 1.0)
@@ -146,11 +158,12 @@ public sealed class ReplacementStream : IDisposable
                     _l1 = _r1 = 0;
                     if (_ended) return produced;
                 }
+
                 _frac -= 1.0;
             }
 
-            short l = (short)(_l0 + (_l1 - _l0) * _frac);
-            short r = (short)(_r0 + (_r1 - _r0) * _frac);
+            var l = (short)(_l0 + (_l1 - _l0) * _frac);
+            var r = (short)(_r0 + (_r1 - _r0) * _frac);
             dst[offset + produced] = (ushort)l | (r << 16);
             produced++;
             _frac += _step;
@@ -160,7 +173,10 @@ public sealed class ReplacementStream : IDisposable
         return produced;
     }
 
-    public void Dispose() => _dec.Dispose();
+    public void Dispose()
+    {
+        _dec.Dispose();
+    }
 }
 
 public sealed class ReplacementSample
@@ -176,7 +192,7 @@ public sealed class ReplacementSample
 public enum TextureMode : byte
 {
     Rgba = 0,
-    Indexed = 1,
+    Indexed = 1
 }
 
 public sealed class ReplacementTexture

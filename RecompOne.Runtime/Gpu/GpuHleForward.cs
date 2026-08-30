@@ -4,32 +4,45 @@ namespace RecompOne.Runtime;
 
 public sealed partial class Gpu
 {
-    static bool HleOn => GpuHle.Active && GpuHle.Backend is { Ready: true };
+    private static bool HleOn => GpuHle.Active && GpuHle.Backend is { Ready: true };
 
-    int CurTPage() => ((_texPageX / 64) & 0xf) | (((_texPageY / 256) & 1) << 4)
-                    | ((_blendMode & 3) << 5) | ((_texDepth & 3) << 7);
-
-    HleDrawEnv CurEnv() => new()
+    private int CurTPage()
     {
-        ClipX0 = _drawAreaLeft, ClipY0 = _drawAreaTop, ClipX1 = _drawAreaRight, ClipY1 = _drawAreaBottom,
-        TwMaskX = _texWinMaskX, TwMaskY = _texWinMaskY, TwOffX = _texWinOffX, TwOffY = _texWinOffY,
-        SetMask = _setMask, CheckMask = _checkMask, Dither = _dither,
-    };
+        return ((_texPageX / 64) & 0xf) | (((_texPageY / 256) & 1) << 4)
+                                        | ((_blendMode & 3) << 5) | ((_texDepth & 3) << 7);
+    }
 
-    static HleVertex HV(in Vert v) => new()
+    private HleDrawEnv CurEnv()
     {
-        X = v.X, Y = v.Y, R = (byte)v.R, G = (byte)v.G, B = (byte)v.B, U = (short)v.U, V = (short)v.V,
-    };
+        return new HleDrawEnv
+        {
+            ClipX0 = _drawAreaLeft, ClipY0 = _drawAreaTop, ClipX1 = _drawAreaRight, ClipY1 = _drawAreaBottom,
+            TwMaskX = _texWinMaskX, TwMaskY = _texWinMaskY, TwOffX = _texWinOffX, TwOffY = _texWinOffY,
+            SetMask = _setMask, CheckMask = _checkMask, Dither = _dither
+        };
+    }
 
-    PrimFlags PrimOf(bool tex, bool semi, bool raw, int clut, bool gouraud = false) => new()
+    private static HleVertex HV(in Vert v)
     {
-        Textured = tex, SemiTrans = semi, RawTexture = raw, Gouraud = gouraud, TPage = (ushort)CurTPage(), Clut = (ushort)clut,
-    };
+        return new HleVertex
+        {
+            X = v.X, Y = v.Y, R = (byte)v.R, G = (byte)v.G, B = (byte)v.B, U = (short)v.U, V = (short)v.V
+        };
+    }
 
-    void HleTri(in Vert a, in Vert b, in Vert c, bool tex, bool gouraud, bool semi, bool raw, int clut)
+    private PrimFlags PrimOf(bool tex, bool semi, bool raw, int clut, bool gouraud = false)
     {
-        int spanX = Math.Max(a.X, Math.Max(b.X, c.X)) - Math.Min(a.X, Math.Min(b.X, c.X));
-        int spanY = Math.Max(a.Y, Math.Max(b.Y, c.Y)) - Math.Min(a.Y, Math.Min(b.Y, c.Y));
+        return new PrimFlags
+        {
+            Textured = tex, SemiTrans = semi, RawTexture = raw, Gouraud = gouraud, TPage = (ushort)CurTPage(),
+            Clut = (ushort)clut
+        };
+    }
+
+    private void HleTri(in Vert a, in Vert b, in Vert c, bool tex, bool gouraud, bool semi, bool raw, int clut)
+    {
+        var spanX = Math.Max(a.X, Math.Max(b.X, c.X)) - Math.Min(a.X, Math.Min(b.X, c.X));
+        var spanY = Math.Max(a.Y, Math.Max(b.Y, c.Y)) - Math.Min(a.Y, Math.Min(b.Y, c.Y));
         if (spanX > 1023 || spanY > 511) return;
 
         var be = GpuHle.Backend!;
@@ -37,15 +50,21 @@ public sealed partial class Gpu
         be.DrawTri(HV(a), HV(b), HV(c), PrimOf(tex, semi, raw, clut, gouraud));
     }
 
-    void HleRect(int x, int y, int w, int h, int u, int v, int clut, int r, int g, int b, bool tex, bool semi, bool raw)
+    private void HleRect(int x, int y, int w, int h, int u, int v, int clut, int r, int g, int b, bool tex, bool semi,
+        bool raw)
     {
         var be = GpuHle.Backend!;
         be.SetDrawEnv(CurEnv());
-        be.DrawRect(new HleRect { X = x, Y = y, W = w, H = h, U = (short)u, V = (short)v, R = (byte)r, G = (byte)g, B = (byte)b },
+        be.DrawRect(
+            new HleRect
+            {
+                X = x, Y = y, W = w, H = h, U = (short)u, V = (short)v, R = (byte)r, G = (byte)g, B = (byte)b
+            },
             PrimOf(tex, semi, raw, clut));
     }
 
-    void HleLine(int x0, int y0, int r0, int g0, int b0, int x1, int y1, int r1, int g1, int b1, bool semi, bool gouraud)
+    private void HleLine(int x0, int y0, int r0, int g0, int b0, int x1, int y1, int r1, int g1, int b1, bool semi,
+        bool gouraud)
     {
         if (Math.Abs(x1 - x0) > 1023 || Math.Abs(y1 - y0) > 511) return;
 
@@ -57,46 +76,54 @@ public sealed partial class Gpu
             PrimOf(false, semi, false, 0, gouraud));
     }
 
-    void HleFill(int x, int y, int w, int h, ushort color) => GpuHle.Backend!.FillRect(x, y, w, h, color);
-    void HleCopy(int sx, int sy, int dx, int dy, int w, int h) => GpuHle.Backend!.CopyVram(sx, sy, dx, dy, w, h);
-
-    ushort[] _readBuf = Array.Empty<ushort>();
-
-    void HleReadback(int x, int y, int w, int h)
+    private void HleFill(int x, int y, int w, int h, ushort color)
     {
-        int n = w * h;
+        GpuHle.Backend!.FillRect(x, y, w, h, color);
+    }
+
+    private void HleCopy(int sx, int sy, int dx, int dy, int w, int h)
+    {
+        GpuHle.Backend!.CopyVram(sx, sy, dx, dy, w, h);
+    }
+
+    private ushort[] _readBuf = Array.Empty<ushort>();
+
+    private void HleReadback(int x, int y, int w, int h)
+    {
+        var n = w * h;
         if (_readBuf.Length < n) _readBuf = new ushort[n];
         GpuHle.Backend!.ReadVram(x, y, w, h, _readBuf);
 
-        for (int row = 0; row < h; row++)
+        for (var row = 0; row < h; row++)
         {
-            int dst = ((y + row) & (VramHeight - 1)) * VramWidth;
-            for (int col = 0; col < w; col++)
+            var dst = ((y + row) & (VramHeight - 1)) * VramWidth;
+            for (var col = 0; col < w; col++)
                 Vram[dst + ((x + col) & (VramWidth - 1))] = _readBuf[row * w + col];
         }
+
         Assets.Textures.VramTracker.MarkCpuWrite(x, y, w, h);
     }
 
     //img load
-    ushort[] _hleLoad = Array.Empty<ushort>();
-    bool _hleLoadActive;
-    int _hleLoadPos;
+    private ushort[] _hleLoad = Array.Empty<ushort>();
+    private bool _hleLoadActive;
+    private int _hleLoadPos;
 
-    void HleLoadBegin()
+    private void HleLoadBegin()
     {
         _hleLoadActive = HleOn;
         if (!_hleLoadActive) return;
-        int n = _loadW * _loadH;
+        var n = _loadW * _loadH;
         if (_hleLoad.Length < n) _hleLoad = new ushort[n];
         _hleLoadPos = 0;
     }
 
-    void HleLoadPut(ushort value)
+    private void HleLoadPut(ushort value)
     {
         if (_hleLoadActive && _hleLoadPos < _hleLoad.Length) _hleLoad[_hleLoadPos++] = value;
     }
 
-    void HleLoadFlush()
+    private void HleLoadFlush()
     {
         if (!_hleLoadActive) return;
         GpuHle.Backend!.WriteVram(_loadX, _loadY, _loadW, _loadH, _hleLoad.AsSpan(0, _loadW * _loadH));

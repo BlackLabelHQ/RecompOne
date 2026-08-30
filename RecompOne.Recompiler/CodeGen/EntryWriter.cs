@@ -5,7 +5,8 @@ namespace RecompOne.Recompiler.CodeGen;
 
 public static class EntryWriter
 {
-    public static void Write(PsxExe exe, SystemCfg sysCfg, string bootExe, string className, string? mainCall, List<string> overlays, string outDir)
+    public static void Write(PsxExe exe, SystemCfg sysCfg, string bootExe, string className, string? mainCall,
+        List<string> overlays, string outDir)
     {
         var entry = new StringBuilder();
         entry.AppendLine("using RecompOne.Runtime.Cdrom;");
@@ -32,7 +33,7 @@ public static class EntryWriter
         entry.AppendLine("        Dispatcher.Load(\"main\");");
         entry.AppendLine("        var c = new CpuContext();");
         entry.AppendLine($"        c.GP = 0x{exe.InitialGP:X8}u;");
-        uint initialSp = exe.InitialSP != 0 ? exe.InitialSP + exe.SpOffset : sysCfg.Stack;
+        var initialSp = exe.InitialSP != 0 ? exe.InitialSP + exe.SpOffset : sysCfg.Stack;
         entry.AppendLine($"        c.SP = 0x{initialSp:X8}u;"); //fkn stupid forgot to initialize the sp
         entry.AppendLine("        c.FP = c.SP;");
         entry.AppendLine("        c.RA = 0u;");
@@ -52,13 +53,17 @@ public static class EntryWriter
         stubs.AppendLine();
         stubs.AppendLine("public static class Bios");
         stubs.AppendLine("{");
-        stubs.AppendLine("    public static void Syscall(CpuContext c, IMemory m) => RecompOne.Runtime.Interrupts.Syscall(c, m);");
+        stubs.AppendLine(
+            "    public static void Syscall(CpuContext c, IMemory m) => RecompOne.Runtime.Interrupts.Syscall(c, m);");
         stubs.AppendLine("    public static void Break(CpuContext c, IMemory m) { }");
         stubs.AppendLine("}");
 
-        File.WriteAllText(Path.Combine(outDir, "Entry.cs"),   entry.ToString());
-        File.WriteAllText(Path.Combine(outDir, "Stubs.cs"),   stubs.ToString());
+        File.WriteAllText(Path.Combine(outDir, "Entry.cs"), entry.ToString());
+        File.WriteAllText(Path.Combine(outDir, "Stubs.cs"), stubs.ToString());
     }
 
-    static string DispatchTableName(string name) => $"{char.ToUpperInvariant(name[0])}{name[1..]}DispatchTable";
+    private static string DispatchTableName(string name)
+    {
+        return $"{char.ToUpperInvariant(name[0])}{name[1..]}DispatchTable";
+    }
 }

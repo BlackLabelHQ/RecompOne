@@ -7,10 +7,17 @@ public interface IEvent
 {
     string Id => GetType().Name;
 }
+
 public class GameEvent : IEvent
 {
-    string? _id;
-    public string Id { get => _id ?? GetType().Name; set => _id = value; }
+    private string? _id;
+
+    public string Id
+    {
+        get => _id ?? GetType().Name;
+        set => _id = value;
+    }
+
     public CpuContext Context = null!;
     public IMemory Memory = null!;
 }

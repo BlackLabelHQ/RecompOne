@@ -5,18 +5,21 @@ namespace RecompOne.Runtime.Hle;
 //usess ping pong text
 public sealed class Gl33Vram : IGlVram
 {
-    readonly GL _gl;
-    uint _tex, _fbo;
-    uint _stageTex, _stageFbo;
-    uint _scratchFbo;
-    uint _destVramTex, _destVramFbo;
-    uint _destRtTex, _destRtFbo;
-    int _destRtW, _destRtH;
+    private readonly GL _gl;
+    private uint _tex, _fbo;
+    private uint _stageTex, _stageFbo;
+    private uint _scratchFbo;
+    private uint _destVramTex, _destVramFbo;
+    private uint _destRtTex, _destRtFbo;
+    private int _destRtW, _destRtH;
 
     public uint Texture => _tex;
     public uint Fbo => _fbo;
 
-    public Gl33Vram(GL gl) => _gl = gl;
+    public Gl33Vram(GL gl)
+    {
+        _gl = gl;
+    }
 
     public void Init()
     {
@@ -29,10 +32,10 @@ public sealed class Gl33Vram : IGlVram
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
     }
 
-    uint CreateTex(int w, int h)
+    private uint CreateTex(int w, int h)
     {
         _gl.ActiveTexture(TextureUnit.Texture7);
-        uint t = _gl.GenTexture();
+        var t = _gl.GenTexture();
         _gl.BindTexture(TextureTarget.Texture2D, t);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
@@ -44,9 +47,9 @@ public sealed class Gl33Vram : IGlVram
         return t;
     }
 
-    uint CreateFbo(uint tex)
+    private uint CreateFbo(uint tex)
     {
-        uint f = _gl.GenFramebuffer();
+        var f = _gl.GenFramebuffer();
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, f);
         _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
             TextureTarget.Texture2D, tex, 0);
@@ -61,7 +64,7 @@ public sealed class Gl33Vram : IGlVram
 
     public uint BeginDestRead(uint targetTex, int targetW, int targetH, int x, int y, int w, int h)
     {
-        bool isVram = targetTex == _tex;
+        var isVram = targetTex == _tex;
         uint destTex, destFbo;
         if (isVram)
         {
@@ -79,7 +82,7 @@ public sealed class Gl33Vram : IGlVram
         int x0 = Math.Max(x, 0), y0 = Math.Max(y, 0);
         if (x1 <= x0 || y1 <= y0) return destTex;
 
-        uint targetFbo = FboFor(targetTex, isVram);
+        var targetFbo = FboFor(targetTex, isVram);
 
         _gl.Disable(EnableCap.ScissorTest);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, targetFbo);
@@ -91,9 +94,11 @@ public sealed class Gl33Vram : IGlVram
         return destTex;
     }
 
-    public void SampleBarrier() { }
+    public void SampleBarrier()
+    {
+    }
 
-    uint FboFor(uint tex, bool isVram)
+    private uint FboFor(uint tex, bool isVram)
     {
         if (isVram) return _fbo;
         if (_scratchFbo == 0) _scratchFbo = _gl.GenFramebuffer();
@@ -103,7 +108,7 @@ public sealed class Gl33Vram : IGlVram
         return _scratchFbo;
     }
 
-    void EnsureRtDest(int w, int h)
+    private void EnsureRtDest(int w, int h)
     {
         if (_destRtTex != 0 && _destRtW == w && _destRtH == h) return;
         if (_destRtFbo != 0) _gl.DeleteFramebuffer(_destRtFbo);
@@ -125,7 +130,8 @@ public sealed class Gl33Vram : IGlVram
         _gl.Disable(EnableCap.ScissorTest);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _stageFbo);
         _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fbo);
-        _gl.BlitFramebuffer(x, y, x + w, y + h, x * GlVram.Scale, y * GlVram.Scale, (x + w) * GlVram.Scale, (y + h) * GlVram.Scale,
+        _gl.BlitFramebuffer(x, y, x + w, y + h, x * GlVram.Scale, y * GlVram.Scale, (x + w) * GlVram.Scale,
+            (y + h) * GlVram.Scale,
             ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
     }
@@ -133,10 +139,11 @@ public sealed class Gl33Vram : IGlVram
     public void Fill(int x, int y, int w, int h, ushort color15)
     {
         float r = (color15 & 0x1F) / 31f, g = ((color15 >> 5) & 0x1F) / 31f, b = ((color15 >> 10) & 0x1F) / 31f;
-        float a = (color15 & 0x8000) != 0 ? 1f : 0f;
+        var a = (color15 & 0x8000) != 0 ? 1f : 0f;
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
         _gl.Enable(EnableCap.ScissorTest);
-        _gl.Scissor(x * GlVram.Scale, y * GlVram.Scale, (uint)Math.Max(0, w * GlVram.Scale), (uint)Math.Max(0, h * GlVram.Scale));
+        _gl.Scissor(x * GlVram.Scale, y * GlVram.Scale, (uint)Math.Max(0, w * GlVram.Scale),
+            (uint)Math.Max(0, h * GlVram.Scale));
         _gl.ClearColor(r, g, b, a);
         _gl.Clear(ClearBufferMask.ColorBufferBit);
         _gl.Disable(EnableCap.ScissorTest);
@@ -144,25 +151,28 @@ public sealed class Gl33Vram : IGlVram
 
     public void CopyRect(int sx, int sy, int dx, int dy, int w, int h)
     {
-        int s = GlVram.Scale; 
+        var s = GlVram.Scale;
         _gl.Disable(EnableCap.ScissorTest);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _fbo);
         _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _destVramFbo);
-        _gl.BlitFramebuffer(sx * s, sy * s, (sx + w) * s, (sy + h) * s, sx * s, sy * s, (sx + w) * s, (sy + h) * s, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+        _gl.BlitFramebuffer(sx * s, sy * s, (sx + w) * s, (sy + h) * s, sx * s, sy * s, (sx + w) * s, (sy + h) * s,
+            ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _destVramFbo);
         _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _fbo);
-        _gl.BlitFramebuffer(sx * s, sy * s, (sx + w) * s, (sy + h) * s, dx * s, dy * s, (dx + w) * s, (dy + h) * s, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+        _gl.BlitFramebuffer(sx * s, sy * s, (sx + w) * s, (sy + h) * s, dx * s, dy * s, (dx + w) * s, (dy + h) * s,
+            ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
 
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _fbo);
     }
 
     public void ReadRect(int x, int y, int w, int h, Span<ushort> dst)
     {
-        int s = GlVram.Scale;
+        var s = GlVram.Scale;
         _gl.Disable(EnableCap.ScissorTest);
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _fbo);
         _gl.BindFramebuffer(FramebufferTarget.DrawFramebuffer, _stageFbo);
-        _gl.BlitFramebuffer(x * s, y * s, (x + w) * s, (y + h) * s, x, y, x + w, y + h, ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
+        _gl.BlitFramebuffer(x * s, y * s, (x + w) * s, (y + h) * s, x, y, x + w, y + h, ClearBufferMask.ColorBufferBit,
+            BlitFramebufferFilter.Nearest);
 
         _gl.BindFramebuffer(FramebufferTarget.ReadFramebuffer, _stageFbo);
         _gl.PixelStore(PixelStoreParameter.PackAlignment, 2);

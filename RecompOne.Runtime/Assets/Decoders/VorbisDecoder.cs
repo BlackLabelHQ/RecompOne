@@ -4,8 +4,8 @@ namespace RecompOne.Runtime.Assets.Decoders;
 
 public sealed class VorbisDecoder : IPcmDecoder
 {
-    readonly VorbisReader _r;
-    float[] _scratch = [];
+    private readonly VorbisReader _r;
+    private float[] _scratch = [];
 
     public int SampleRate { get; }
     public int Channels { get; }
@@ -21,15 +21,16 @@ public sealed class VorbisDecoder : IPcmDecoder
 
     public int ReadFrames(short[] dst, int frames)
     {
-        int need = frames * Channels;
+        var need = frames * Channels;
         if (_scratch.Length < need) _scratch = new float[need];
 
-        int got = _r.ReadSamples(_scratch, 0, need);
-        for (int i = 0; i < got; i++)
+        var got = _r.ReadSamples(_scratch, 0, need);
+        for (var i = 0; i < got; i++)
         {
-            int v = (int)(_scratch[i] * 32767f);
+            var v = (int)(_scratch[i] * 32767f);
             dst[i] = (short)(v < -32768 ? -32768 : v > 32767 ? 32767 : v);
         }
+
         return got / Channels;
     }
 
@@ -37,9 +38,17 @@ public sealed class VorbisDecoder : IPcmDecoder
     {
         if (frame < 0) frame = 0;
         if (frame > TotalFrames) frame = TotalFrames;
-        try { _r.SeekTo(frame); }
-        catch (ArgumentOutOfRangeException) { }
+        try
+        {
+            _r.SeekTo(frame);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+        }
     }
 
-    public void Dispose() => _r.Dispose();
+    public void Dispose()
+    {
+        _r.Dispose();
+    }
 }

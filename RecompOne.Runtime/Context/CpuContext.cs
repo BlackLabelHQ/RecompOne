@@ -117,7 +117,7 @@ public sealed class CpuContext
             29 => SP,
             30 => FP,
             31 => RA,
-            _ => 0u,
+            _ => 0u
         };
         set
         {

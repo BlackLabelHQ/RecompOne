@@ -10,7 +10,7 @@ public struct ResolvedTexture
 
 public static class TextureResolver
 {
-    sealed class Entry
+    private sealed class Entry
     {
         public int Generation = -1;
         public ulong IndexHash;
@@ -23,16 +23,16 @@ public static class TextureResolver
         public bool Valid;
     }
 
-    sealed class PageEntry
+    private sealed class PageEntry
     {
         public int Generation = -1;
         public TextureAsset? Texture;
         public TileRect Rect;
     }
 
-    static readonly Dictionary<long, PageEntry> _pages = [];
+    private static readonly Dictionary<long, PageEntry> _pages = [];
 
-    static void CheckAspect(TextureAsset asset, ReplacementTexture tex, in TileRect rect, string kind)
+    private static void CheckAspect(TextureAsset asset, ReplacementTexture tex, in TileRect rect, string kind)
     {
         if (asset.AspectChecked || rect.W <= 0 || rect.H <= 0 || tex.Height <= 0) return;
         asset.AspectChecked = true;
@@ -40,22 +40,25 @@ public static class TextureResolver
         tex.ScaleX = tex.Width / (float)rect.W;
         tex.ScaleY = tex.Height / (float)rect.H;
 
-        double original = rect.W / (double)rect.H;
-        double replacement = tex.Width / (double)tex.Height;
-        bool distorted = Math.Abs(replacement - original) / original > 0.02;
+        var original = rect.W / (double)rect.H;
+        var replacement = tex.Width / (double)tex.Height;
+        var distorted = Math.Abs(replacement - original) / original > 0.02;
 
         Console.WriteLine($"[assets] {kind} {asset.IndexHash:x16}: {rect.W}x{rect.H} -> {tex.Width}x{tex.Height} " +
                           $"({tex.ScaleX:0.##}x, {tex.ScaleY:0.##}x)" +
-                          (distorted ? "  WARNING: aspect differs from the original, the image will be stretched" : ""));
+                          (distorted
+                              ? "  WARNING: aspect differs from the original, the image will be stretched"
+                              : ""));
     }
 
-    static TextureAsset? ResolvePage(ushort[] vram, int tpage, int clut, int bpp, bool dirty, out TileRect pageRect)
+    private static TextureAsset? ResolvePage(ushort[] vram, int tpage, int clut, int bpp, bool dirty,
+        out TileRect pageRect)
     {
-        int widthTexels = bpp == 4 ? 256 : 128;
+        var widthTexels = bpp == 4 ? 256 : 128;
         pageRect = TextureTile.Describe(tpage, clut, 0, 0, widthTexels, 256);
 
-        long key = ((long)(tpage & 0x1FF) << 32) ^ (clut & 0x7FFF);
-        int generation = VramTracker.Generation(pageRect.VramX, pageRect.VramY, pageRect.VramW, pageRect.H)
+        var key = ((long)(tpage & 0x1FF) << 32) ^ (clut & 0x7FFF);
+        var generation = VramTracker.Generation(pageRect.VramX, pageRect.VramY, pageRect.VramW, pageRect.H)
                          ^ VramTracker.Generation(pageRect.ClutX, pageRect.ClutY, pageRect.ClutCount, 1);
 
         PageEntry page;
@@ -81,11 +84,11 @@ public static class TextureResolver
             page.Rect = pageRect;
             page.Texture = null;
 
-            if (TextureTile.Hash(vram, pageRect, out ulong pageIndex, out ulong pageClut))
+            if (TextureTile.Hash(vram, pageRect, out var pageIndex, out var pageClut))
             {
                 if (!dirty) page.Texture = AssetReplacerManager.Instance.ResolveTexture(pageIndex, pageClut);
                 TextureRegistry.Note(vram, pageRect, pageIndex, pageClut, tpage, clut,
-                    page.Texture != null, isPage: true, dynamic: dirty);
+                    page.Texture != null, true, dirty);
             }
         }
 
@@ -93,10 +96,10 @@ public static class TextureResolver
         return page.Texture;
     }
 
-    static readonly Dictionary<long, Entry> _memo = [];
-    static int _version;
+    private static readonly Dictionary<long, Entry> _memo = [];
+    private static int _version;
 
-    static int _statCalls, _statNoTexture, _statRejectSize, _statRejectDirty, _statHashed, _statMemo;
+    private static int _statCalls, _statNoTexture, _statRejectSize, _statRejectDirty, _statHashed, _statMemo;
 
     public static bool Enabled { get; set; } = true;
 
@@ -110,10 +113,12 @@ public static class TextureResolver
         Volatile.Write(ref _statMemo, 0);
     }
 
-    public static string StatsLine() =>
-        $"calls={Volatile.Read(ref _statCalls)} untextured={Volatile.Read(ref _statNoTexture)} " +
-        $"rejected-size={Volatile.Read(ref _statRejectSize)} rejected-gpudirty={Volatile.Read(ref _statRejectDirty)} " +
-        $"hashed={Volatile.Read(ref _statHashed)} memo-hits={Volatile.Read(ref _statMemo)} tiles={CachedTiles}";
+    public static string StatsLine()
+    {
+        return $"calls={Volatile.Read(ref _statCalls)} untextured={Volatile.Read(ref _statNoTexture)} " +
+               $"rejected-size={Volatile.Read(ref _statRejectSize)} rejected-gpudirty={Volatile.Read(ref _statRejectDirty)} " +
+               $"hashed={Volatile.Read(ref _statHashed)} memo-hits={Volatile.Read(ref _statMemo)} tiles={CachedTiles}";
+    }
 
     public static void Invalidate()
     {
@@ -122,12 +127,22 @@ public static class TextureResolver
             _memo.Clear();
             _version++;
         }
-        lock (_pages) _pages.Clear();
+
+        lock (_pages)
+        {
+            _pages.Clear();
+        }
     }
 
     public static int CachedTiles
     {
-        get { lock (_memo) return _memo.Count; }
+        get
+        {
+            lock (_memo)
+            {
+                return _memo.Count;
+            }
+        }
     }
 
     public static bool Resolve(int tpage, int clut, int uMin, int vMin, int uMax, int vMax,
@@ -137,8 +152,8 @@ public static class TextureResolver
         if (!Enabled) return false;
 
         var mgr = AssetReplacerManager.Instance;
-        bool dumping = TextureDumper.Enabled;
-        bool observing = dumping || TextureRegistry.Enabled;
+        var dumping = TextureDumper.Enabled;
+        var observing = dumping || TextureRegistry.Enabled;
         if (!observing && !mgr.HasTextures) return false;
 
         var gpu = Runtime.Gpu;
@@ -190,21 +205,21 @@ public static class TextureResolver
             }
         }
 
-        bool dirty = VramTracker.IsGpuDirty(rect.VramX, rect.VramY, rect.VramW, rect.H);
+        var dirty = VramTracker.IsGpuDirty(rect.VramX, rect.VramY, rect.VramW, rect.H);
         if (dirty)
         {
             Interlocked.Increment(ref _statRejectDirty);
             if (!observing) return false;
         }
 
-        long key = (long)(tpage & 0x1FF)
-                   | ((long)(clut & 0x7FFF) << 9)
-                   | ((long)(u0 & 0xFF) << 24)
-                   | ((long)(v0 & 0xFF) << 32)
-                   | ((long)(w & 0x1FF) << 40)
-                   | ((long)(h & 0x1FF) << 49);
+        var key = (long)(tpage & 0x1FF)
+                  | ((long)(clut & 0x7FFF) << 9)
+                  | ((long)(u0 & 0xFF) << 24)
+                  | ((long)(v0 & 0xFF) << 32)
+                  | ((long)(w & 0x1FF) << 40)
+                  | ((long)(h & 0x1FF) << 49);
 
-        int generation = VramTracker.Generation(rect.VramX, rect.VramY, rect.VramW, rect.H)
+        var generation = VramTracker.Generation(rect.VramX, rect.VramY, rect.VramW, rect.H)
                          ^ VramTracker.Generation(rect.ClutX, rect.ClutY, rect.ClutCount, 1);
 
         Entry entry;
@@ -217,7 +232,10 @@ public static class TextureResolver
             }
         }
 
-        if (entry.Generation == generation) Interlocked.Increment(ref _statMemo);
+        if (entry.Generation == generation)
+        {
+            Interlocked.Increment(ref _statMemo);
+        }
         else
         {
             Interlocked.Increment(ref _statHashed);
@@ -246,7 +264,7 @@ public static class TextureResolver
                 else mgr.Stats.TextureMisses++;
 
                 TextureRegistry.Note(gpu.Vram, rect, entry.IndexHash, entry.ClutHash, tpage, clut,
-                    entry.Texture != null || entry.Clut != null || entry.PageTexture != null, isPage: false, dynamic: dirty);
+                    entry.Texture != null || entry.Clut != null || entry.PageTexture != null, false, dirty);
             }
         }
 

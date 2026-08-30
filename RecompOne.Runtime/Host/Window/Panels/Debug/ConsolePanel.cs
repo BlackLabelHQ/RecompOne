@@ -10,18 +10,23 @@ internal sealed class ConsolePanel : IPanel
     public string TitleKey => "panel.console";
     public bool IsOpen { get; set; }
 
-    readonly List<string> _lines = new();
-    readonly List<string> _visible = new();
-    int _version = -1;
-    string _filter = "";
-    string _lastFilter = "";
-    bool _autoScroll = true;
+    private readonly List<string> _lines = new();
+    private readonly List<string> _visible = new();
+    private int _version = -1;
+    private string _filter = "";
+    private string _lastFilter = "";
+    private bool _autoScroll = true;
 
     public void Draw()
     {
         ImGui.SetNextWindowSize(new Vector2(720, 320), ImGuiCond.FirstUseEver);
-        bool open = IsOpen;
-        if (!ImGui.Begin(this.Title(), ref open, ImGuiWindowFlags.MenuBar)) { IsOpen = open; ImGui.End(); return; }
+        var open = IsOpen;
+        if (!ImGui.Begin(this.Title(), ref open, ImGuiWindowFlags.MenuBar))
+        {
+            IsOpen = open;
+            ImGui.End();
+            return;
+        }
 
         DrawMenuBar();
         RefreshLines();
@@ -31,7 +36,7 @@ internal sealed class ConsolePanel : IPanel
         ImGui.End();
     }
 
-    void DrawMenuBar()
+    private void DrawMenuBar()
     {
         if (!ImGui.BeginMenuBar()) return;
 
@@ -58,9 +63,9 @@ internal sealed class ConsolePanel : IPanel
         ImGui.EndMenuBar();
     }
 
-    void RefreshLines()
+    private void RefreshLines()
     {
-        bool changed = false;
+        var changed = false;
         if (ConsoleMirror.Version != _version)
         {
             _version = ConsoleMirror.SnapshotInto(_lines);
@@ -72,19 +77,15 @@ internal sealed class ConsolePanel : IPanel
             _lastFilter = _filter;
             _visible.Clear();
             if (_filter.Length == 0)
-            {
                 _visible.AddRange(_lines);
-            }
             else
-            {
                 foreach (var l in _lines)
                     if (l.Contains(_filter, StringComparison.OrdinalIgnoreCase))
                         _visible.Add(l);
-            }
         }
     }
 
-    void DrawLines()
+    private void DrawLines()
     {
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(0, 1));
 
@@ -95,24 +96,24 @@ internal sealed class ConsolePanel : IPanel
             return;
         }
 
-        float rowH = ImGui.GetTextLineHeightWithSpacing();
-        int total = _visible.Count;
+        var rowH = ImGui.GetTextLineHeightWithSpacing();
+        var total = _visible.Count;
 
-        float scrollY = ImGui.GetScrollY();
-        float maxY = ImGui.GetScrollMaxY();
-        bool atBottom = scrollY >= maxY - rowH;
+        var scrollY = ImGui.GetScrollY();
+        var maxY = ImGui.GetScrollMaxY();
+        var atBottom = scrollY >= maxY - rowH;
 
-        int firstRow = Math.Max(0, (int)(scrollY / rowH) - 1);
-        int visRows = (int)(ImGui.GetWindowHeight() / rowH) + 2;
-        int lastRow = Math.Min(total, firstRow + visRows);
+        var firstRow = Math.Max(0, (int)(scrollY / rowH) - 1);
+        var visRows = (int)(ImGui.GetWindowHeight() / rowH) + 2;
+        var lastRow = Math.Min(total, firstRow + visRows);
 
         if (firstRow > 0)
             ImGui.Dummy(new Vector2(1f, firstRow * rowH));
 
-        for (int i = firstRow; i < lastRow; i++)
+        for (var i = firstRow; i < lastRow; i++)
             ImGui.TextUnformatted(_visible[i]);
 
-        float remaining = (total - lastRow) * rowH;
+        var remaining = (total - lastRow) * rowH;
         if (remaining > 0f)
             ImGui.Dummy(new Vector2(1f, remaining));
 

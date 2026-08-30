@@ -11,7 +11,7 @@ internal sealed class PathsSettingsSection : ISettingsSection
     public string TitleKey => "settings.paths";
     public int Order => 20;
 
-    string _discError = "";
+    private string _discError = "";
 
     public void Draw()
     {
@@ -19,7 +19,7 @@ internal sealed class PathsSettingsSection : ISettingsSection
 
         ImGui.SeparatorText(Localization.T("settings.paths.disc"));
 
-        if (PathRow("##disc", game.CdPath, "cue,chd", false, out string disc))
+        if (PathRow("##disc", game.CdPath, "cue,chd", false, out var disc))
         {
             var problem = Runtime.ValidateDisc(disc);
             if (problem != null)
@@ -41,14 +41,17 @@ internal sealed class PathsSettingsSection : ISettingsSection
         ImGui.Spacing();
         ImGui.SeparatorText(Localization.T("settings.paths.memory_cards"));
 
-        Card("settings.paths.card_a", game.CardAEnabled, v => game.CardAEnabled = v, game.CardAPath, p => game.CardAPath = p);
+        Card("settings.paths.card_a", game.CardAEnabled, v => game.CardAEnabled = v, game.CardAPath,
+            p => game.CardAPath = p);
         ImGui.Spacing();
-        Card("settings.paths.card_b", game.CardBEnabled, v => game.CardBEnabled = v, game.CardBPath, p => game.CardBPath = p);
+        Card("settings.paths.card_b", game.CardBEnabled, v => game.CardBEnabled = v, game.CardBPath,
+            p => game.CardBPath = p);
     }
 
-    static void Card(string labelKey, bool enabled, Action<bool> setEnabled, string path, Action<string> setPath)
+    private static void Card(string labelKey, bool enabled, Action<bool> setEnabled, string path,
+        Action<string> setPath)
     {
-        bool on = enabled;
+        var on = enabled;
         if (ImGui.Checkbox(Localization.T(labelKey), ref on))
         {
             setEnabled(on);
@@ -56,7 +59,7 @@ internal sealed class PathsSettingsSection : ISettingsSection
             NoticePopup.Show(Localization.T("common.restart_required"));
         }
 
-        if (PathRow($"##{labelKey}", path, "sav", true, out string picked))
+        if (PathRow($"##{labelKey}", path, "sav", true, out var picked))
         {
             setPath(picked);
             ConfigManager.SaveGame();
@@ -64,16 +67,16 @@ internal sealed class PathsSettingsSection : ISettingsSection
         }
     }
 
-    static bool PathRow(string id, string current, string filter, bool save, out string result)
+    private static bool PathRow(string id, string current, string filter, bool save, out string result)
     {
         result = "";
 
-        float browse = 90f;
-        float spacing = ImGui.GetStyle().ItemSpacing.X;
+        var browse = 90f;
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - browse - spacing);
 
-        string buffer = current ?? "";
-        bool changed = false;
+        var buffer = current ?? "";
+        var changed = false;
         if (ImGui.InputText(id, ref buffer, 1024, ImGuiInputTextFlags.EnterReturnsTrue))
         {
             result = buffer.Trim();
@@ -94,7 +97,8 @@ internal sealed class PathsSettingsSection : ISettingsSection
             }
 
             using var dialog = new NativeFileDialog();
-            if (save) dialog.SaveFile(); else dialog.SelectFile();
+            if (save) dialog.SaveFile();
+            else dialog.SelectFile();
             if (!string.IsNullOrWhiteSpace(filter)) dialog.AddFilter("Files", filter);
 
             if (dialog.Open(out string? picked, directory) == DialogResult.Okay && !string.IsNullOrWhiteSpace(picked))

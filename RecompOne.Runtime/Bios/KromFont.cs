@@ -6,7 +6,7 @@ public static class KromFont
 {
     public const uint Font1Address = 0xBFC66000u;
     public const uint Font2Address = 0xBFC66000u + 0x3D68u; // 0xBFC69D68
-    
+
     private const int Font1RomOffset = 0x66000;
     private const int Font2RomOffset = 0x69D68;
 
@@ -14,33 +14,35 @@ public static class KromFont
 
     private static readonly byte[] Font1 = LoadResource("font1.raw");
     private static readonly byte[] Font2 = LoadResource("font2.raw");
-    
+
     public static void InstallInto(byte[] biosRom)
     {
         Array.Copy(Font1, 0, biosRom, Font1RomOffset, Font1.Length);
         Array.Copy(Font2, 0, biosRom, Font2RomOffset, Font2.Length);
     }
+
     public static uint Krom2RawAdd(uint code)
     {
-        ushort c = (ushort)code;
+        var c = (ushort)code;
         if (c >= 0x8140 && c <= 0x84BE)
             return Font1Address + (uint)(Krom2Offset(code) * GlyphBytes);
         if (c >= 0x889F && c <= 0x9872)
             return Font2Address + (uint)(Krom2Offset(code) * GlyphBytes);
         return 0xFFFFFFFFu;
     }
+
     public static ushort Krom2Offset(uint code)
     {
-        ushort c = (ushort)code;
+        var c = (ushort)code;
         if (c < 0x8140 || c > 0x9872) return 0;
-        int idx = 1;
+        var idx = 1;
         while (Table[idx].Codepoint <= c) idx++;
         idx--;
         return (ushort)(c - Table[idx].Codepoint + Table[idx].Offset);
     }
 
     private readonly record struct Lookup(ushort Codepoint, ushort Offset);
-    
+
     private static readonly Lookup[] Table =
     {
         new(0x8140, 0x0000), new(0x8180, 0x003f), new(0x81ad, 0x006d), new(0x81b8, 0x006c),
@@ -60,17 +62,17 @@ public static class KromFont
         new(0x927f, 0x0738), new(0x9300, 0x0776), new(0x937f, 0x07f4), new(0x9400, 0x0832),
         new(0x947f, 0x08b0), new(0x9500, 0x08ee), new(0x957f, 0x096c), new(0x9600, 0x09aa),
         new(0x967f, 0x0a28), new(0x9700, 0x0a66), new(0x977f, 0x0ae4), new(0x9800, 0x0b22),
-        new(0xffff, 0x0000),
+        new(0xffff, 0x0000)
     };
 
     private static byte[] LoadResource(string fileName)
     {
         var asm = typeof(KromFont).Assembly;
-        string expected = $"{asm.GetName().Name}.Bios.Fonts.{fileName}";
-        string? name = asm.GetManifestResourceNames().FirstOrDefault(
-            n => n == expected || n.EndsWith("." + fileName, StringComparison.Ordinal));
+        var expected = $"{asm.GetName().Name}.Bios.Fonts.{fileName}";
+        var name = asm.GetManifestResourceNames()
+            .FirstOrDefault(n => n == expected || n.EndsWith("." + fileName, StringComparison.Ordinal));
         using var s = asm.GetManifestResourceStream(name ?? expected)
-            ?? throw new InvalidOperationException($"the embedded font resource wasn't found: {fileName}");
+                      ?? throw new InvalidOperationException($"the embedded font resource wasn't found: {fileName}");
         using var ms = new MemoryStream();
         s.CopyTo(ms);
         return ms.ToArray();

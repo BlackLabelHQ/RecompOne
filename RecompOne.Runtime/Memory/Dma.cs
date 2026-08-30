@@ -4,16 +4,16 @@ namespace RecompOne.Runtime.Memory;
 
 public sealed class Dma
 {
-    const uint Start = 0x01000000u;
+    private const uint Start = 0x01000000u;
 
-    readonly IMemory _mem;
-    readonly Gpu _gpu;
-    readonly Spu _spu;
-    readonly Mdec _mdec;
-    readonly Action _raiseIrq;
-    CdController? _cd;
+    private readonly IMemory _mem;
+    private readonly Gpu _gpu;
+    private readonly Spu _spu;
+    private readonly Mdec _mdec;
+    private readonly Action _raiseIrq;
+    private CdController? _cd;
 
-    uint _dicr;
+    private uint _dicr;
 
     public Dma(IMemory mem, Gpu gpu, Spu spu, Mdec mdec, Action raiseIrq)
     {
@@ -24,24 +24,30 @@ public sealed class Dma
         _raiseIrq = raiseIrq;
     }
 
-    public void SetCd(CdController cd) => _cd = cd;
+    public void SetCd(CdController cd)
+    {
+        _cd = cd;
+    }
 
-    public uint ReadDicr() => _dicr;
+    public uint ReadDicr()
+    {
+        return _dicr;
+    }
 
     public void WriteDicr(uint val)
     {
-        uint flags = (_dicr >> 24) & 0x7Fu;
+        var flags = (_dicr >> 24) & 0x7Fu;
         flags &= ~((val >> 24) & 0x7Fu);
         _dicr = (val & 0x00FFFFFFu) | (flags << 24);
         UpdateMaster();
     }
 
-    void UpdateMaster()
+    private void UpdateMaster()
     {
-        uint flags = (_dicr >> 24) & 0x7Fu;
-        uint enables = (_dicr >> 16) & 0x7Fu;
-        bool set = (_dicr & 0x8000u) != 0
-                   || (((_dicr >> 23) & 1u) != 0 && (flags & enables) != 0);
+        var flags = (_dicr >> 24) & 0x7Fu;
+        var enables = (_dicr >> 16) & 0x7Fu;
+        var set = (_dicr & 0x8000u) != 0
+                  || (((_dicr >> 23) & 1u) != 0 && (flags & enables) != 0);
         _dicr = set ? _dicr | 0x80000000u : _dicr & 0x7FFFFFFFu;
     }
 
@@ -58,99 +64,101 @@ public sealed class Dma
             case 6: ClearOrderingTable(madr, bcr); break;
             default: return;
         }
+
         Complete(channel);
     }
 
-    void TransferMdecIn(uint madr, uint bcr)
+    private void TransferMdecIn(uint madr, uint bcr)
     {
-        uint words = WordCount(bcr);
+        var words = WordCount(bcr);
         for (uint i = 0; i < words; i++)
             _mdec.Write0(_mem.ReadU32(madr + i * 4u));
     }
 
-    void TransferMdecOut(uint madr, uint bcr)
+    private void TransferMdecOut(uint madr, uint bcr)
     {
-        uint words = WordCount(bcr);
+        var words = WordCount(bcr);
         for (uint i = 0; i < words; i++)
             _mem.WriteU32(madr + i * 4u, _mdec.ReadData());
     }
 
-    void TransferGpu(uint madr, uint bcr, uint chcr)
+    private void TransferGpu(uint madr, uint bcr, uint chcr)
     {
-        uint sync = (chcr >> 9) & 3u;
+        var sync = (chcr >> 9) & 3u;
         if (sync == 2)
         {
-            uint addr = madr & Runtime.RamWordMask;
-            for (int guard = 0; guard < 0x100000; guard++)
+            var addr = madr & Runtime.RamWordMask;
+            for (var guard = 0; guard < 0x100000; guard++)
             {
-                uint header = _mem.ReadU32(addr);
-                uint count = header >> 24;
+                var header = _mem.ReadU32(addr);
+                var count = header >> 24;
                 for (uint i = 0; i < count; i++)
                     _gpu.WriteGp0(_mem.ReadU32(addr + 4u + i * 4u));
-                uint next = header & 0xFFFFFFu;
+                var next = header & 0xFFFFFFu;
                 if (next == 0xFFFFFFu || (next & 0x800000u) != 0) break;
                 addr = next & Runtime.RamWordMask;
             }
         }
         else if ((chcr & 1u) != 0)
         {
-            uint words = WordCount(bcr);
+            var words = WordCount(bcr);
             for (uint i = 0; i < words; i++)
                 _gpu.WriteGp0(_mem.ReadU32(madr + i * 4u));
         }
         else
         {
-            uint words = WordCount(bcr);
+            var words = WordCount(bcr);
             for (uint i = 0; i < words; i++)
                 _mem.WriteU32(madr + i * 4u, _gpu.ReadData());
         }
     }
 
-    void TransferSpu(uint madr, uint bcr, uint chcr)
+    private void TransferSpu(uint madr, uint bcr, uint chcr)
     {
         if ((chcr & 1u) == 0) return;
-        uint bytes = WordCount(bcr) * 4u;
+        var bytes = WordCount(bcr) * 4u;
         var buf = new byte[bytes];
         for (uint i = 0; i < bytes; i++)
             buf[i] = _mem.ReadU8(madr + i);
         _spu.DmaWrite(_spu.TransferAddrBytes(), buf);
     }
 
-    void TransferCd(uint madr, uint bcr)
+    private void TransferCd(uint madr, uint bcr)
     {
         if (_cd == null) return;
         _cd.DmaReadData(_mem, madr, WordCount(bcr) * 4u);
     }
 
-    void ClearOrderingTable(uint madr, uint bcr)
+    private void ClearOrderingTable(uint madr, uint bcr)
     {
-        uint count = bcr & 0xFFFFu;
+        var count = bcr & 0xFFFFu;
         if (count == 0) return;
-        uint addr = madr;
+        var addr = madr;
         for (uint i = 0; i < count - 1; i++)
         {
             _mem.WriteU32(addr, (addr - 4u) & 0x00FFFFFFu);
             addr -= 4u;
         }
+
         _mem.WriteU32(addr, 0x00FFFFFFu);
     }
 
-    void Complete(int channel)
+    private void Complete(int channel)
     {
         Log.Irq($"dma ch {channel} dicr = 0x{_dicr:X8}");
-        bool master = (_dicr & (1u << 23)) != 0;
-        bool enabled = (_dicr & (1u << (16 + channel))) != 0;
+        var master = (_dicr & (1u << 23)) != 0;
+        var enabled = (_dicr & (1u << (16 + channel))) != 0;
         if (!master || !enabled) return;
         _dicr |= 1u << (24 + channel);
         UpdateMaster();
         _raiseIrq();
     }
 
-    static uint WordCount(uint bcr)
+    private static uint WordCount(uint bcr)
     {
-        uint size = bcr & 0xFFFFu;
-        uint blocks = (bcr >> 16) & 0xFFFFu;
-        uint total = blocks == 0 ? size : size * blocks;
+        var size = bcr & 0xFFFFu;
+        var blocks = (bcr >> 16) & 0xFFFFu;
+        var total = blocks == 0 ? size : size * blocks;
         return total == 0 ? 0x10000u : total;
     }
 }

@@ -2,7 +2,7 @@ using ImGuiNET;
 
 namespace RecompOne.Runtime.Host.Window;
 
-abstract class MenuEntry
+internal abstract class MenuEntry
 {
     public string? Key;
     public string? AnchorKey;
@@ -11,10 +11,10 @@ abstract class MenuEntry
     public abstract void Draw();
 }
 
-sealed class MenuItemEntry : MenuEntry
+internal sealed class MenuItemEntry : MenuEntry
 {
-    readonly string _labelKey;
-    readonly Action _onClick;
+    private readonly string _labelKey;
+    private readonly Action _onClick;
 
     public string? Shortcut;
     public Func<bool>? Selected;
@@ -30,36 +30,45 @@ sealed class MenuItemEntry : MenuEntry
 
     public override void Draw()
     {
-        bool selected = Selected?.Invoke() ?? false;
-        bool enabled = Enabled?.Invoke() ?? true;
+        var selected = Selected?.Invoke() ?? false;
+        var enabled = Enabled?.Invoke() ?? true;
 
         if (ImGui.MenuItem(Localization.T(_labelKey), Shortcut, selected, enabled)) _onClick();
         MenuTooltip.Draw(TooltipKey);
     }
 }
 
-sealed class MenuTextEntry(Func<string> text) : MenuEntry
+internal sealed class MenuTextEntry(Func<string> text) : MenuEntry
 {
-    public override void Draw() => ImGui.TextDisabled(text());
+    public override void Draw()
+    {
+        ImGui.TextDisabled(text());
+    }
 }
 
-sealed class MenuSeparatorEntry : MenuEntry
+internal sealed class MenuSeparatorEntry : MenuEntry
 {
-    public override void Draw() => ImGui.Separator();
+    public override void Draw()
+    {
+        ImGui.Separator();
+    }
 }
 
-sealed class MenuCustomEntry(Action draw) : MenuEntry
+internal sealed class MenuCustomEntry(Action draw) : MenuEntry
 {
-    public override void Draw() => draw();
+    public override void Draw()
+    {
+        draw();
+    }
 }
 
-sealed class MenuNode : MenuEntry
+internal sealed class MenuNode : MenuEntry
 {
     public readonly string LabelKey;
 
-    readonly List<MenuEntry> _entries = [];
-    List<MenuEntry> _draw = [];
-    bool _dirty = true;
+    private readonly List<MenuEntry> _entries = [];
+    private List<MenuEntry> _draw = [];
+    private bool _dirty = true;
 
     public Action? OnClick;
     public Func<bool>? Enabled;
@@ -77,11 +86,14 @@ sealed class MenuNode : MenuEntry
         _dirty = true;
     }
 
-    public void Invalidate() => _dirty = true;
+    public void Invalidate()
+    {
+        _dirty = true;
+    }
 
     public bool RemoveByKey(string key)
     {
-        for (int i = 0; i < _entries.Count; i++)
+        for (var i = 0; i < _entries.Count; i++)
         {
             if (_entries[i].Key == key)
             {
@@ -89,15 +101,18 @@ sealed class MenuNode : MenuEntry
                 _dirty = true;
                 return true;
             }
+
             if (_entries[i] is MenuNode child && child.RemoveByKey(key)) return true;
         }
+
         return false;
     }
 
     public MenuNode Submenu(string key)
     {
         foreach (var entry in _entries)
-            if (entry is MenuNode node && node.LabelKey == key) return node;
+            if (entry is MenuNode node && node.LabelKey == key)
+                return node;
 
         var created = new MenuNode(key);
         Add(created);
@@ -107,7 +122,7 @@ sealed class MenuNode : MenuEntry
     public override void Draw()
     {
         var label = Localization.T(LabelKey);
-        bool enabled = Enabled?.Invoke() ?? true;
+        var enabled = Enabled?.Invoke() ?? true;
 
         if (_entries.Count == 0)
         {
@@ -128,12 +143,13 @@ sealed class MenuNode : MenuEntry
             _draw = MenuOrder.Arrange(_entries);
             _dirty = false;
         }
+
         foreach (var entry in _draw) entry.Draw();
         ImGui.EndMenu();
     }
 }
 
-static class MenuTooltip
+internal static class MenuTooltip
 {
     public static void Draw(string? tooltipKey)
     {

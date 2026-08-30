@@ -5,10 +5,10 @@ namespace RecompOne.Runtime.Modding;
 
 public static class SymbolRegistry
 {
-    static readonly Dictionary<(string Overlay, string Name), MethodInfo> _byName = [];
-    static readonly Dictionary<(string Overlay, uint Addr), MethodInfo> _byAddress = [];
-    static bool _built;
-    
+    private static readonly Dictionary<(string Overlay, string Name), MethodInfo> _byName = [];
+    private static readonly Dictionary<(string Overlay, uint Addr), MethodInfo> _byAddress = [];
+    private static bool _built;
+
     public static void Build()
     {
         _byName.Clear();
@@ -22,8 +22,10 @@ public static class SymbolRegistry
                 _byName[(key, fn.Method.Name)] = fn.Method;
             }
         }
+
         _built = true;
     }
+
     public static MethodInfo? Resolve(string overlay, string? function, uint address)
     {
         if (!_built) Build();

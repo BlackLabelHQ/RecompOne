@@ -15,7 +15,7 @@ public static class DiscImage
         {
             DiscFormat.Chd => ChdImage.Open(path),
             DiscFormat.CueBin => CueBinImage.Open(path),
-            _ => throw new NotSupportedException($"unsupported disc format: {path}"),
+            _ => throw new NotSupportedException($"unsupported disc format: {path}")
         };
     }
 
@@ -46,5 +46,5 @@ public enum DiscFormat
 {
     Unknown,
     CueBin,
-    Chd,
+    Chd
 }

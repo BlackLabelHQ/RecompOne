@@ -15,7 +15,7 @@ public struct TileRect
     {
         4 => ((U0 + W - 1) >> 2) - (U0 >> 2) + 1,
         8 => ((U0 + W - 1) >> 1) - (U0 >> 1) + 1,
-        _ => W,
+        _ => W
     };
 }
 
@@ -25,8 +25,8 @@ public static class TextureTile
 
     public static TileRect Describe(int tpage, int clut, int u0, int v0, int w, int h)
     {
-        int depth = (tpage >> 7) & 3;
-        int bpp = depth switch { 0 => 4, 1 => 8, _ => 16 };
+        var depth = (tpage >> 7) & 3;
+        var bpp = depth switch { 0 => 4, 1 => 8, _ => 16 };
         var r = new TileRect
         {
             PageX = (tpage & 0xF) * 64,
@@ -38,7 +38,7 @@ public static class TextureTile
             Bpp = bpp,
             ClutX = (clut & 0x3F) * 16,
             ClutY = (clut >> 6) & 0x1FF,
-            ClutCount = bpp switch { 4 => 16, 8 => 256, _ => 0 },
+            ClutCount = bpp switch { 4 => 16, 8 => 256, _ => 0 }
         };
         return r;
     }
@@ -52,22 +52,22 @@ public static class TextureTile
         Span<ulong> used = stackalloc ulong[4];
         used.Clear();
 
-        ulong h = 1469598103934665603UL;
+        var h = 1469598103934665603UL;
         Fnv(ref h, (byte)r.Bpp);
         Fnv(ref h, (byte)(r.W & 0xFF));
         Fnv(ref h, (byte)(r.W >> 8));
         Fnv(ref h, (byte)(r.H & 0xFF));
         Fnv(ref h, (byte)(r.H >> 8));
 
-        int wordX = r.VramX;
-        int words = r.VramW;
+        var wordX = r.VramX;
+        var words = r.VramW;
 
-        for (int y = 0; y < r.H; y++)
+        for (var y = 0; y < r.H; y++)
         {
-            int row = ((r.VramY + y) & 511) * 1024;
-            for (int x = 0; x < words; x++)
+            var row = ((r.VramY + y) & 511) * 1024;
+            for (var x = 0; x < words; x++)
             {
-                ushort v = vram[row + ((wordX + x) & 1023)];
+                var v = vram[row + ((wordX + x) & 1023)];
                 Fnv(ref h, (byte)(v & 0xFF));
                 Fnv(ref h, (byte)(v >> 8));
 
@@ -91,21 +91,22 @@ public static class TextureTile
 
         if (r.ClutCount == 0) return true;
 
-        ulong c = 1469598103934665603UL;
-        int clutRow = (r.ClutY & 511) * 1024;
-        for (int i = 0; i < r.ClutCount; i++)
+        var c = 1469598103934665603UL;
+        var clutRow = (r.ClutY & 511) * 1024;
+        for (var i = 0; i < r.ClutCount; i++)
         {
             if ((used[i >> 6] & (1UL << (i & 63))) == 0) continue;
-            ushort e = vram[clutRow + ((r.ClutX + i) & 1023)];
+            var e = vram[clutRow + ((r.ClutX + i) & 1023)];
             Fnv(ref c, (byte)(i & 0xFF));
             Fnv(ref c, (byte)(e & 0xFF));
             Fnv(ref c, (byte)(e >> 8));
         }
+
         clutHash = c;
         return true;
     }
 
-    static void Fnv(ref ulong h, byte b)
+    private static void Fnv(ref ulong h, byte b)
     {
         h ^= b;
         h *= 1099511628211UL;
@@ -114,12 +115,13 @@ public static class TextureTile
     public static ushort[] CopyWindow(ushort[] vram, in TileRect r)
     {
         var win = new ushort[r.VramW * r.H];
-        for (int y = 0; y < r.H; y++)
+        for (var y = 0; y < r.H; y++)
         {
-            int row = ((r.VramY + y) & 511) * 1024;
-            for (int x = 0; x < r.VramW; x++)
+            var row = ((r.VramY + y) & 511) * 1024;
+            for (var x = 0; x < r.VramW; x++)
                 win[y * r.VramW + x] = vram[row + ((r.VramX + x) & 1023)];
         }
+
         return win;
     }
 
@@ -127,37 +129,38 @@ public static class TextureTile
     {
         if (r.ClutCount == 0) return [];
         var entries = new ushort[r.ClutCount];
-        int clutRow = (r.ClutY & 511) * 1024;
-        for (int i = 0; i < r.ClutCount; i++)
+        var clutRow = (r.ClutY & 511) * 1024;
+        for (var i = 0; i < r.ClutCount; i++)
             entries[i] = vram[clutRow + ((r.ClutX + i) & 1023)];
         return entries;
     }
 
-    static int WordOf(in TileRect r, int x)
+    private static int WordOf(in TileRect r, int x)
     {
-        int u = r.U0 + x;
+        var u = r.U0 + x;
         return r.Bpp switch { 4 => (u >> 2) - (r.U0 >> 2), 8 => (u >> 1) - (r.U0 >> 1), _ => u - r.U0 };
     }
 
     public static byte[] DecodeFrom(ushort[] win, ushort[] clut, in TileRect r)
     {
         var rgba = new byte[r.W * r.H * 4];
-        for (int y = 0; y < r.H; y++)
+        for (var y = 0; y < r.H; y++)
         {
-            int row = y * r.VramW;
-            for (int x = 0; x < r.W; x++)
+            var row = y * r.VramW;
+            for (var x = 0; x < r.W; x++)
             {
-                int u = r.U0 + x;
-                ushort word = win[row + WordOf(r, x)];
-                ushort texel = r.Bpp switch
+                var u = r.U0 + x;
+                var word = win[row + WordOf(r, x)];
+                var texel = r.Bpp switch
                 {
                     16 => word,
                     8 => clut[(word >> ((u & 1) << 3)) & 0xFF],
-                    _ => clut[(word >> ((u & 3) << 2)) & 0xF],
+                    _ => clut[(word >> ((u & 3) << 2)) & 0xF]
                 };
                 Expand(texel, rgba, (y * r.W + x) * 4);
             }
         }
+
         return rgba;
     }
 
@@ -166,50 +169,52 @@ public static class TextureTile
         var px = new byte[r.W * r.H];
         if (r.Bpp == 16) return px;
 
-        for (int y = 0; y < r.H; y++)
+        for (var y = 0; y < r.H; y++)
         {
-            int row = y * r.VramW;
-            for (int x = 0; x < r.W; x++)
+            var row = y * r.VramW;
+            for (var x = 0; x < r.W; x++)
             {
-                int u = r.U0 + x;
-                ushort word = win[row + WordOf(r, x)];
+                var u = r.U0 + x;
+                var word = win[row + WordOf(r, x)];
                 px[y * r.W + x] = r.Bpp == 8
                     ? (byte)((word >> ((u & 1) << 3)) & 0xFF)
                     : (byte)((word >> ((u & 3) << 2)) & 0xF);
             }
         }
+
         return px;
     }
 
     public static byte[] DecodeClutFrom(ushort[] clut)
     {
         var rgba = new byte[clut.Length * 4];
-        for (int i = 0; i < clut.Length; i++) Expand(clut[i], rgba, i * 4);
+        for (var i = 0; i < clut.Length; i++) Expand(clut[i], rgba, i * 4);
         return rgba;
     }
 
     public static byte[] RawBytes(ushort[] words)
     {
         var bytes = new byte[words.Length * 2];
-        for (int i = 0; i < words.Length; i++)
+        for (var i = 0; i < words.Length; i++)
         {
             bytes[i * 2] = (byte)(words[i] & 0xFF);
             bytes[i * 2 + 1] = (byte)(words[i] >> 8);
         }
+
         return bytes;
     }
 
     public static byte[] Decode(ushort[] vram, in TileRect r)
     {
         var rgba = new byte[r.W * r.H * 4];
-        int clutRow = (r.ClutY & 511) * 1024;
+        var clutRow = (r.ClutY & 511) * 1024;
 
-        for (int y = 0; y < r.H; y++)
+        for (var y = 0; y < r.H; y++)
         {
-            int row = ((r.VramY + y) & 511) * 1024;
-            for (int x = 0; x < r.W; x++)
+            var row = ((r.VramY + y) & 511) * 1024;
+            for (var x = 0; x < r.W; x++)
             {
-                int u = r.U0 + x;
+                var u = r.U0 + x;
                 ushort texel;
                 if (r.Bpp == 16)
                 {
@@ -217,21 +222,22 @@ public static class TextureTile
                 }
                 else if (r.Bpp == 8)
                 {
-                    ushort word = vram[row + ((r.PageX + (u >> 1)) & 1023)];
-                    int idx = (word >> ((u & 1) << 3)) & 0xFF;
+                    var word = vram[row + ((r.PageX + (u >> 1)) & 1023)];
+                    var idx = (word >> ((u & 1) << 3)) & 0xFF;
                     texel = vram[clutRow + ((r.ClutX + idx) & 1023)];
                 }
                 else
                 {
-                    ushort word = vram[row + ((r.PageX + (u >> 2)) & 1023)];
-                    int idx = (word >> ((u & 3) << 2)) & 0xF;
+                    var word = vram[row + ((r.PageX + (u >> 2)) & 1023)];
+                    var idx = (word >> ((u & 3) << 2)) & 0xF;
                     texel = vram[clutRow + ((r.ClutX + idx) & 1023)];
                 }
 
-                int o = (y * r.W + x) * 4;
+                var o = (y * r.W + x) * 4;
                 Expand(texel, rgba, o);
             }
         }
+
         return rgba;
     }
 
@@ -240,24 +246,25 @@ public static class TextureTile
         var px = new byte[r.W * r.H];
         if (r.Bpp == 16) return px;
 
-        for (int y = 0; y < r.H; y++)
+        for (var y = 0; y < r.H; y++)
         {
-            int row = ((r.VramY + y) & 511) * 1024;
-            for (int x = 0; x < r.W; x++)
+            var row = ((r.VramY + y) & 511) * 1024;
+            for (var x = 0; x < r.W; x++)
             {
-                int u = r.U0 + x;
+                var u = r.U0 + x;
                 if (r.Bpp == 8)
                 {
-                    ushort word = vram[row + ((r.PageX + (u >> 1)) & 1023)];
+                    var word = vram[row + ((r.PageX + (u >> 1)) & 1023)];
                     px[y * r.W + x] = (byte)((word >> ((u & 1) << 3)) & 0xFF);
                 }
                 else
                 {
-                    ushort word = vram[row + ((r.PageX + (u >> 2)) & 1023)];
+                    var word = vram[row + ((r.PageX + (u >> 2)) & 1023)];
                     px[y * r.W + x] = (byte)((word >> ((u & 3) << 2)) & 0xF);
                 }
             }
         }
+
         return px;
     }
 
@@ -265,8 +272,8 @@ public static class TextureTile
     {
         if (r.ClutCount == 0) return [];
         var rgba = new byte[r.ClutCount * 4];
-        int clutRow = (r.ClutY & 511) * 1024;
-        for (int i = 0; i < r.ClutCount; i++)
+        var clutRow = (r.ClutY & 511) * 1024;
+        for (var i = 0; i < r.ClutCount; i++)
             Expand(vram[clutRow + ((r.ClutX + i) & 1023)], rgba, i * 4);
         return rgba;
     }
@@ -274,7 +281,7 @@ public static class TextureTile
     public static void Expand(ushort texel, byte[] dst, int offset)
     {
         int r5 = texel & 0x1F, g5 = (texel >> 5) & 0x1F, b5 = (texel >> 10) & 0x1F;
-        bool stp = (texel & 0x8000) != 0;
+        var stp = (texel & 0x8000) != 0;
 
         dst[offset + 0] = (byte)((r5 << 3) | (r5 >> 2));
         dst[offset + 1] = (byte)((g5 << 3) | (g5 >> 2));

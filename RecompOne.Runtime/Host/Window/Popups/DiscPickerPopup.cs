@@ -10,8 +10,8 @@ public sealed class DiscPickerPopup : Popup
     protected override string TitleKey => "disc.title";
     protected override Vector2 Size => new(540f, 0f);
 
-    string _path = "";
-    string _error = "";
+    private string _path = "";
+    private string _error = "";
 
     protected override void OnOpened()
     {
@@ -24,8 +24,8 @@ public sealed class DiscPickerPopup : Popup
         ImGui.TextWrapped(Localization.T("disc.description"));
         ImGui.Spacing();
 
-        float browse = 90f;
-        float spacing = ImGui.GetStyle().ItemSpacing.X;
+        var browse = 90f;
+        var spacing = ImGui.GetStyle().ItemSpacing.X;
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - browse - spacing);
         ImGui.InputText("##disc-path", ref _path, 1024);
         ImGui.SameLine();
@@ -41,8 +41,8 @@ public sealed class DiscPickerPopup : Popup
         ImGui.Separator();
         ImGui.Spacing();
 
-        float button = 120f;
-        float total = button * 2f + spacing;
+        var button = 120f;
+        var total = button * 2f + spacing;
         ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (ImGui.GetContentRegionAvail().X - total) * 0.5f);
 
         if (ImGui.Button(Localization.T("common.confirm"), new Vector2(button, 0f))) Confirm();
@@ -50,7 +50,7 @@ public sealed class DiscPickerPopup : Popup
         if (ImGui.Button(Localization.T("common.cancel"), new Vector2(button, 0f))) Close();
     }
 
-    void Browse()
+    private void Browse()
     {
         try
         {
@@ -71,7 +71,7 @@ public sealed class DiscPickerPopup : Popup
         }
     }
 
-    void Confirm()
+    private void Confirm()
     {
         var path = _path.Trim();
         if (!File.Exists(path))

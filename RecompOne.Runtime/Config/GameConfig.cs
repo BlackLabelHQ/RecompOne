@@ -1,4 +1,3 @@
-
 namespace RecompOne.Runtime.Config;
 
 public class KeyBindings
@@ -20,19 +19,22 @@ public class KeyBindings
     public string Left { get; set; } = "Left";
     public string Right { get; set; } = "Right";
 
-    public static KeyBindings Empty() => new()
+    public static KeyBindings Empty()
     {
-        Cross = "", Circle = "", Square = "", Triangle = "",
-        L1 = "", R1 = "", L2 = "", R2 = "",
-        L3 = "", R3 = "", Start = "", Select = "",
-        Up = "", Down = "", Left = "", Right = ""
-    };
+        return new KeyBindings
+        {
+            Cross = "", Circle = "", Square = "", Triangle = "",
+            L1 = "", R1 = "", L2 = "", R2 = "",
+            L3 = "", R3 = "", Start = "", Select = "",
+            Up = "", Down = "", Left = "", Right = ""
+        };
+    }
 }
 
 public enum PadKind
 {
     Digital,
-    Analog,
+    Analog
 }
 
 public class GamepadBindings
@@ -58,19 +60,25 @@ public class GamepadBindings
     public int LeftStickY { get; set; } = 1;
     public int RightStickX { get; set; } = 2;
     public int RightStickY { get; set; } = 3;
-    
-    public static GamepadBindings DefaultAnalog() => new()
-    {
-        Up = [11], Down = [12], Left = [13], Right = [14],
-    };
 
-    public static GamepadBindings Empty() => new()
+    public static GamepadBindings DefaultAnalog()
     {
-        Cross = [], Circle = [], Square = [], Triangle = [],
-        L1 = [], R1 = [], L2 = [], R2 = [],
-        L3 = [], R3 = [], Start = [], Select = [],
-        Up = [], Down = [], Left = [], Right = []
-    };
+        return new GamepadBindings
+        {
+            Up = [11], Down = [12], Left = [13], Right = [14]
+        };
+    }
+
+    public static GamepadBindings Empty()
+    {
+        return new GamepadBindings
+        {
+            Cross = [], Circle = [], Square = [], Triangle = [],
+            L1 = [], R1 = [], L2 = [], R2 = [],
+            L3 = [], R3 = [], Start = [], Select = [],
+            Up = [], Down = [], Left = [], Right = []
+        };
+    }
 }
 
 public class GameConfig
@@ -94,9 +102,18 @@ public class GameConfig
     public GamepadBindings PadAnalog2 { get; set; } = GamepadBindings.Empty();
     public PadKind PadKind { get; set; } = PadKind.Digital;
     public PadKind PadKind2 { get; set; } = PadKind.Digital;
-    public PadKind KindFor(int port) => port == 0 ? PadKind : PadKind2;
-    public GamepadBindings PadFor(int port) => port == 0
-        ? (PadKind == PadKind.Analog ? PadAnalog : Pad)
-        : (PadKind2 == PadKind.Analog ? PadAnalog2 : Pad2);
+
+    public PadKind KindFor(int port)
+    {
+        return port == 0 ? PadKind : PadKind2;
+    }
+
+    public GamepadBindings PadFor(int port)
+    {
+        return port == 0
+            ? (PadKind == PadKind.Analog ? PadAnalog : Pad)
+            : (PadKind2 == PadKind.Analog ? PadAnalog2 : Pad2);
+    }
+
     public List<string> ActiveMods { get; set; } = [];
 }
