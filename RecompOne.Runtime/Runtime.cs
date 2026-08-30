@@ -105,7 +105,6 @@ public static class Runtime
 
     public static void Run(Action boot)
     {
-        InputRecorder.ParseCommandLine(Environment.GetCommandLineArgs());
 
         while (true)
         {
@@ -156,7 +155,6 @@ public static class Runtime
         }
 
         HostWindow.Present(Gpu);
-        InputRecorder.Tick();
         Audio.Attach(Spu);
         FrameClock.Throttle();
         Sdk.LibCd.Tick();

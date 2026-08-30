@@ -18,11 +18,12 @@ public static class FunctionEmitter
             if (instrs[i].HasDelaySlot && InstructionEmitter.SkipDelaySlot(instrs[i])
                 && !ctx.Labels.Contains(instrs[i + 1].Vram))
                 dsIdx.Add(i + 1);
-
+        
         string name = func.EmittedName;
         const string ind = "        ";
         const string noInline = "    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]";
-
+        
+        
         if (func.IsStub)
         {
             sb.AppendLine(noInline);
@@ -39,6 +40,7 @@ public static class FunctionEmitter
                 sb.AppendLine($"    public static void {name}(CpuContext c, IMemory m) => {func.PatchTarget}(c, m);");
                 return sb.ToString();
             }
+
             sb.AppendLine($"    public static void {name}(CpuContext c, IMemory m)");
             sb.AppendLine("    {");
             EmitHooks(sb, func, $"        {func.PatchTarget}(c, m);");
@@ -56,11 +58,11 @@ public static class FunctionEmitter
         }
 
         sb.AppendLine(noInline);
-        sb.AppendLine($"    public static void {name}(CpuContext c, IMemory m)");
-        sb.AppendLine("    {");
-        if (ctx.Debug)
-            sb.AppendLine($"        System.Console.WriteLine(\"{func.EmittedName} @ {func.OverlayName} @ 0x{func.Start:X8}\");");
 
+        var body = new StringBuilder();
+        if (ctx.Debug)
+            body.AppendLine($"        System.Console.WriteLine(\"{func.EmittedName} @ {func.OverlayName} @ 0x{func.Start:X8}\");");
+        
         for (int i = 0; i < instrs.Length; i++)
         {
             if (dsIdx.Contains(i)) continue;
@@ -69,36 +71,42 @@ public static class FunctionEmitter
 
             if (ctx.Labels.Contains(instr.Vram))
             {
-                sb.AppendLine($"        L{instr.Vram:X8}: ;");
+                body.AppendLine($"        L{instr.Vram:X8}: ;");
                 if (ctx.BackEdges.Contains(instr.Vram))
-                    sb.AppendLine("        RecompOne.Runtime.Interrupts.Poll(c, m);");
+                    body.AppendLine("        RecompOne.Runtime.Interrupts.Poll(c, m);");
             }
-
+            
             if (instr.HasDelaySlot)
             {
                 var delaySlot = i + 1 < instrs.Length ? instrs[i + 1] : null;
-                InstructionEmitter.EmitWithDelaySlot(sb, instr, delaySlot, ctx, ind);
+                InstructionEmitter.EmitWithDelaySlot(body, instr, delaySlot, ctx, ind);
             }else
             {
-                string line = InstructionEmitter.EmitSingle(instr);
+                string line = InstructionEmitter.EmitSingle(instr, ctx.Relocations);
                 if (!string.IsNullOrEmpty(line))
-                    sb.AppendLine(ctx.Trail(instr, $"{ind}{line}"));
+                    body.AppendLine(ctx.Trail(instr, $"{ind}{line}"));
             }
         }
-
+        
         if (FallsThrough(instrs))
         {
             uint target = ctx.SkipNopPadding(func.End);
             if (ctx.KnownFunctions.TryGetValue(target, out var fallthroughName))
-                sb.AppendLine($"{ind}{fallthroughName}(c, m);");
+                body.AppendLine($"{ind}{fallthroughName}(c, m);");
             else
-                sb.AppendLine($"{ind}Dispatcher.Call(c, m, 0x{target:X8}u);");
+                body.AppendLine($"{ind}Dispatcher.Call(c, m, 0x{target:X8}u);");
         }
 
+        string text = body.ToString();
+
+        sb.AppendLine($"    public static void {name}(CpuContext c, IMemory m)");
+        sb.AppendLine("    {");
+        if (text.Contains("mem.")) sb.AppendLine("        var mem = (PSMemory)m;"); //turns out the interface causes lag acess bruh, im too lazy to fix a bunch of patches on symphony so doing this way will be enough, this is not a good principiality please never do what i did here xD
+        sb.Append(text);
         sb.AppendLine("    }");
         return sb.ToString();
     }
-
+    
     static void EmitHooks(StringBuilder sb, MipsFunction func, string body)
     {
         foreach (var pre in func.PreHookTargets)
@@ -107,7 +115,7 @@ public static class FunctionEmitter
         foreach (var post in func.PostHookTargets)
             sb.AppendLine($"        {post}(c, m);");
     }
-
+    
     // hand written assembly sometimes doesnt have a return and expects to "fall" the execution onto the next 
     static bool FallsThrough(MipsInstruction[] instrs)
     {

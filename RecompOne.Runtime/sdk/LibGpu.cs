@@ -26,9 +26,15 @@ public static class LibGpu
                 gpu.EmitCustomOrder((int)((addr - otBase) >> 2));
 
             uint header = m.ReadU32(addr);
-            uint count = header >> 24;
-            for (uint i = 0; i < count; i++)
-                gpu.WriteGp0(m.ReadU32(addr + 4u + i * 4u));
+            int count = (int)(header >> 24);
+            
+            if (count > 0)
+            {
+                if (m is PSMemory ram && ram.TryWords(addr + 4u, count, out var words))
+                    gpu.WriteGp0Packet(words);
+                else
+                    for (int i = 0; i < count; i++) gpu.WriteGp0(m.ReadU32(addr + 4u + (uint)i * 4u));
+            }
 
             uint next = header & 0xFFFFFFu;
             if (next == 0xFFFFFFu || (next & 0x800000u) != 0) break;

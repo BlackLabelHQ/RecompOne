@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using RecompOne.Runtime.Cdrom;
 using RecompOne.Runtime.Dispatch;
 using RecompOne.Runtime.Hardware;
@@ -21,6 +22,21 @@ public sealed class PSMemory : IMemory
     private CdController? _cd;
 
     public ReadOnlySpan<byte> Ram => _ram;
+
+    public bool TryWords(uint address, int count, out ReadOnlySpan<uint> words)
+    {
+        uint phys = MemoryMap.ToPhysical(address);
+        uint off = phys & _ramMask;
+
+        if (phys >= MemoryMap.RamWindow || (off & 3u) != 0 || off + (uint)count * 4u > (uint)_ram.Length)
+        {
+            words = default;
+            return false;
+        }
+
+        words = System.Runtime.InteropServices.MemoryMarshal.Cast<byte, uint>(_ram.AsSpan((int)off, count * 4));
+        return true;
+    }
     internal byte[] RamBuffer => _ram;
     
     //memory can be frozen for debuging reasons
@@ -115,7 +131,114 @@ public sealed class PSMemory : IMemory
         return phys < MemoryMap.RamWindow && off + (uint)size <= (uint)_ram.Length;
     }
 
+    //slow = manages hardware register stuff, faster = just acess the godamm ram, agressive inlining too (improve performance)
+    
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public byte ReadU8(uint address)
+    {
+        uint phys = MemoryMap.ToPhysical(address);
+        uint off = phys & _ramMask;
+        if (phys < MemoryMap.RamWindow && off < (uint)_ram.Length && !RamLogger.TrackReads)
+            return Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_ram), (nint)off);
+
+        if (phys - MemoryMap.ScratchpadBase < MemoryMap.ScratchpadSize)
+            return Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_scratchpad), (nint)(phys - MemoryMap.ScratchpadBase));
+
+        return ReadU8Slow(address);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public ushort ReadU16(uint address)
+    {
+        uint phys = MemoryMap.ToPhysical(address);
+        uint off = phys & _ramMask;
+        if (phys < MemoryMap.RamWindow && off + 2u <= (uint)_ram.Length && !RamLogger.TrackReads)
+            return Unsafe.ReadUnaligned<ushort>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_ram), (nint)off));
+
+        if (phys - MemoryMap.ScratchpadBase < MemoryMap.ScratchpadSize - 1u)
+            return Unsafe.ReadUnaligned<ushort>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_scratchpad), (nint)(phys - MemoryMap.ScratchpadBase)));
+
+        return ReadU16Slow(address);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public uint ReadU32(uint address)
+    {
+        uint phys = MemoryMap.ToPhysical(address);
+        uint off = phys & _ramMask;
+        if (phys < MemoryMap.RamWindow && off + 4u <= (uint)_ram.Length && !RamLogger.TrackReads)
+            return Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_ram), (nint)off));
+
+        if (phys - MemoryMap.ScratchpadBase < MemoryMap.ScratchpadSize - 3u)
+            return Unsafe.ReadUnaligned<uint>(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_scratchpad), (nint)(phys - MemoryMap.ScratchpadBase)));
+
+        return ReadU32Slow(address);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void WriteU8(uint address, byte value)
+    {
+        uint phys = MemoryMap.ToPhysical(address);
+        uint off = phys & _ramMask;
+        if (_frozenCount == 0 && phys < MemoryMap.RamWindow && off < (uint)_ram.Length && !RamLogger.TrackWrites)
+        {
+            Dispatcher.NotifyWrite(off);
+            Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_ram), (nint)off) = value;
+            return;
+        }
+
+        if (phys - MemoryMap.ScratchpadBase < MemoryMap.ScratchpadSize)
+        {
+            Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_scratchpad), (nint)(phys - MemoryMap.ScratchpadBase)) = value;
+            return;
+        }
+
+        WriteU8Slow(address, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void WriteU16(uint address, ushort value)
+    {
+        uint phys = MemoryMap.ToPhysical(address);
+        uint off = phys & _ramMask;
+        if (_frozenCount == 0 && phys < MemoryMap.RamWindow && off + 2u <= (uint)_ram.Length && !RamLogger.TrackWrites)
+        {
+            Dispatcher.NotifyWrite(off);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_ram), (nint)off), value);
+            return;
+        }
+
+        if (phys - MemoryMap.ScratchpadBase < MemoryMap.ScratchpadSize - 1u)
+        {
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_scratchpad), (nint)(phys - MemoryMap.ScratchpadBase)), value);
+            return;
+        }
+
+        WriteU16Slow(address, value);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public void WriteU32(uint address, uint value)
+    {
+        uint phys = MemoryMap.ToPhysical(address);
+        uint off = phys & _ramMask;
+        if (_frozenCount == 0 && phys < MemoryMap.RamWindow && off + 4u <= (uint)_ram.Length && !RamLogger.TrackWrites)
+        {
+            Dispatcher.NotifyWrite(off);
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_ram), (nint)off), value);
+            return;
+        }
+
+        if (phys - MemoryMap.ScratchpadBase < MemoryMap.ScratchpadSize - 3u)
+        {
+            Unsafe.WriteUnaligned(ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(_scratchpad), (nint)(phys - MemoryMap.ScratchpadBase)), value);
+            return;
+        }
+        
+        WriteU32Slow(address, value);
+    }
+    
+    private byte ReadU8Slow(uint address)
     {
         uint phys = MemoryMap.ToPhysical(address);
         if (InRam(phys, 1, out uint fast))
@@ -128,8 +251,8 @@ public sealed class PSMemory : IMemory
         if (Sio0.InRange(phys)) return (byte)_sio.Read(phys);
         return Resolve(address, 1)[0];
     }
-
-    public ushort ReadU16(uint address)
+    
+    private ushort ReadU16Slow(uint address)
     {
         uint phys = MemoryMap.ToPhysical(address);
         if (InRam(phys, 2, out uint fast))
@@ -148,7 +271,8 @@ public sealed class PSMemory : IMemory
         return (ushort)(s[0] | (s[1] << 8));
     }
 
-    public uint ReadU32(uint address)
+    
+    private uint ReadU32Slow(uint address)
     {
         uint phys = MemoryMap.ToPhysical(address);
         if (InRam(phys, 4, out uint fast))
@@ -171,8 +295,8 @@ public sealed class PSMemory : IMemory
         var s = Resolve(address, 4);
         return (uint)(s[0] | (s[1] << 8) | (s[2] << 16) | (s[3] << 24));
     }
-
-    public void WriteU8(uint address, byte value)
+    
+    private void WriteU8Slow(uint address, byte value)
     {
         uint phys = MemoryMap.ToPhysical(address);
         if (_frozenCount == 0 && InRam(phys, 1, out uint fast))
@@ -189,8 +313,8 @@ public sealed class PSMemory : IMemory
         if (_frozenCount > 0 && phys < MemoryMap.RamWindow && _frozen[phys & _ramMask]) return;
         Resolve(address, 1)[0] = value;
     }
-
-    public void WriteU16(uint address, ushort value)
+    
+    private void WriteU16Slow(uint address, ushort value)
     {
         uint phys = MemoryMap.ToPhysical(address);
         if (_frozenCount == 0 && InRam(phys, 2, out uint fast))
@@ -219,8 +343,8 @@ public sealed class PSMemory : IMemory
         s[0] = (byte)value;
         s[1] = (byte)(value >> 8);
     }
-
-    public void WriteU32(uint address, uint value)
+    
+    private void WriteU32Slow(uint address, uint value)
     {
         uint phys = MemoryMap.ToPhysical(address);
         if (_frozenCount == 0 && InRam(phys, 4, out uint fast))

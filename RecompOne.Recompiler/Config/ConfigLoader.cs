@@ -22,6 +22,37 @@ public sealed class RecompOneConfig
     [JsonPropertyName("stubs")] public string[] Stubs { get; set; } = [];
     [JsonPropertyName("ignored")] public string[] Ignored { get; set; } = [];
     [JsonPropertyName("patches")] public PatchEntry[] Patches { get; set; } = [];
+    [JsonPropertyName("relocations")] public RelocationEntry[] Relocations { get; set; } = [];
+}
+
+//to be able to move arrays that are in crammed areas so you can extend then
+public sealed class RelocationEntry
+{
+    [JsonPropertyName("overlay")]
+    [JsonConverter(typeof(StringOrArrayConverter))]
+    public string[] Overlay { get; set; } = [];
+    
+    [JsonPropertyName("name")] public string Name { get; set; } = "";
+    [JsonPropertyName("address")] public string Address { get; set; } = "";
+    [JsonPropertyName("size")] public string Size { get; set; } = "";
+    [JsonPropertyName("to")] public string To { get; set; } = "";
+    
+    public uint FromAddress => Convert.ToUInt32(Address, 16);
+    public uint ToAddress => Convert.ToUInt32(To, 16);
+    public uint ByteSize => Size.StartsWith("0x", StringComparison.OrdinalIgnoreCase) ? Convert.ToUInt32(Size, 16) : uint.Parse(Size);
+    
+    public string Label => string.IsNullOrEmpty(Name) ? $"0x{FromAddress:X8}" : Name;
+    
+    public bool MatchesOverlay(string overlayName)
+    {
+        if (Overlay.Length == 0) return true;
+        foreach (var o in Overlay)
+        {
+            if (o == "*") return true;
+            if (string.Equals(o, overlayName, StringComparison.OrdinalIgnoreCase)) return true;
+        }
+        return false;
+    }
 }
 
 public sealed class PatchEntry

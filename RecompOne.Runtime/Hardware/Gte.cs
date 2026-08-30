@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace RecompOne.Runtime;
 
 public static class Gte
@@ -141,12 +143,7 @@ public static class Gte
         PushColor();
     }
 
-    static int Clz16(uint v)
-    {
-        int n = 0;
-        for (int i = 15; i >= 0 && (v & (1u << i)) == 0; i--) n++;
-        return n;
-    }
+    static int Clz16(uint v) => System.Numerics.BitOperations.LeadingZeroCount(v | 1u) - 16;
 
     static uint Divide(uint h, uint sz3)
     {
@@ -195,6 +192,184 @@ public static class Gte
         }
     }
 
+    static void EndFlag()
+    {
+        if ((FLAG & 0x7F87E000u) != 0) FLAG |= 0x80000000u;
+    }
+
+    public static void Rtps(int sf, bool lm)
+    {
+        FLAG = 0;
+        Rtp(V[0], V[1], V[2], sf, lm, true);
+        EndFlag();
+    }
+
+    public static void Rtpt(int sf, bool lm)
+    {
+        FLAG = 0;
+        Rtp(V[0], V[1], V[2], sf, lm, false);
+        Rtp(V[3], V[4], V[5], sf, lm, false);
+        Rtp(V[6], V[7], V[8], sf, lm, true);
+        EndFlag();
+    }
+
+    public static void Nclip()
+    {
+        FLAG = 0;
+        MAC0 = (int)CheckMac0((long)SX[0] * (SY[1] - SY[2]) + (long)SX[1] * (SY[2] - SY[0]) + (long)SX[2] * (SY[0] - SY[1]));
+        EndFlag();
+    }
+
+    public static void Avsz3()
+    {
+        FLAG = 0;
+        MAC0 = (int)CheckMac0((long)ZSF3 * (SZ[1] + SZ[2] + SZ[3]));
+        OTZ = (ushort)SatSZ(MAC0 >> 12);
+        EndFlag();
+    }
+
+    public static void Avsz4()
+    {
+        FLAG = 0;
+        MAC0 = (int)CheckMac0((long)ZSF4 * (SZ[0] + SZ[1] + SZ[2] + SZ[3]));
+        OTZ = (ushort)SatSZ(MAC0 >> 12);
+        EndFlag();
+    }
+
+    public static void MvmvaOp(int sf, bool lm, int mx, int vn, int cv)
+    {
+        FLAG = 0;
+        Mvmva(sf, lm, mx, vn, cv);
+        EndFlag();
+    }
+
+    public static void Sqr(int sf, bool lm)
+    {
+        FLAG = 0;
+        SetMac(1, (long)IR1 * IR1, sf, lm);
+        SetMac(2, (long)IR2 * IR2, sf, lm);
+        SetMac(3, (long)IR3 * IR3, sf, lm);
+        EndFlag();
+    }
+
+    public static void Cross(int sf, bool lm)
+    {
+        FLAG = 0;
+        int ir1 = IR1, ir2 = IR2, ir3 = IR3;
+        SetMac(1, (long)RT[4] * ir3 - (long)RT[8] * ir2, sf, lm);
+        SetMac(2, (long)RT[8] * ir1 - (long)RT[0] * ir3, sf, lm);
+        SetMac(3, (long)RT[0] * ir2 - (long)RT[4] * ir1, sf, lm);
+        EndFlag();
+    }
+
+    public static void Gpf(int sf, bool lm)
+    {
+        FLAG = 0;
+        SetMac(1, (long)IR0 * IR1, sf, lm);
+        SetMac(2, (long)IR0 * IR2, sf, lm);
+        SetMac(3, (long)IR0 * IR3, sf, lm);
+        PushColor();
+        EndFlag();
+    }
+
+    public static void Gpl(int sf, bool lm)
+    {
+        FLAG = 0;
+        SetMac(1, ((long)MAC1 << sf) + (long)IR0 * IR1, sf, lm);
+        SetMac(2, ((long)MAC2 << sf) + (long)IR0 * IR2, sf, lm);
+        SetMac(3, ((long)MAC3 << sf) + (long)IR0 * IR3, sf, lm);
+        PushColor();
+        EndFlag();
+    }
+
+    public static void Dpcs(int sf, bool lm)
+    {
+        FLAG = 0;
+        Interp((long)RGBC_R << 16, (long)RGBC_G << 16, (long)RGBC_B << 16, sf, lm);
+        EndFlag();
+    }
+
+    public static void Dpct(int sf, bool lm)
+    {
+        FLAG = 0;
+        for (int i = 0; i < 3; i++)
+            Interp((long)(RGB[0] & 0xFF) << 16, (long)((RGB[0] >> 8) & 0xFF) << 16, (long)((RGB[0] >> 16) & 0xFF) << 16, sf, lm);
+
+        EndFlag();
+    }
+
+    public static void Intpl(int sf, bool lm)
+    {
+        FLAG = 0;
+        Interp((long)IR1 << 12, (long)IR2 << 12, (long)IR3 << 12, sf, lm);
+        EndFlag();
+    }
+
+    public static void Dcpl(int sf, bool lm)
+    {
+        FLAG = 0;
+        Interp(((long)RGBC_R * IR1) << 4, ((long)RGBC_G * IR2) << 4, ((long)RGBC_B * IR3) << 4, sf, lm);
+        EndFlag();
+    }
+
+    public static void NcsOp(int sf, bool lm)
+    {
+        FLAG = 0;
+        Ncs(0, sf, lm);
+        EndFlag();
+    }
+
+    public static void NctOp(int sf, bool lm)
+    {
+        FLAG = 0;
+        Ncs(0, sf, lm); Ncs(1, sf, lm); Ncs(2, sf, lm);
+        EndFlag();
+    }
+
+    public static void NcdsOp(int sf, bool lm)
+    {
+        FLAG = 0;
+        Ncds(0, sf, lm);
+        EndFlag();
+    }
+
+    public static void NcdtOp(int sf, bool lm)
+    {
+        FLAG = 0;
+        Ncds(0, sf, lm); Ncds(1, sf, lm); Ncds(2, sf, lm);
+        EndFlag();
+    }
+
+    public static void NccsOp(int sf, bool lm)
+    {
+        FLAG = 0;
+        Nccs(0, sf, lm);
+        EndFlag();
+    }
+
+    public static void NcctOp(int sf, bool lm)
+    {
+        FLAG = 0;
+        Nccs(0, sf, lm); Nccs(1, sf, lm); Nccs(2, sf, lm);
+        EndFlag();
+    }
+
+    public static void Cc(int sf, bool lm)
+    {
+        FLAG = 0;
+        MatVec(LCM, BK[0], BK[1], BK[2], IR1, IR2, IR3, sf, lm);
+        Modulate(sf, lm);
+        EndFlag();
+    }
+
+    public static void Cdp(int sf, bool lm)
+    {
+        FLAG = 0;
+        MatVec(LCM, BK[0], BK[1], BK[2], IR1, IR2, IR3, sf, lm);
+        Interp(((long)RGBC_R * IR1) << 4, ((long)RGBC_G * IR2) << 4, ((long)RGBC_B * IR3) << 4, sf, lm);
+        EndFlag();
+    }
+
     public static void Execute(uint cmd)
     {
         FLAG = 0;
@@ -206,68 +381,28 @@ public static class Gte
 
         switch (cmd & 0x3F)
         {
-            case 0x01: Rtp(V[0], V[1], V[2], sf, lm, true); break;
-            case 0x30:
-                Rtp(V[0], V[1], V[2], sf, lm, false);
-                Rtp(V[3], V[4], V[5], sf, lm, false);
-                Rtp(V[6], V[7], V[8], sf, lm, true);
-                break;
-            case 0x06:
-                MAC0 = (int)CheckMac0((long)SX[0] * (SY[1] - SY[2]) + (long)SX[1] * (SY[2] - SY[0]) + (long)SX[2] * (SY[0] - SY[1]));
-                break;
-            case 0x2D:
-                MAC0 = (int)CheckMac0((long)ZSF3 * (SZ[1] + SZ[2] + SZ[3]));
-                OTZ = (ushort)SatSZ(MAC0 >> 12);
-                break;
-            case 0x2E:
-                MAC0 = (int)CheckMac0((long)ZSF4 * (SZ[0] + SZ[1] + SZ[2] + SZ[3]));
-                OTZ = (ushort)SatSZ(MAC0 >> 12);
-                break;
-            case 0x12: Mvmva(sf, lm, mx, vn, cv); break;
-            case 0x28:
-                SetMac(1, (long)IR1 * IR1, sf, lm);
-                SetMac(2, (long)IR2 * IR2, sf, lm);
-                SetMac(3, (long)IR3 * IR3, sf, lm);
-                break;
-            case 0x0C:
-                int ir1 = IR1, ir2 = IR2, ir3 = IR3;
-                SetMac(1, (long)RT[4] * ir3 - (long)RT[8] * ir2, sf, lm);
-                SetMac(2, (long)RT[8] * ir1 - (long)RT[0] * ir3, sf, lm);
-                SetMac(3, (long)RT[0] * ir2 - (long)RT[4] * ir1, sf, lm);
-                break;
-            case 0x3D:
-                SetMac(1, (long)IR0 * IR1, sf, lm);
-                SetMac(2, (long)IR0 * IR2, sf, lm);
-                SetMac(3, (long)IR0 * IR3, sf, lm);
-                PushColor();
-                break;
-            case 0x3E:
-                SetMac(1, ((long)MAC1 << sf) + (long)IR0 * IR1, sf, lm);
-                SetMac(2, ((long)MAC2 << sf) + (long)IR0 * IR2, sf, lm);
-                SetMac(3, ((long)MAC3 << sf) + (long)IR0 * IR3, sf, lm);
-                PushColor();
-                break;
-            case 0x10: Interp((long)RGBC_R << 16, (long)RGBC_G << 16, (long)RGBC_B << 16, sf, lm); break;
-            case 0x2A:
-                for (int i = 0; i < 3; i++)
-                    Interp((long)(RGB[0] & 0xFF) << 16, (long)((RGB[0] >> 8) & 0xFF) << 16, (long)((RGB[0] >> 16) & 0xFF) << 16, sf, lm);
-                break;
-            case 0x11: Interp((long)IR1 << 12, (long)IR2 << 12, (long)IR3 << 12, sf, lm); break;
-            case 0x29: Interp(((long)RGBC_R * IR1) << 4, ((long)RGBC_G * IR2) << 4, ((long)RGBC_B * IR3) << 4, sf, lm); break;
-            case 0x1E: Ncs(0, sf, lm); break;
-            case 0x20: Ncs(0, sf, lm); Ncs(1, sf, lm); Ncs(2, sf, lm); break;
-            case 0x13: Ncds(0, sf, lm); break;
-            case 0x16: Ncds(0, sf, lm); Ncds(1, sf, lm); Ncds(2, sf, lm); break;
-            case 0x1B: Nccs(0, sf, lm); break;
-            case 0x3F: Nccs(0, sf, lm); Nccs(1, sf, lm); Nccs(2, sf, lm); break;
-            case 0x1C:
-                MatVec(LCM, BK[0], BK[1], BK[2], IR1, IR2, IR3, sf, lm);
-                Modulate(sf, lm);
-                break;
-            case 0x14:
-                MatVec(LCM, BK[0], BK[1], BK[2], IR1, IR2, IR3, sf, lm);
-                Interp(((long)RGBC_R * IR1) << 4, ((long)RGBC_G * IR2) << 4, ((long)RGBC_B * IR3) << 4, sf, lm);
-                break;
+            case 0x01: Rtps(sf, lm); return;
+            case 0x06: Nclip(); return;
+            case 0x0C: Cross(sf, lm); return;
+            case 0x10: Dpcs(sf, lm); return;
+            case 0x11: Intpl(sf, lm); return;
+            case 0x12: MvmvaOp(sf, lm, mx, vn, cv); return;
+            case 0x13: NcdsOp(sf, lm); return;
+            case 0x14: Cdp(sf, lm); return;
+            case 0x16: NcdtOp(sf, lm); return;
+            case 0x1B: NccsOp(sf, lm); return;
+            case 0x1C: Cc(sf, lm); return;
+            case 0x1E: NcsOp(sf, lm); return;
+            case 0x20: NctOp(sf, lm); return;
+            case 0x28: Sqr(sf, lm); return;
+            case 0x29: Dcpl(sf, lm); return;
+            case 0x2A: Dpct(sf, lm); return;
+            case 0x2D: Avsz3(); return;
+            case 0x2E: Avsz4(); return;
+            case 0x30: Rtpt(sf, lm); return;
+            case 0x3D: Gpf(sf, lm); return;
+            case 0x3E: Gpl(sf, lm); return;
+            case 0x3F: NcctOp(sf, lm); return;
         }
 
         if ((FLAG & 0x7F87E000u) != 0) FLAG |= 0x80000000u;
@@ -318,6 +453,7 @@ public static class Gte
         MatVec(mat, t0, t1, t2, vx, vy, vz, sf, lm);
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint Read(int reg)
     {
         switch (reg)
@@ -362,6 +498,7 @@ public static class Gte
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Write(int reg, uint val)
     {
         switch (reg)
@@ -412,6 +549,7 @@ public static class Gte
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint ReadControl(int reg)
     {
         switch (reg)
@@ -452,6 +590,7 @@ public static class Gte
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void WriteControl(int reg, uint val)
     {
         switch (reg)
@@ -491,7 +630,9 @@ public static class Gte
         }
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void LoadWord(int reg, uint val) => Write(reg, val);
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static uint StoreWord(int reg) => Read(reg);
     public static bool GetCondition() => false;
 }

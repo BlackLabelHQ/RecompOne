@@ -231,10 +231,10 @@ public sealed partial class Gpu
         int idx = 1;
         int r = (int)(cmd & 0xFF), g = (int)((cmd >> 8) & 0xFF), b = (int)((cmd >> 16) & 0xFF);
         bool first = true;
-        while (idx < _fifo.Count)
+        while (idx < _fifoCount)
         {
             if (gouraud && !first) { uint cw = _fifo[idx++]; r = (int)(cw & 0xFF); g = (int)((cw >> 8) & 0xFF); b = (int)((cw >> 16) & 0xFF); }
-            if (idx >= _fifo.Count) break;
+            if (idx >= _fifoCount) break;
             uint vw = _fifo[idx++];
             pts.Add((CoordX(vw), CoordY(vw), r, g, b));
             first = false;

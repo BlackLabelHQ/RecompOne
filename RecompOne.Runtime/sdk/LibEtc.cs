@@ -41,16 +41,32 @@ public static class LibEtc
 
     static uint Elapsed() => (uint)((Interrupts.ClockMs - _lastVSyncMs) * HblankHz / 1000.0) & 0xFFFF;
 
+    const double SleepMarginMs = 2.0;
+
     static void WaitVBlanks(CpuContext c, IMemory m, int count)
     {
         int target = _lastVSyncCount + count;
+        int floor = Interrupts.VBlankCount + 1;
+        if (target < floor) target = floor;
+
+        double began = Interrupts.ClockMs;
+
         while (Interrupts.VBlankCount < target)
         {
+
             double remaining = Interrupts.MsToNextVBlank;
-            if (remaining > 1.0) Thread.Sleep(1);
-            else Thread.SpinWait(256);
+            if (remaining > SleepMarginMs)
+            {
+                int ms = (int)(remaining - SleepMarginMs);
+                if (ms > 0) Thread.Sleep(ms);
+            }
+            else Thread.SpinWait(64);
 
             Interrupts.PollNow(c, m);
         }
+
+        double waited = Interrupts.ClockMs - began;
+
+        int extra = Interrupts.VBlankCount - target;
     }
 }

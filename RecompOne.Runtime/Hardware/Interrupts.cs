@@ -71,6 +71,7 @@ public static class Interrupts
     const int PollInterval = 2048;
     static int _countdown = PollInterval;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void Poll(CpuContext cpu, IMemory mem)
     {
         if (--_countdown > 0) return;
@@ -83,38 +84,59 @@ public static class Interrupts
         PollSlow(cpu, mem);
     }
 
-    public static double MsToNextVBlank => _nextVBlank - _vblankClock.Elapsed.TotalMilliseconds;
+    public static double MsToNextVBlank
+    {
+        get
+        {
+            double since = ClockMs - _vblankEpoch;
+            return VBlankMs - (since - Math.Floor(since / VBlankMs) * VBlankMs);
+        }
+    }
 
     [MethodImpl(MethodImplOptions.NoInlining)] //just making sure the stupid jit doenst fuck it up :D, it SHOULD be big enough now to not cause issues, but the previous one did
     static void PollSlow(CpuContext cpu, IMemory mem)
     {
+
         _countdown = PollInterval;
         TickVBlank();
         if (_inHandler || _servicing || !_irqEnabled) return;
-        DrainPending(cpu, mem);
-        BiosB.PumpCardEvents(cpu, mem);
-        Runtime.Cd?.AdvanceStreaming();
+
+        var snap = cpu.Snapshot();
+        try
+        {
+            DrainPending(cpu, mem);
+            BiosB.PumpCardEvents(cpu, mem);
+            Runtime.Cd?.AdvanceStreaming();
+        }
+        finally
+        {
+            cpu.Restore(snap);
+        }
     }
 
     const double VBlankMs = 1000.0 / 60.0;
     static readonly System.Diagnostics.Stopwatch _vblankClock = System.Diagnostics.Stopwatch.StartNew();
-    static double _nextVBlank = VBlankMs;
+    static double _vblankEpoch;
+    static int _delivered;
 
-    static int _vblankCount;
-
-    public static int VBlankCount => _vblankCount;
+    public static int VBlankCount => (int)((ClockMs - _vblankEpoch) / VBlankMs);
 
     public static double ClockMs => _vblankClock.Elapsed.TotalMilliseconds;
 
     static void TickVBlank()
     {
-        double now = _vblankClock.Elapsed.TotalMilliseconds;
-        if (now < _nextVBlank) return;
-        double late = now - _nextVBlank;
-        
-        _nextVBlank = late > VBlankMs * 2 ? now + VBlankMs : now + VBlankMs - late;
-        _vblankCount++;
+        int now = VBlankCount;
+        int missed = now - _delivered;
+        if (missed <= 0) return;
+
+        _delivered = now;
         Raise(0);
+    }
+
+    public static void ResyncVBlank()
+    {
+        _vblankEpoch = ClockMs;
+        _delivered = 0;
     }
 
     public static void Raise(int irq)

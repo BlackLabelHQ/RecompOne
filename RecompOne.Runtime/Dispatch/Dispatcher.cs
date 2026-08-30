@@ -37,11 +37,17 @@ public static class Dispatcher
 
         _pending = overlay;
     }
-
+    
     public static void NotifyWrite(uint phys)
     {
         var p = _pending;
         if (p == null) return;
+
+        PromoteWrite(p, phys);
+    }
+    
+    static void PromoteWrite(IOverlay p, uint phys)
+    {
         uint start = p.Base & 0x1FFFFFFFu;
         if (phys < start || phys >= start + 0x800u) return;
         _pending = null;

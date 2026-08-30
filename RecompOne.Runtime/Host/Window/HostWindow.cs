@@ -372,7 +372,6 @@ public static class HostWindow
         PanelManager.Register(new CdDebugPanel());
         PanelManager.Register(new ConsolePanel());
         PanelManager.Register(new OverlayEventsPanel());
-        PanelManager.Register(new InputRollPanel());
 
         PopupManager.Register(new SettingsPopup());
         PopupManager.Register(new ModsPopup());

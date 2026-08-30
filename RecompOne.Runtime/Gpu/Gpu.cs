@@ -31,7 +31,8 @@ public sealed partial class Gpu
     bool _hres368, _vres480, _pal, _disp24, _interlace, _displayDisabled = true;
     int _dmaDir;
 
-    readonly List<uint> _fifo = new(16);
+    readonly uint[] _fifo = new uint[1024];
+    int _fifoCount;
     int _need;
     bool _polyline;
 
@@ -117,34 +118,62 @@ public sealed partial class Gpu
 
     bool _polylineShaded;
 
+    void Push(uint word)
+    {
+        if (_fifoCount < _fifo.Length) _fifo[_fifoCount++] = word;
+    }
+    
+    public void WriteGp0Packet(ReadOnlySpan<uint> words)
+    {
+        if (words.Length == 0) return;
+        
+        if (_loadImage || _polyline || _fifoCount != 0 || words.Length > _fifo.Length)
+        {
+            foreach (uint w in words) WriteGp0(w);
+            return;
+        }
+        
+        int need = CommandLength(words[0]);
+        if (need != words.Length)
+        {
+            foreach (uint w in words) WriteGp0(w);
+            return;
+        }
+        
+        words.CopyTo(_fifo);
+        _fifoCount = words.Length;
+        Execute();
+        if (!_loadImage) _fifoCount = 0;
+    }
+
     public void WriteGp0(uint word)
     {
         if (_loadImage) { StoreImageHalfword((ushort)word); StoreImageHalfword((ushort)(word >> 16)); return; }
         if (_polyline)
         {
             //the terminator only sits where a vertex /colour pair start and the first pair is aways consumed untesting, psx_spx was unclear about dat, the implementation on pcsx redux is broken(somehow worse than mine), duckstation was the one that correctly implemented this, thanks duckstaion!!!!
-            int data = _fifo.Count - 1;
+            int data = _fifoCount - 1;
             bool testable = _polylineShaded ? data >= 3 && (data & 1) == 1 : data >= 2;
 
             if (testable && (word & 0xF000F000u) == 0x50005000u)
             {
                 _polyline = false;
                 ExecutePolyline();
-                _fifo.Clear();
+                _fifoCount = 0;
             }
-            else _fifo.Add(word);
+            else Push(word);
             return;
         }
 
-        _fifo.Add(word);
-        if (_fifo.Count == 1)
+        Push(word);
+        if (_fifoCount == 1)
         {
             _need = CommandLength(word);
             if (_need == LenPolyline) { _polyline = true; _polylineShaded = (word & (1u << 28)) != 0; return; }
             if (_need == LenImageLoad) _need = 3;
         }
 
-        if (_fifo.Count >= _need) { Execute(); if (!_loadImage) _fifo.Clear(); }
+        if (_fifoCount >= _need) { Execute(); if (!_loadImage) _fifoCount = 0; }
     }
 
     public void WriteGp1(uint word)
@@ -158,7 +187,7 @@ public sealed partial class Gpu
                 GpuHle.NotifyDisplay(_dispVramX, _dispVramY, DisplayWidth, DisplayHeight);
                 return;
             case 0x00: Reset(); break;
-            case 0x01: _fifo.Clear(); _polyline = false; _loadImage = false; break;
+            case 0x01: _fifoCount = 0; _polyline = false; _loadImage = false; break;
             case 0x02: break;
             case 0x03: _displayDisabled = (p & 1) != 0; break;
             case 0x04: _dmaDir = (int)(p & 3); break;
@@ -186,7 +215,7 @@ public sealed partial class Gpu
 
     void Reset()
     {
-        _fifo.Clear();
+        _fifoCount = 0;
         _polyline = _loadImage = _readImage = false;
         _displayDisabled = true;
         _dmaDir = 0;

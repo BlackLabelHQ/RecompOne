@@ -15,7 +15,6 @@ public sealed class Spu
     static readonly int[] AdsrStepDown = { -8, -7, -6, -5 };
     static readonly int[] AdsrStepUp = { 7, 6, 5, 4 };
 
-
     static readonly short[] Gauss = {
         -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, //
         -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, -0x001, //
@@ -511,14 +510,19 @@ public sealed class Spu
 
     short[] _xaL = [], _xaR = [];
 
+    const int MixChunk = 16;
+
     public void Mix(short[] dst, int frames)
     {
         if (_xaL.Length < frames) { _xaL = new short[frames]; _xaR = new short[frames]; }
         int xaCount = XaAudio.NextBlock(_xaL, _xaR, frames);
 
-        lock (_sync)
+        for (int chunk = 0; chunk < frames; chunk += MixChunk)
         {
-            for (int n = 0; n < frames; n++)
+            int last = Math.Min(chunk + MixChunk, frames);
+
+            lock (_sync)
+            for (int n = chunk; n < last; n++)
             {
                 SweepTick(_mainVolL, ref _mainCurL, ref _mainCycL);
                 SweepTick(_mainVolR, ref _mainCurR, ref _mainCycR);

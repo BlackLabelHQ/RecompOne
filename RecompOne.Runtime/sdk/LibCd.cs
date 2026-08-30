@@ -154,7 +154,6 @@ public static class LibCd
 
     const int MaxSectorsPerTick = 400000;
 
-
     static void StartCdda()
     {
         _cddaPlaying = false;

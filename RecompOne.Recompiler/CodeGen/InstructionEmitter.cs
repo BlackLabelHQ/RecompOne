@@ -22,8 +22,9 @@ public static class InstructionEmitter
         _ => throw new ArgumentOutOfRangeException()
     };
 
-    static string Addr(int rs, short imm)
+    static string Addr(int rs, short imm, bool moved = false, uint reloc = 0)
     {
+        if (moved) return $"0x{reloc:X8}u";
         if (rs == 0) return $"0x{(uint)(int)imm:X8}u";
         if (imm == 0) return R(rs);
         if (imm > 0) return $"({R(rs)} + 0x{(uint)imm:X}u)";
@@ -50,8 +51,11 @@ public static class InstructionEmitter
         _ =>  $"/* MTC0 r{rd} ignored */"
     };
 
-    public static string EmitSingle(MipsInstruction i)
+    public static string EmitSingle(MipsInstruction i, Dictionary<uint, uint>? relocations = null)
     {
+        uint reloc = 0;
+        bool moved = relocations != null && relocations.TryGetValue(i.Vram, out reloc);
+
         uint op = i.Word >> 26;
         uint fn = i.Word & 0x3F;
         int rs = i.Rs, rt = i.Rt, rd = i.Rd, sa = i.Sa;
@@ -108,7 +112,38 @@ public static class InstructionEmitter
         {
             uint cop2rs = (i.Word >> 21) & 0x1F;
             if (cop2rs == 8) return "";
-            if (((i.Word >> 25) & 1) == 1) return $"RecompOne.Runtime.Gte.Execute(0x{i.Word:X8}u);";
+            if (((i.Word >> 25) & 1) == 1)
+            {
+                uint cmd = i.Word;
+                string sf = (cmd & (1u << 19)) != 0 ? "12" : "0";
+                string lm = (cmd & (1u << 10)) != 0 ? "true" : "false";
+                return (cmd & 0x3F) switch
+                {
+                    0x01 => $"RecompOne.Runtime.Gte.Rtps({sf}, {lm});",
+                    0x06 => "RecompOne.Runtime.Gte.Nclip();",
+                    0x0C => $"RecompOne.Runtime.Gte.Cross({sf}, {lm});",
+                    0x10 => $"RecompOne.Runtime.Gte.Dpcs({sf}, {lm});",
+                    0x11 => $"RecompOne.Runtime.Gte.Intpl({sf}, {lm});",
+                    0x12 => $"RecompOne.Runtime.Gte.MvmvaOp({sf}, {lm}, {(cmd >> 17) & 3}, {(cmd >> 15) & 3}, {(cmd >> 13) & 3});",
+                    0x13 => $"RecompOne.Runtime.Gte.NcdsOp({sf}, {lm});",
+                    0x14 => $"RecompOne.Runtime.Gte.Cdp({sf}, {lm});",
+                    0x16 => $"RecompOne.Runtime.Gte.NcdtOp({sf}, {lm});",
+                    0x1B => $"RecompOne.Runtime.Gte.NccsOp({sf}, {lm});",
+                    0x1C => $"RecompOne.Runtime.Gte.Cc({sf}, {lm});",
+                    0x1E => $"RecompOne.Runtime.Gte.NcsOp({sf}, {lm});",
+                    0x20 => $"RecompOne.Runtime.Gte.NctOp({sf}, {lm});",
+                    0x28 => $"RecompOne.Runtime.Gte.Sqr({sf}, {lm});",
+                    0x29 => $"RecompOne.Runtime.Gte.Dcpl({sf}, {lm});",
+                    0x2A => $"RecompOne.Runtime.Gte.Dpct({sf}, {lm});",
+                    0x2D => "RecompOne.Runtime.Gte.Avsz3();",
+                    0x2E => "RecompOne.Runtime.Gte.Avsz4();",
+                    0x30 => $"RecompOne.Runtime.Gte.Rtpt({sf}, {lm});",
+                    0x3D => $"RecompOne.Runtime.Gte.Gpf({sf}, {lm});",
+                    0x3E => $"RecompOne.Runtime.Gte.Gpl({sf}, {lm});",
+                    0x3F => $"RecompOne.Runtime.Gte.NcctOp({sf}, {lm});",
+                    _ => $"RecompOne.Runtime.Gte.Execute(0x{cmd:X8}u);",
+                };
+            }
             return cop2rs switch
             {
                 0 => rt == 0 ? "" : $"{RT} = RecompOne.Runtime.Gte.Read({rd});",
@@ -123,27 +158,27 @@ public static class InstructionEmitter
 
         return (int)op switch
         {
-            8  or 9 =>  rt == 0 ? "" : rs == 0 ? $"{RT} = 0x{unchecked((uint)(int)imm):X8}u;" : imm >= 0 ? $"{RT} = {RS} + 0x{(uint)imm:X}u;" : $"{RT} = {RS} - 0x{unchecked((uint)(-(int)imm)):X}u;",
+            8  or 9 =>  rt == 0 ? "" : moved ? $"{RT} = 0x{reloc:X8}u;" : rs == 0 ? $"{RT} = 0x{unchecked((uint)(int)imm):X8}u;" : imm >= 0 ? $"{RT} = {RS} + 0x{(uint)imm:X}u;" : $"{RT} = {RS} - 0x{unchecked((uint)(-(int)imm)):X}u;",
             10 => rt == 0 ? "" : $"{RT} = (int){RS} < {(int)imm} ? 1u : 0u;",
             11 => rt == 0 ? "" : $"{RT} = {RS} < 0x{(uint)(int)imm:X8}u ? 1u : 0u;",
             12 => rt == 0 ? "" : $"{RT} = {RS} & 0x{immU:X4}u;",
-            13 => rt == 0 ? "" : immU == 0 ? $"{RT} = {RS};" : $"{RT} = {RS} | 0x{immU:X4}u;",
+            13 => rt == 0 ? "" : moved ? $"{RT} = 0x{reloc:X8}u;" : immU == 0 ? $"{RT} = {RS};" : $"{RT} = {RS} | 0x{immU:X4}u;",
             14 => rt == 0 ? "" : $"{RT} = {RS} ^ 0x{immU:X4}u;",
             15 => rt == 0 ? "" : $"{RT} = 0x{(uint)immU << 16:X8}u;",
-            32 => rt == 0 ? "" : $"{RT} = (uint)(sbyte)m.ReadU8({Addr(rs, imm)});",
-            33 => rt == 0 ? "" : $"{RT} = (uint)(short)m.ReadU16({Addr(rs, imm)});",
-            34 => rt == 0 ? "" : $"{RT} = m.ReadWordLeft({RT}, {Addr(rs, imm)});",
-            35 => rt == 0 ? "" : $"{RT} = m.ReadU32({Addr(rs, imm)});",
-            36 => rt == 0 ? "" : $"{RT} = m.ReadU8({Addr(rs, imm)});",
-            37 => rt == 0 ? "" : $"{RT} = m.ReadU16({Addr(rs, imm)});",
-            38 => rt == 0 ? "" : $"{RT} = m.ReadWordRight({RT}, {Addr(rs, imm)});",
-            40 => $"m.WriteU8({Addr(rs, imm)}, (byte){RT});",
-            41 => $"m.WriteU16({Addr(rs, imm)}, (ushort){RT});",
-            42 => $"m.WriteWordLeft({Addr(rs, imm)}, {RT});",
-            43 => $"m.WriteU32({Addr(rs, imm)}, {RT});",
-            46 => $"m.WriteWordRight({Addr(rs, imm)}, {RT});",
-            50 => $"RecompOne.Runtime.Gte.LoadWord({rt}, m.ReadU32({Addr(rs, imm)}));",
-            58 => $"m.WriteU32({Addr(rs, imm)}, RecompOne.Runtime.Gte.StoreWord({rt}));",
+            32 => rt == 0 ? "" : $"{RT} = (uint)(sbyte)mem.ReadU8({Addr(rs, imm, moved, reloc)});",
+            33 => rt == 0 ? "" : $"{RT} = (uint)(short)mem.ReadU16({Addr(rs, imm, moved, reloc)});",
+            34 => rt == 0 ? "" : $"{RT} = mem.ReadWordLeft({RT}, {Addr(rs, imm, moved, reloc)});",
+            35 => rt == 0 ? "" : $"{RT} = mem.ReadU32({Addr(rs, imm, moved, reloc)});",
+            36 => rt == 0 ? "" : $"{RT} = mem.ReadU8({Addr(rs, imm, moved, reloc)});",
+            37 => rt == 0 ? "" : $"{RT} = mem.ReadU16({Addr(rs, imm, moved, reloc)});",
+            38 => rt == 0 ? "" : $"{RT} = mem.ReadWordRight({RT}, {Addr(rs, imm, moved, reloc)});",
+            40 => $"mem.WriteU8({Addr(rs, imm, moved, reloc)}, (byte){RT});",
+            41 => $"mem.WriteU16({Addr(rs, imm, moved, reloc)}, (ushort){RT});",
+            42 => $"mem.WriteWordLeft({Addr(rs, imm, moved, reloc)}, {RT});",
+            43 => $"mem.WriteU32({Addr(rs, imm, moved, reloc)}, {RT});",
+            46 => $"mem.WriteWordRight({Addr(rs, imm, moved, reloc)}, {RT});",
+            50 => $"RecompOne.Runtime.Gte.Write({rt}, mem.ReadU32({Addr(rs, imm, moved, reloc)}));",
+            58 => $"mem.WriteU32({Addr(rs, imm, moved, reloc)}, RecompOne.Runtime.Gte.Read({rt}));",
             _ =>  UnknownInstr(i, $"op=0x{op:X2}")
         };
     }
@@ -178,14 +213,14 @@ public static class InstructionEmitter
         {
             if (ds == null) return;
             //fixes delay slot as branch target bug
-            string line = EmitSingle(ds);
+            string line = EmitSingle(ds, ctx.Relocations);
             if (!string.IsNullOrEmpty(line)) sb.AppendLine(ctx.Trail(ds, $"{indent}{line}"));
         }
 
         void DsInline()
         {
             if (ds == null) return;
-            string line = EmitSingle(ds);
+            string line = EmitSingle(ds, ctx.Relocations);
             if (!string.IsNullOrEmpty(line)) sb.AppendLine(ctx.Trail(ds, $"{ind2}{line}"));
         }
 
@@ -325,6 +360,7 @@ public sealed class FunctionContext
     public Dictionary<uint, JumpTable> JumpTablesByJr = [];
     public HashSet<uint> RaReturnJrs = [];
     public MipsInstruction[] AllInstructions = [];
+    public Dictionary<uint, uint> Relocations = [];
 
     const int CommentColumn = 64;
 

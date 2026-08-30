@@ -832,6 +832,7 @@ public sealed class GlCore : IGpuBackend
     public unsafe (uint tex, int w, int h, float aspect) PresentDisplay(int dispX, int dispY, int w, int h, bool rgb24 = false, int outW = 0, int outH = 0)
     {
         if (!Ready || w <= 0 || h <= 0) return (0, 0, 0, GpuHle.OutputAspect);
+
         _frame++;
         Flush();
 
@@ -859,7 +860,7 @@ public sealed class GlCore : IGpuBackend
         int h1x = h;
         float aspect = src is { Margin: > 0 } ? GpuHle.WideAspect : src != null ? GpuHle.SourceAspect : GpuHle.OutputAspect;
 
-
+        
         GpuHle.LastDisplayW = w;
         GpuHle.LastDisplayH = h;
 

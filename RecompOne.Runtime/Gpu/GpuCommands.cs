@@ -5,7 +5,18 @@ public sealed partial class Gpu
     const int LenPolyline = -1;
     const int LenImageLoad = -2;
 
-    static int CommandLength(uint word)
+    static readonly int[] CommandLengths = BuildCommandLengths();
+
+    static int[] BuildCommandLengths()
+    {
+        var table = new int[256];
+        for (int op = 0; op < 256; op++) table[op] = ComputeCommandLength((uint)op << 24);
+        return table;
+    }
+
+    static int CommandLength(uint word) => CommandLengths[word >> 24];
+
+    static int ComputeCommandLength(uint word)
     {
         uint op = word >> 24;
         switch (op)
@@ -138,7 +149,7 @@ public sealed partial class Gpu
         _loadPx = 0;
         _loadImage = true;
         HleLoadBegin();
-        _fifo.Clear();
+        _fifoCount = 0;
     }
 
     void StoreImageHalfword(ushort value)
