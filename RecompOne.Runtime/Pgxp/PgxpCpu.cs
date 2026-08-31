@@ -52,7 +52,7 @@ public static class PgxpCpu
         if (!Pgxp.CpuTracking) return;
         
         ref var src = ref _gpr[rt];
-        if ((src.Value & 0xFFFFu) != (value & 0xFFFFu)) src.Flags = PgxpFlags.None;
+        if ((src.Value & 0xFFFFu) != (value & 0xFFFFu)) src.Flags &= ~PgxpFlags.Valid0; 
         
         PgxpMemory.StoreHalf(address, in src, (ushort)value);
     }
