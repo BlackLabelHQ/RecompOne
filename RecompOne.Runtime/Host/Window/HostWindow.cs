@@ -110,6 +110,7 @@ public static class HostWindow
     public static void Initialize(string title)
     {
         ConfigManager.Load();
+        Pgxp.Pgxp.Load();
 
         foreach (var api in ApiChain())
             try

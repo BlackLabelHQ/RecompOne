@@ -12,6 +12,7 @@ public sealed class GlCore : IGpuBackend
         public float R, G, B;
         public float Clut, Texpage;
         public float U, V;
+        public float W;
     }
 
     private const int MaxVerts = 0x40000;
@@ -141,6 +142,8 @@ public sealed class GlCore : IGpuBackend
         _gl.VertexAttribPointer(3, 1, VertexAttribPointerType.Float, false, stride, (void*)24);
         _gl.EnableVertexAttribArray(4);
         _gl.VertexAttribPointer(4, 2, VertexAttribPointerType.Float, false, stride, (void*)28);
+        _gl.EnableVertexAttribArray(5);
+        _gl.VertexAttribPointer(5, 1, VertexAttribPointerType.Float, false, stride, (void*)36);
 
         // fullscreen quad for present, real vbo since gl_VertexID without arrays does not draw on mesa for some reason?? or i did it wrong?
         _presentVao = _gl.GenVertexArray();
@@ -544,7 +547,8 @@ public sealed class GlCore : IGpuBackend
             R = cr, G = cg, B = cb,
             Clut = f.Clut & 0x7FFF,
             Texpage = tpage,
-            U = v.U, V = v.V
+            U = v.U, V = v.V,
+            W = v.HasGteZ && v.Z > 0f ? v.Z : 1f
         };
     }
 

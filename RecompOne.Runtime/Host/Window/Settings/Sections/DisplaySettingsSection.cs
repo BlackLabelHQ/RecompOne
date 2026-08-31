@@ -62,5 +62,65 @@ internal sealed class DisplaySettingsSection : ISettingsSection
         }
 
         ImGui.TextDisabled(Localization.T("settings.display.backend_running", Hle.GpuBackendFactory.Selected));
+
+        ImGui.Separator();
+        DrawPgxp();
+    }
+
+    static void DrawPgxp()
+    {
+        ImGui.TextUnformatted(Localization.T("settings.display.pgxp"));
+
+        var enabled = ConfigManager.View.GetBool(Pgxp.Pgxp.KeyEnable);
+        if (ImGui.Checkbox(Localization.T("settings.display.pgxp_enable"), ref enabled))
+        {
+            ConfigManager.View.SetBool(Pgxp.Pgxp.KeyEnable, enabled);
+            ConfigManager.SaveView(PanelManager.Panels);
+            Pgxp.Pgxp.Load();
+            Pgxp.PgxpGte.Invalidate();
+        }
+
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.display.pgxp_enable_hint"));
+
+        if (!enabled) ImGui.BeginDisabled();
+
+        var column = ImGui.GetContentRegionAvail().X / 3f;
+
+        Toggle(Pgxp.Pgxp.KeyTextureCorrection, "settings.display.pgxp_texture", "settings.display.pgxp_texture_hint",
+            true);
+        ImGui.SameLine(column);
+        Toggle(Pgxp.Pgxp.KeyCulling, "settings.display.pgxp_culling", "settings.display.pgxp_culling_hint", true);
+        ImGui.SameLine(column * 2f);
+        Toggle(Pgxp.Pgxp.KeyCpu, "settings.display.pgxp_cpu", "settings.display.pgxp_cpu_hint", false);
+
+        Toggle(Pgxp.Pgxp.KeyVertexCache, "settings.display.pgxp_vertex_cache",
+            "settings.display.pgxp_vertex_cache_hint", false);
+
+        var tolerance = ConfigManager.View.GetFloat(Pgxp.Pgxp.KeyTolerance, -1f);
+        if (ImGui.SliderFloat(Localization.T("settings.display.pgxp_tolerance"), ref tolerance, -1f, 10f, tolerance < 0f ? Localization.T("settings.display.pgxp_tolerance_off") : "%.2f"))
+        {
+            ConfigManager.View.SetFloat(Pgxp.Pgxp.KeyTolerance, tolerance);
+            ConfigManager.SaveView(PanelManager.Panels);
+            Pgxp.Pgxp.Load();
+        }
+
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T("settings.display.pgxp_tolerance_hint"));
+
+        if (!enabled) ImGui.EndDisabled();
+    }
+
+    static void Toggle(string key, string labelKey, string hintKey, bool fallback)
+    {
+        var value = ConfigManager.View.GetBool(key, fallback);
+        if (ImGui.Checkbox(Localization.T(labelKey), ref value))
+        {
+            ConfigManager.View.SetBool(key, value);
+            ConfigManager.SaveView(PanelManager.Panels);
+            Pgxp.Pgxp.Load();
+            if (!Pgxp.Pgxp.VertexCache) Pgxp.PgxpGpu.Free();
+            if (!Pgxp.Pgxp.VertexCache) Pgxp.PgxpGpu.Free();
+        }
+
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip(Localization.T(hintKey));
     }
 }

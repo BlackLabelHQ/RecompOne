@@ -21,6 +21,7 @@ public sealed class RecompOneConfig
         set;
     } //not sure if should be a config or on by default, this scans betwen cross overlay pointer calls to properly decode jumptbls, medievil uses it so thats why it is implemented here, maybe in the gfuture on by default, this also will toll the performance of the recompiler a bit so keeping it here while i decide what to do
 
+
     [JsonPropertyName("linearSweep")]
     public bool
         LinearSweep

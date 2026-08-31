@@ -27,6 +27,11 @@ public static class InstructionEmitter
             };
     }
 
+    private static string Hook(string call)
+    {
+        return $" RecompOne.Runtime.Pgxp.PgxpCpu.{call};";
+    }
+
     private static string Addr(int rs, short imm, bool moved = false, uint reloc = 0)
     {
         if (moved) return $"0x{reloc:X8}u";
@@ -162,9 +167,9 @@ public static class InstructionEmitter
 
             return cop2rs switch
             {
-                0 => rt == 0 ? "" : $"{RT} = RecompOne.Runtime.Gte.Read({rd});",
+                0 => rt == 0 ? "" : $"{RT} = RecompOne.Runtime.Gte.Read({rd});" + Hook($"Mfc2({rt}, {rd}, {RT})"),
                 2 => rt == 0 ? "" : $"{RT} = RecompOne.Runtime.Gte.ReadControl({rd});",
-                4 => $"RecompOne.Runtime.Gte.Write({rd}, {RT});",
+                4 => $"RecompOne.Runtime.Gte.Write({rd}, {RT});" + Hook($"Mtc2({rd}, {rt}, {RT})"),
                 6 => $"RecompOne.Runtime.Gte.WriteControl({rd}, {RT});",
                 _ => $"/* COP2 rs={cop2rs} */"
             };
@@ -188,19 +193,21 @@ public static class InstructionEmitter
             14 => rt == 0 ? "" : $"{RT} = {RS} ^ 0x{immU:X4}u;",
             15 => rt == 0 ? "" : $"{RT} = 0x{(uint)immU << 16:X8}u;",
             32 => rt == 0 ? "" : $"{RT} = (uint)(sbyte)mem.ReadU8({Addr(rs, imm, moved, reloc)});",
-            33 => rt == 0 ? "" : $"{RT} = (uint)(short)mem.ReadU16({Addr(rs, imm, moved, reloc)});",
+            33 => rt == 0 ? "" : $"{RT} = (uint)(short)mem.ReadU16({Addr(rs, imm, moved, reloc)});" + Hook($"Lh({rt}, {Addr(rs, imm, moved, reloc)}, {RT})"),
             34 => rt == 0 ? "" : $"{RT} = mem.ReadWordLeft({RT}, {Addr(rs, imm, moved, reloc)});",
-            35 => rt == 0 ? "" : $"{RT} = mem.ReadU32({Addr(rs, imm, moved, reloc)});",
+            35 => rt == 0 ? "" : $"{RT} = mem.ReadU32({Addr(rs, imm, moved, reloc)});" + Hook($"Lw({rt}, {Addr(rs, imm, moved, reloc)}, {RT})"),
             36 => rt == 0 ? "" : $"{RT} = mem.ReadU8({Addr(rs, imm, moved, reloc)});",
-            37 => rt == 0 ? "" : $"{RT} = mem.ReadU16({Addr(rs, imm, moved, reloc)});",
+            37 => rt == 0 ? "" : $"{RT} = mem.ReadU16({Addr(rs, imm, moved, reloc)});" + Hook($"Lh({rt}, {Addr(rs, imm, moved, reloc)}, {RT})"),
             38 => rt == 0 ? "" : $"{RT} = mem.ReadWordRight({RT}, {Addr(rs, imm, moved, reloc)});",
             40 => $"mem.WriteU8({Addr(rs, imm, moved, reloc)}, (byte){RT});",
-            41 => $"mem.WriteU16({Addr(rs, imm, moved, reloc)}, (ushort){RT});",
+            41 => $"mem.WriteU16({Addr(rs, imm, moved, reloc)}, (ushort){RT});" + Hook($"Sh({rt}, {Addr(rs, imm, moved, reloc)}, {RT})"),
             42 => $"mem.WriteWordLeft({Addr(rs, imm, moved, reloc)}, {RT});",
-            43 => $"mem.WriteU32({Addr(rs, imm, moved, reloc)}, {RT});",
+            43 => $"mem.WriteU32({Addr(rs, imm, moved, reloc)}, {RT});" + Hook($"Sw({rt}, {Addr(rs, imm, moved, reloc)}, {RT})"),
             46 => $"mem.WriteWordRight({Addr(rs, imm, moved, reloc)}, {RT});",
-            50 => $"RecompOne.Runtime.Gte.Write({rt}, mem.ReadU32({Addr(rs, imm, moved, reloc)}));",
-            58 => $"mem.WriteU32({Addr(rs, imm, moved, reloc)}, RecompOne.Runtime.Gte.Read({rt}));",
+            50 =>
+                $"{{ var _lw = mem.ReadU32({Addr(rs, imm, moved, reloc)}); RecompOne.Runtime.Gte.Write({rt}, _lw); RecompOne.Runtime.Pgxp.PgxpCpu.Lwc2({rt}, {Addr(rs, imm, moved, reloc)}, _lw); }}",
+            58 =>
+                $"{{ var _sw = RecompOne.Runtime.Gte.Read({rt}); mem.WriteU32({Addr(rs, imm, moved, reloc)}, _sw); RecompOne.Runtime.Pgxp.PgxpCpu.Swc2({rt}, {Addr(rs, imm, moved, reloc)}, _sw); }}",
             _ => UnknownInstr(i, $"op=0x{op:X2}")
         };
     }

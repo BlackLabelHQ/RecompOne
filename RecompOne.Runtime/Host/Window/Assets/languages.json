@@ -660,6 +660,76 @@
       "zh-CN": "使用中: {0}",
       "fr-FR": "Actuellement: {0}"
     },
+    "settings.display.pgxp": {
+      "en": "Geometry precision (PGXP)",
+      "pt-BR": "Precisão de geometria (PGXP)",
+      "es-419": "Precisión de geometría (PGXP)"
+    },
+    "settings.display.pgxp_enable": {
+      "en": "Enable PGXP",
+      "pt-BR": "Ativar PGXP",
+      "es-419": "Activar PGXP"
+    },
+    "settings.display.pgxp_enable_hint": {
+      "en": "Recomputes the geometry transform in floating point, removing vertex jitter.",
+      "pt-BR": "Recalcula a transformação de geometria em ponto flutuante, removendo o tremor dos vértices.",
+      "es-419": "Recalcula la transformación de geometría en punto flotante, eliminando el temblor de los vértices."
+    },
+    "settings.display.pgxp_culling": {
+      "en": "Culling correction",
+      "pt-BR": "Correção de culling",
+      "es-419": "Corrección de culling"
+    },
+    "settings.display.pgxp_culling_hint": {
+      "en": "Uses the precise coordinates for backface culling, so thin triangles stop disappearing. May hang games that rely on the original result.",
+      "pt-BR": "Usa as coordenadas precisas no culling, então triângulos finos param de sumir. Pode travar jogos que dependem do resultado original.",
+      "es-419": "Usa las coordenadas precisas en el culling, así los triángulos finos dejan de desaparecer. Puede colgar juegos que dependan del resultado original."
+    },
+    "settings.display.pgxp_texture": {
+      "en": "Perspective correct textures",
+      "pt-BR": "Texturas com perspectiva correta",
+      "es-419": "Texturas con perspectiva correcta"
+    },
+    "settings.display.pgxp_texture_hint": {
+      "en": "Interpolates texture coordinates with depth, removing the warping on large angled surfaces.",
+      "pt-BR": "Interpola as coordenadas de textura com profundidade, removendo a distorção em superfícies grandes em ângulo.",
+      "es-419": "Interpola las coordenadas de textura con profundidad, eliminando la distorsión en superficies grandes en ángulo."
+    },
+    "settings.display.pgxp_vertex_cache": {
+      "en": "Vertex cache",
+      "pt-BR": "Cache de vértices",
+      "es-419": "Caché de vértices"
+    },
+    "settings.display.pgxp_vertex_cache_hint": {
+      "en": "Recovers precision for vertices the game stored in memory. Can pick the wrong vertex when two land on the same pixel, which shows up as broken geometry.",
+      "pt-BR": "Recupera precisão de vértices que o jogo guardou na memória. Pode pegar o vértice errado quando dois caem no mesmo pixel, o que aparece como geometria quebrada.",
+      "es-419": "Recupera precisión de vértices que el juego guardó en memoria. Puede tomar el vértice equivocado cuando dos caen en el mismo píxel, lo que se ve como geometría rota."
+    },
+    "settings.display.pgxp_cpu": {
+      "en": "CPU tracking",
+      "pt-BR": "Rastreio de CPU",
+      "es-419": "Rastreo de CPU"
+    },
+    "settings.display.pgxp_cpu_hint": {
+      "en": "Follows the precise value through the game's own loads and stores, so geometry the game buffers in memory keeps its precision.",
+      "pt-BR": "Acompanha o valor preciso pelos loads e stores do próprio jogo, para que a geometria que ele guarda na memória mantenha a precisão.",
+      "es-419": "Sigue el valor preciso a través de los loads y stores del propio juego, para que la geometría que guarda en memoria mantenga la precisión."
+    },
+    "settings.display.pgxp_tolerance": {
+      "en": "Geometry tolerance",
+      "pt-BR": "Tolerância de geometria",
+      "es-419": "Tolerancia de geometría"
+    },
+    "settings.display.pgxp_tolerance_hint": {
+      "en": "Rejects precise coordinates that differ from the original by more than this, which keeps 2D drawing untouched. Off applies precision everywhere.",
+      "pt-BR": "Rejeita coordenadas precisas que diferem da original por mais que isto, o que mantém o desenho 2D intocado. Desligado aplica precisão em tudo.",
+      "es-419": "Rechaza coordenadas precisas que difieran de la original más que esto, lo que mantiene el dibujo 2D intacto. Apagado aplica precisión en todo."
+    },
+    "settings.display.pgxp_tolerance_off": {
+      "en": "off",
+      "pt-BR": "desligado",
+      "es-419": "apagado"
+    },
     "settings.audio": {
       "en": "Audio",
       "pt-BR": "Áudio",

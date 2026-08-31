@@ -33,6 +33,7 @@ public sealed partial class Gpu
 
     private readonly uint[] _fifo = new uint[1024];
     private int _fifoCount;
+    private uint _fifoBase;
     private int _need;
     private bool _polyline;
 
@@ -120,12 +121,17 @@ public sealed partial class Gpu
 
     private void Push(uint word)
     {
+        if (_fifoCount == 0) _fifoBase = 0u;
         if (_fifoCount < _fifo.Length) _fifo[_fifoCount++] = word;
     }
 
-    public void WriteGp0Packet(ReadOnlySpan<uint> words)
+    public uint FifoBase => _fifoBase;
+
+    public void WriteGp0Packet(ReadOnlySpan<uint> words, uint baseAddress = 0u)
     {
         if (words.Length == 0) return;
+
+        _fifoBase = 0u;
 
         if (_loadImage || _polyline || _fifoCount != 0 || words.Length > _fifo.Length)
         {
@@ -142,6 +148,7 @@ public sealed partial class Gpu
 
         words.CopyTo(_fifo);
         _fifoCount = words.Length;
+        _fifoBase = baseAddress;
         Execute();
         if (!_loadImage) _fifoCount = 0;
     }

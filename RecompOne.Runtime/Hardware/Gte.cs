@@ -283,6 +283,8 @@ public static class Gte
         SY[1] = SY[2];
         SY[2] = (short)ny;
 
+        if (Pgxp.Pgxp.Enabled) PushPrecise(m3, nx, ny);
+
         if (last)
         {
             var dp = CheckMac0((long)div * DQA + DQB);
@@ -294,6 +296,21 @@ public static class Gte
     private static void EndFlag()
     {
         if ((FLAG & 0x7F87E000u) != 0) FLAG |= 0x80000000u;
+    }
+
+    private static void PushPrecise(long zAcc, int nx, int ny)
+    {
+        var z = zAcc * (1.0 / 4096.0);
+        var w = Math.Max(z, H / 2.0);
+        var hDivSz = H / w;
+
+        var px = (float)(OFX / 65536.0 + IR1 * hDivSz);
+        var py = (float)(OFY / 65536.0 + IR2 * hDivSz);
+
+        px = Math.Clamp(px, -0x400, 0x3FF);
+        py = Math.Clamp(py, -0x400, 0x3FF);
+
+        Pgxp.PgxpGte.PushVertex(px, py, (float)w, Pgxp.PgxpGte.PackXy(nx, ny));
     }
 
     public static void Rtps(int sf, bool lm)
@@ -315,6 +332,15 @@ public static class Gte
     public static void Nclip()
     {
         FLAG = 0;
+
+        if (Pgxp.Pgxp.CullingCorrection &&
+            Pgxp.PgxpGte.TryNclip(SX[0], SY[0], SX[1], SY[1], SX[2], SY[2], out var precise))
+        {
+            MAC0 = (int)CheckMac0((long)precise);
+            EndFlag();
+            return;
+        }
+
         MAC0 = (int)CheckMac0((long)SX[0] * (SY[1] - SY[2]) + (long)SX[1] * (SY[2] - SY[0]) +
                               (long)SX[2] * (SY[0] - SY[1]));
         EndFlag();
@@ -476,7 +502,7 @@ public static class Gte
         Interp(((long)RGBC_R * IR1) << 4, ((long)RGBC_G * IR2) << 4, ((long)RGBC_B * IR3) << 4, sf, lm);
         EndFlag();
     }
-
+    //should rmeove?
     public static void Execute(uint cmd)
     {
         FLAG = 0;

@@ -22,11 +22,28 @@ public sealed partial class Gpu
         };
     }
 
-    private static HleVertex HV(in Vert v)
+    private static HleVertex HV(in Vert v, bool invalidW)
     {
+        var x = v.Precise ? v.Px : v.X;
+        var y = v.Precise ? v.Py : v.Y;
+
+        if (invalidW && v.Precise)
+        {
+            var tol = Pgxp.Pgxp.Tolerance;
+            if (tol >= 0f && (Math.Abs(x - v.X) > tol || Math.Abs(y - v.Y) > tol))
+            {
+                x = v.X;
+                y = v.Y;
+            }
+        }
+
         return new HleVertex
         {
-            X = v.X, Y = v.Y, R = (byte)v.R, G = (byte)v.G, B = (byte)v.B, U = (short)v.U, V = (short)v.V
+            X = x,
+            Y = y,
+            Z = invalidW ? 1f : v.Pw,
+            HasGteZ = !invalidW,
+            R = (byte)v.R, G = (byte)v.G, B = (byte)v.B, U = (short)v.U, V = (short)v.V
         };
     }
 
@@ -45,9 +62,11 @@ public sealed partial class Gpu
         var spanY = Math.Max(a.Y, Math.Max(b.Y, c.Y)) - Math.Min(a.Y, Math.Min(b.Y, c.Y));
         if (spanX > 1023 || spanY > 511) return;
 
+        var invalidW = !a.PreciseW || !b.PreciseW || !c.PreciseW || a.Pw <= 0f || b.Pw <= 0f || c.Pw <= 0f;
+
         var be = GpuHle.Backend!;
         be.SetDrawEnv(CurEnv());
-        be.DrawTri(HV(a), HV(b), HV(c), PrimOf(tex, semi, raw, clut, gouraud));
+        be.DrawTri(HV(a, invalidW), HV(b, invalidW), HV(c, invalidW), PrimOf(tex, semi, raw, clut, gouraud));
     }
 
     private void HleRect(int x, int y, int w, int h, int u, int v, int clut, int r, int g, int b, bool tex, bool semi,

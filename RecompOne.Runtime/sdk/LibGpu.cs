@@ -31,7 +31,7 @@ public static class LibGpu
             if (count > 0)
             {
                 if (m is PSMemory ram && ram.TryWords(addr + 4u, count, out var words))
-                    gpu.WriteGp0Packet(words);
+                    gpu.WriteGp0Packet(words, addr + 4u);
                 else
                     for (var i = 0; i < count; i++)
                         gpu.WriteGp0(m.ReadU32(addr + 4u + (uint)i * 4u));

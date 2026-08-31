@@ -63,8 +63,9 @@ internal static class GlShaders
                                  layout(location = 2) in float inClutF;
                                  layout(location = 3) in float inTexpageF;
                                  layout(location = 4) in vec2  inUV;
+                                 layout(location = 5) in float inW;
 
-                                 out vec4 vColor;
+                                 noperspective out vec4 vColor;
                                  out vec2 vUV;
                                  flat out ivec2 clutBase;
                                  flat out ivec2 pageBase;
@@ -78,7 +79,7 @@ internal static class GlShaders
 
                                  void main() {
                                      vec2 p = (inPos + uVertexOffset + uPosBias) * uFbInv - 1.0;
-                                     gl_Position = vec4(p, 0.0, 1.0);
+                                     gl_Position = vec4(p * inW, 0.0, inW);
 
                                      int inClut = int(inClutF + 0.5);
                                      int inTexpage = int(inTexpageF + 0.5);
@@ -106,7 +107,7 @@ internal static class GlShaders
 
     public const string PrimFs = """
                                  #version 330 core
-                                 in vec4 vColor;
+                                 noperspective in vec4 vColor;
                                  in vec2 vUV;
                                  flat in ivec2 clutBase;
                                  flat in ivec2 pageBase;
@@ -303,6 +304,7 @@ internal static class GlShaders
     public const string PrimVs120 = """
                                     #version 120
                                     attribute vec2  inPos;
+                                    attribute float inW;
                                     attribute vec3  inColorF;
                                     attribute float inClutF;
                                     attribute float inTexpageF;
@@ -324,7 +326,7 @@ internal static class GlShaders
 
                                     void main() {
                                         vec2 p = (inPos + uVertexOffset + uPosBias) * uFbInv - 1.0;
-                                        gl_Position = vec4(p, 0.0, 1.0);
+                                        gl_Position = vec4(p * inW, 0.0, inW);
 
                                         float tp = floor(inTexpageF + 0.5);
                                         float clut = floor(inClutF + 0.5);
