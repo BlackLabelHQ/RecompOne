@@ -705,6 +705,26 @@
       "pt-BR": "Recupera precisão de vértices que o jogo guardou na memória. Pode pegar o vértice errado quando dois caem no mesmo pixel, o que aparece como geometria quebrada.",
       "es-419": "Recupera precisión de vértices que el juego guardó en memoria. Puede tomar el vértice equivocado cuando dos caen en el mismo píxel, lo que se ve como geometría rota."
     },
+    "settings.display.pgxp_memory": {
+      "en": "Memory tracking",
+      "pt-BR": "Rastreio de memória",
+      "es-419": "Rastreo de memoria"
+    },
+    "settings.display.pgxp_memory_hint": {
+      "en": "Tracks vertices the game stores in RAM.",
+      "pt-BR": "Rastreia vértices que o jogo guarda na RAM.",
+      "es-419": "Rastrea vértices que el juego guarda en la RAM."
+    },
+    "settings.display.pgxp_cache_w": {
+      "en": "Cache depth",
+      "pt-BR": "Profundidade do cache",
+      "es-419": "Profundidad del caché"
+    },
+    "settings.display.pgxp_cache_w_hint": {
+      "en": "Uses depth from the cache too, not only just position.",
+      "pt-BR": "Usa também a profundidade do cache, não apenas a posição.",
+      "es-419": "Usa también la profundidad del caché, no solo la posición."
+    },
     "settings.display.pgxp_cpu": {
       "en": "CPU tracking",
       "pt-BR": "Rastreio de CPU",

@@ -26,6 +26,8 @@ public sealed partial class Gpu
         var n = quad ? 4 : 3;
 
         Span<Vert> v = stackalloc Vert[4];
+        Span<uint> words = stackalloc uint[4];
+        Span<uint> seqs = stackalloc uint[4];
         var idx = 1;
         var clut = 0;
         int cr = (int)(cmd & 0xFF), cg = (int)((cmd >> 8) & 0xFF), cb = (int)((cmd >> 16) & 0xFF);
@@ -46,6 +48,7 @@ public sealed partial class Gpu
 
             var slot = idx;
             var vw = _fifo[idx++];
+            words[i] = vw;
             v[i].X = _drawOffsetX + CoordX(vw);
             v[i].Y = _drawOffsetY + CoordY(vw);
             v[i].Precise = false;
@@ -55,11 +58,12 @@ public sealed partial class Gpu
             {
                 float px = 0f, py = 0f, pw = 1f;
                 var validW = false;
+                var seq = 0u;
                 var found = _fifoBase != 0u &&
                             Pgxp.PgxpMemory.TryLoad(_fifoBase + (uint)slot * 4u, vw, out px, out py, out pw,
-                                out validW);
+                                out validW, out seq);
 
-                if (!found) found = Pgxp.PgxpGpu.TryGetVertex(vw, out px, out py, out pw, out validW);
+                if (!found) found = Pgxp.PgxpGpu.TryGetVertex(vw, 0u, false, out px, out py, out pw, out validW, out seq);
 
                 if (found)
                 {
@@ -68,6 +72,7 @@ public sealed partial class Gpu
                     v[i].Pw = pw;
                     v[i].Precise = true;
                     v[i].PreciseW = validW;
+                    seqs[i] = seq;
                 }
             }
 
@@ -114,8 +119,14 @@ public sealed partial class Gpu
             }
         }
 
-        HleTri(v[0], v[1], v[2], tex, gouraud, semi, raw, clut);
-        if (quad) HleTri(v[1], v[2], v[3], tex, gouraud, semi, raw, clut);
+        if (Pgxp.Pgxp.Enabled) ResolveAmbiguous(v, words, seqs, n);
+
+        var invalidW = false;
+        for (var i = 0; i < n; i++)
+            if (!v[i].PreciseW || v[i].Pw <= 0f) invalidW = true;
+
+        HleTri(v[0], v[1], v[2], invalidW, tex, gouraud, semi, raw, clut);
+        if (quad) HleTri(v[1], v[2], v[3], invalidW, tex, gouraud, semi, raw, clut);
     }
 
     private void DrawRectangle()
@@ -274,4 +285,30 @@ public sealed partial class Gpu
         return (ushort)(((r >> 3) & 0x1F) | (((g >> 3) & 0x1F) << 5) | (((b >> 3) & 0x1F) << 10));
     }
 
+    private void ResolveAmbiguous(Span<Vert> v, ReadOnlySpan<uint> words, ReadOnlySpan<uint> seqs, int n) //try to disambiguiate, not the best 
+    {
+        var hint = 0u;
+        var resolved = 0;
+
+        for (var i = 0; i < n; i++)
+        {
+            if (!v[i].Precise) continue;
+            if (resolved == 0) hint = seqs[i];
+            resolved++;
+        }
+
+        if (resolved == 0 || resolved == n) return;
+
+        for (var i = 0; i < n; i++)
+        {
+            if (v[i].Precise) continue;
+            if (!Pgxp.PgxpGpu.TryGetVertex(words[i], hint, true, out var px, out var py, out var pw, out var validW, out _)) continue;
+
+            v[i].Px = _drawOffsetX + px;
+            v[i].Py = _drawOffsetY + py;
+            v[i].Pw = pw;
+            v[i].Precise = true;
+            v[i].PreciseW = validW;
+        }
+    }
 }

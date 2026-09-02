@@ -160,7 +160,6 @@ public static class Runtime
     public static void Run(Action boot)
     {
         Pgxp.PgxpGpu.Init();
-        Pgxp.PgxpMemory.Init(RamSize);
         
         while (true)
             try

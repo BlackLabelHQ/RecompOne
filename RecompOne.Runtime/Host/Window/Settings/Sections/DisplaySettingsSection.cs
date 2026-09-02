@@ -95,6 +95,10 @@ internal sealed class DisplaySettingsSection : ISettingsSection
 
         Toggle(Pgxp.Pgxp.KeyVertexCache, "settings.display.pgxp_vertex_cache",
             "settings.display.pgxp_vertex_cache_hint", false);
+        ImGui.SameLine(column);
+        Toggle(Pgxp.Pgxp.KeyMemory, "settings.display.pgxp_memory", "settings.display.pgxp_memory_hint", true);
+        ImGui.SameLine(column * 2f);
+        Toggle(Pgxp.Pgxp.KeyCacheW, "settings.display.pgxp_cache_w", "settings.display.pgxp_cache_w_hint", true);
 
         var tolerance = ConfigManager.View.GetFloat(Pgxp.Pgxp.KeyTolerance, -1f);
         if (ImGui.SliderFloat(Localization.T("settings.display.pgxp_tolerance"), ref tolerance, -1f, 10f, tolerance < 0f ? Localization.T("settings.display.pgxp_tolerance_off") : "%.2f"))

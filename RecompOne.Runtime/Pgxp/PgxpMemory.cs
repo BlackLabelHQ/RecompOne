@@ -18,7 +18,7 @@ public static class PgxpMemory
     
     public static void Store(uint address, in PgxpValue value, uint written)
     {
-        if (_shadow.Length == 0) return;
+        if (!Pgxp.MemoryTracking || _shadow.Length == 0) return;
 
         ref var slot = ref _shadow[Index(address)];
         slot = value;
@@ -27,7 +27,7 @@ public static class PgxpMemory
     
     public static void StoreHalf(uint address, in PgxpValue src, ushort written)
     {
-        if (_shadow.Length == 0) return;
+        if (!Pgxp.MemoryTracking || _shadow.Length == 0) return;
         
         ref var slot = ref _shadow[Index(address)];
         var srcValid = (src.Flags & PgxpFlags.Valid0) != 0;
@@ -88,20 +88,22 @@ public static class PgxpMemory
     }
     public static void Invalidate(uint address, uint written)
     {
-        if (_shadow.Length == 0) return;
+        if (!Pgxp.MemoryTracking || _shadow.Length == 0) return;
 
         
         ref var slot = ref _shadow[Index(address)];
         slot.Flags = PgxpFlags.None;
         slot.Value = written;
     }
-    public static bool TryLoad(uint address, uint packed, out float x, out float y, out float w, out bool validW)
+    public static bool TryLoad(uint address, uint packed, out float x, out float y, out float w, out bool validW,
+        out uint seq)
     {
         x = 0f;
         y = 0f;
         w = 1f;
         validW = false;
-        if (_shadow.Length == 0) return false;
+        seq = 0u;
+        if (!Pgxp.MemoryTracking || _shadow.Length == 0) return false;
 
         ref var slot = ref _shadow[Index(address)];
         if (!PgxpFlags.Matches(in slot, packed)) return false;
@@ -110,6 +112,7 @@ public static class PgxpMemory
         x = slot.X;
         y = slot.Y;
         w = slot.Z;
+        seq = slot.Count;
         return true;
     }
     

@@ -56,14 +56,12 @@ public sealed partial class Gpu
         };
     }
 
-    private void HleTri(in Vert a, in Vert b, in Vert c, bool tex, bool gouraud, bool semi, bool raw, int clut)
+    private void HleTri(in Vert a, in Vert b, in Vert c, bool invalidW, bool tex, bool gouraud, bool semi, bool raw, int clut)
     {
         var spanX = Math.Max(a.X, Math.Max(b.X, c.X)) - Math.Min(a.X, Math.Min(b.X, c.X));
         var spanY = Math.Max(a.Y, Math.Max(b.Y, c.Y)) - Math.Min(a.Y, Math.Min(b.Y, c.Y));
         if (spanX > 1023 || spanY > 511) return;
-
-        var invalidW = !a.PreciseW || !b.PreciseW || !c.PreciseW || a.Pw <= 0f || b.Pw <= 0f || c.Pw <= 0f;
-
+        
         var be = GpuHle.Backend!;
         be.SetDrawEnv(CurEnv());
         be.DrawTri(HV(a, invalidW), HV(b, invalidW), HV(c, invalidW), PrimOf(tex, semi, raw, clut, gouraud));

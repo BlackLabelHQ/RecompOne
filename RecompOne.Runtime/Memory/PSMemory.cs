@@ -57,7 +57,9 @@ public sealed class PSMemory : IMemory
         _ram = new byte[size];
         _ramMask = size - 1u;
         _frozen = new bool[size];
+        
         Runtime.RamSize = size;
+        Pgxp.PgxpMemory.Init(size);
 
         _dma = new Dma(this, _gpu, _spu, _mdec, () => Runtime.DispatchIrq(3));
         Runtime.Gpu = _gpu;
