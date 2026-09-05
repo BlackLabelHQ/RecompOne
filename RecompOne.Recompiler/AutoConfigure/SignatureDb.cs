@@ -19,10 +19,13 @@ public sealed class SignatureFunction
 public sealed class SignatureVariant
 {
     [JsonPropertyName("size")] public int Size { get; set; }
+    [JsonPropertyName("sdk")] public string[] Sdk { get; set; } = [];
+    [JsonPropertyName("object")] public string Object { get; set; } = "";
+    [JsonPropertyName("offset")] public int Offset { get; set; }
     [JsonPropertyName("words")] public string[] Words { get; set; } = [];
 }
 
-public sealed record Signature(string Name, string Library, bool Hle, uint[] Value, uint[] Mask, int Fixed)
+public sealed record Signature(string Name, string Library, bool Hle, string Object, int Offset, string[] Sdk, uint[] Value, uint[] Mask, int Fixed)
 {
     public int Words => Value.Length;
 
@@ -105,7 +108,17 @@ public sealed class SignatureDb
             mask[i] = m;
         }
 
-        return new Signature(fn.Name, fn.Library, fn.Hle, value, mask, known);
+        return new Signature(fn.Name, fn.Library, fn.Hle, variant.Object, variant.Offset, variant.Sdk, value, mask, known);
+    }
+
+    public void Collect(ReadOnlySpan<uint> body, List<Signature> found)
+    {
+        found.Clear();
+        if (!_bySize.TryGetValue(body.Length, out var candidates)) return;
+
+        foreach (var candidate in candidates)
+            if (candidate.Matches(body))
+                found.Add(candidate);
     }
 
     public Signature? Lookup(ReadOnlySpan<uint> body, out bool ambiguous)

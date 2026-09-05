@@ -211,7 +211,7 @@ public static class AutoConfigurator
         FunctionMapLoader.Save(path, info);
 
         Console.WriteLine($"[autoconfig] {overlay.Name}: {info.Functions.Count} function(s), " +
-                          $"{match.Named} named, {match.Ambiguous} ambiguous" +
+                          $"{match.Named} named ({match.ByLayout} by layout), {match.Ambiguous} ambiguous" +
                           (match.Libraries.Count > 0 ? $" [{string.Join(" ", match.Libraries)}]" : ""));
         return true;
     }
