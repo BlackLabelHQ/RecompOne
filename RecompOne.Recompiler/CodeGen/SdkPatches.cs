@@ -48,9 +48,21 @@ public static class SdkPatches
 
     private static readonly (string Key, string Target, string[] Names)[] Aliases =
     {
-        ("libapi", "RecompOne.Runtime.Sdk.LibApi.PatchPad", new[]
+        ("libcd", "RecompOne.Runtime.Sdk.LibCd.CdSync", new[]
         {
-            "_patch_pad"
+            "CD_sync"
+        }),
+        ("libcd", "RecompOne.Runtime.Sdk.LibCd.CdReady", new[]
+        {
+            "CD_ready"
+        }),
+        ("libcd", "RecompOne.Runtime.Sdk.LibCd.CdDataSync", new[]
+        {
+            "CD_datasync"
+        }),
+        ("libcd", "RecompOne.Runtime.Sdk.LibCd.CdGetSector", new[]
+        {
+            "CD_getsector"
         }),
         ("libapi", "RecompOne.Runtime.Sdk.LibApi.PatchCard", new[]
         {

@@ -209,6 +209,15 @@ public static class Dispatcher
         Runtime.OverlayLog.Record(name, OverlayEventKind.Unloaded);
     }
 
+    public static bool CanCall(uint addr)
+    {
+        return addr switch
+        {
+            0xA0u or 0xB0u or 0xC0u => true,
+            _ => (addr & 0xFF000000u) == 0xBFC00000u || _funcMap.ContainsKey(addr)
+        };
+    }
+
     public static void Call(CpuContext c, IMemory m, uint addr)
     {
         if (BiosKernel.TryDispatch(c, m, addr)) return;

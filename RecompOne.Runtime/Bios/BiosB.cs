@@ -38,12 +38,58 @@ public static class BiosB
     private static bool _padCardStarted;
     private static bool _cardPadEnable;
 
+    private const uint B0TableAddr = 0x00000874u;
+    private const uint KernelStubBase = 0x00006000u;
+    private const int B0TableEntries = 0xB0;
+    private const uint ChangeClearPadEntry = KernelStubBase + 0x5Bu * 4u;
+
+    public const uint PadInitStub = ChangeClearPadEntry + 0x884u;
+    public const uint PadStopStub = ChangeClearPadEntry + 0x894u;
+
+    public static uint GetB0Table(IMemory m) //gen this
+    {
+        for (var n = 0; n < B0TableEntries; n++)
+            m.WriteU32(B0TableAddr + (uint)n * 4u, KernelStubBase + (uint)n * 4u);
+
+        return B0TableAddr;
+    }
+
+    public static bool KernelStub(uint addr, out uint fn)
+    {
+        if (addr == PadInitStub)
+        {
+            fn = 0x15u;
+            return true;
+        }
+
+        if (addr == PadStopStub)
+        {
+            fn = 0x16u;
+            return true;
+        }
+        
+        if ((addr & 3u) == 0u && addr >= KernelStubBase && addr < KernelStubBase + (uint)B0TableEntries * 4u)
+        {
+            fn = (addr - KernelStubBase) / 4u;
+            return true;
+        }
+        
+        fn = 0u;
+        return false;
+    }
+
     private const uint KernelPadBuf1 = 0x0000E100u;
     private const uint KernelPadBuf2 = 0x0000E140u;
     private const uint PadSlotSize = 0x22u;
 
     public static uint PadBuffer1 => _padCardBuf1;
     public static uint PadBuffer2 => _padCardBuf2;
+
+    public static void ResetCallbacks()
+    {
+        Array.Clear(_intChain);
+        IntrEnvInInterruptAddr = 0u;
+    }
 
     public static void Reset()
     {
@@ -71,6 +117,13 @@ public static class BiosB
             if (_evCBs[i].Status != 2u || _evCBs[i].Class != @class || _evCBs[i].Spec != spec) continue;
             if ((_evCBs[i].Mode & 0x1000u) != 0 && _evCBs[i].Func != 0u)
             {
+                if (!RecompOne.Runtime.Dispatch.Dispatcher.CanCall(_evCBs[i].Func))
+                {
+                    Console.WriteLine($"[Bios] dropping an stale event callback 0x{_evCBs[i].Func:X8}");
+                    _evCBs[i].Func = 0u;
+                    continue;
+                }
+
                 var snap = c.Snapshot();
                 RecompOne.Runtime.Dispatch.Dispatcher.Call(c, m, _evCBs[i].Func);
                 c.Restore(snap);
@@ -410,7 +463,7 @@ public static class BiosB
             case 0x54: c.V0 = BiosA.LastErrno; break;
             case 0x55: c.V0 = 0u; break;
             case 0x56: c.V0 = 0u; break;
-            case 0x57: c.V0 = 0u; break;
+            case 0x57: c.V0 = GetB0Table(m); break;
             case 0x58: break;
             case 0x59: c.V0 = BiosA.TestDevice(m, c.A0); break;
             case 0x5B: c.V0 = 0u; break;

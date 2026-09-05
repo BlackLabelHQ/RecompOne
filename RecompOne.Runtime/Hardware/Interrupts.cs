@@ -111,6 +111,7 @@ public static class Interrupts
         {
             DrainPending(cpu, mem);
             BiosB.PumpCardEvents(cpu, mem);
+            Sdk.LibCd.Pump();
             Runtime.Cd?.AdvanceStreaming();
         }
         finally
@@ -150,6 +151,21 @@ public static class Interrupts
         _istat |= 1u << irq;
         _pending[irq] = true;
         _countdown = 1;
+    }
+
+    public static void ClearPending()
+    {
+        Array.Clear(_pending);
+        _istat = 0u;
+        _inHandler = false;
+    }
+
+    private static bool Callable(uint addr)
+    {
+        if (addr == 0u || (addr & 3u) != 0u) return false;
+        var ram = addr & 0x1FFFFFFFu;
+        if (ram < 0x00010000u || ram >= 0x00200000u) return false;
+        return Dispatcher.CanCall(addr);
     }
 
     private static bool Masked(int irq)
@@ -212,8 +228,16 @@ public static class Interrupts
         DispatchChains(cpu, mem);
 
         var intrEnv = BiosB.IntrEnvInInterruptAddr;
-        var handler = intrEnv != 0 ? mem.ReadU32(intrEnv + 2u + (uint)irq * 4u) : 0u;
+        var slot = intrEnv + 2u + (uint)irq * 4u;
+        var handler = intrEnv != 0 ? mem.ReadU32(slot) : 0u;
         Log.Irq($"irq {irq} env=0x{intrEnv:X8} handler=0x{handler:X8} mask=0x{_imask:X}");
+        if (handler != 0 && !Callable(handler))
+        {
+            Console.WriteLine($"[Interrupts] dropping stale handler 0x{handler:X8} for irq {irq}");
+            mem.WriteU32(slot, 0u);
+            handler = 0u;
+        }
+
         if (handler == 0)
         {
             Ack(irq);
@@ -253,8 +277,13 @@ public static class Interrupts
                 var guard = 0;
                 while (node != 0 && guard++ < 32)
                 {
+                    if ((node & 3u) != 0u || (node & 0x1FFFFFFFu) >= 0x00200000u) break;
+
                     var verifier = mem.ReadU32(node + 8u);
                     var handler = mem.ReadU32(node + 4u);
+                    if (verifier != 0 && !Callable(verifier)) break;
+                    if (handler != 0 && !Callable(handler)) break;
+
                     if (verifier != 0)
                     {
                         Dispatcher.Call(cpu, mem, verifier);

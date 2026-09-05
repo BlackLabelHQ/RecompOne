@@ -80,7 +80,7 @@ public static class OverlayWriter
         }
 
         FunctionInfo? rawFuncMap = null;
-        if (config.FuncMap != null && !config.LinearSweep)
+        if (config.FuncMap != null)
         {
             if (!File.Exists(config.FuncMap))
                 throw new FileNotFoundException($"Main function map not found: {config.FuncMap}");
@@ -365,10 +365,8 @@ public static class OverlayWriter
         {
             if (cfg.Lba >= 0)
             {
-                var sz = cfg.Size ??
-                         throw new InvalidOperationException(
-                             $"'size' is required when using 'lba' for overlay '{cfg.Name}'");
-                return (Gunzip(Decrypt(fs.ReadSectors(cfg.Lba, sz), cfg.Decrypt), cfg.Gzip), cfg.Lba);
+                var sz = cfg.Size ?? throw new InvalidOperationException($"'size' is required when using 'lba' for overlay '{cfg.Name}'");
+                return (Unpack(fs.ReadSectors(cfg.Lba, sz), cfg), cfg.Lba);
             }
 
             if (cfg.File != null)
@@ -383,7 +381,7 @@ public static class OverlayWriter
                 var full = fs.ReadFile(cfg.File);
                 var start = cfg.Offset + cfg.Skip;
                 var length = cfg.Size ?? full.Length - start;
-                return (Gunzip(Decrypt(full.AsSpan(start, length).ToArray(), cfg.Decrypt), cfg.Gzip), absLba);
+                return (Unpack(full.AsSpan(start, length).ToArray(), cfg), absLba);
             }
 
             Console.WriteLine($"[Recompiler] WARNING: overlay '{cfg.Name}' has no 'file' or 'lba' source defined");
@@ -408,29 +406,11 @@ public static class OverlayWriter
         elf.TextData = discBin;
     }
 
-    private static byte[] Gunzip(byte[] data, bool gzip)
+    private static byte[] Unpack(byte[] data, OverlayConfig cfg)
     {
-        if (!gzip) return data;
-        using var input = new MemoryStream(data);
-        using var gz = new System.IO.Compression.GZipStream(input, System.IO.Compression.CompressionMode.Decompress);
-        using var output = new MemoryStream();
-        gz.CopyTo(output);
-        return output.ToArray();
-    } //jersey has gziped ovl
-
-    private static byte[] Decrypt(byte[] data, bool decrypt)
-    {
-        if (!decrypt) return data;
-        uint seed = 0;
-        for (var i = 0; i + 4 <= data.Length; i += 4)
-        {
-            seed = (seed + 0x01309125u) * 0x03A452F7u;
-            var w = BitConverter.ToUInt32(data, i) ^ seed;
-            BitConverter.GetBytes(w).CopyTo(data, i);
-        }
-
-        return data;
+        return Psx.Compression.Compression.Apply(data, cfg.Name, cfg.Compression);
     }
+
 
     private static bool PatchNameMatches(MipsFunction func, string? patchFunction)
     {
@@ -468,8 +448,7 @@ public static class OverlayWriter
                     default:
                         if (func.IsPatch && !string.Equals(func.PatchTarget, patch.Target, StringComparison.Ordinal))
                         {
-                            Console.WriteLine(
-                                $"[Recompiler] WARNING: '{func.Name}' @ {func.OverlayName} already replaced by '{func.PatchTarget}', ignoring '{patch.Target}'"); //logeg
+                            Console.WriteLine($"[Recompiler] WARNING: '{func.Name}' @ {func.OverlayName} already replaced by '{func.PatchTarget}', ignoring '{patch.Target}'"); //logeg
                             continue;
                         }
 

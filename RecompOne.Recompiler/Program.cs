@@ -1,3 +1,4 @@
+using RecompOne.Recompiler.AutoConfigure;
 using RecompOne.Recompiler.CodeGen;
 using RecompOne.Recompiler.Config;
 using RecompOne.Recompiler.Elf;
@@ -10,8 +11,17 @@ if (args.Length == 0)
     Console.Error.WriteLine("usage: recompone <config.json>");
     Console.Error.WriteLine(
         "       recompone --generate-function-file -elf <path> -map <path> -out <output.json> [-rebase <hex>]");
+    Console.Error.WriteLine("       recompone --probe-disc <disc> [-json <out.json>] [-all]");
+    Console.Error.WriteLine(
+        "       recompone --autoconfigure <disc> -out <dir> [-name <game>] [-signatures <psyq.json>] [-sweep-all]");
     return 1;
 }
+
+if (string.Equals(args[0], "--probe-disc", StringComparison.OrdinalIgnoreCase))
+    return ProbeDisc(args);
+
+if (string.Equals(args[0], "--autoconfigure", StringComparison.OrdinalIgnoreCase))
+    return Autoconfigure(args);
 
 if (string.Equals(args[0], "--generate-function-file", StringComparison.OrdinalIgnoreCase))
     return GenerateFunctionFile(args);
@@ -71,14 +81,68 @@ catch (Exception ex)
     return 1;
 }
 
+static int ProbeDisc(string[] args)
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine("usage: recompone --probe-disc <disc> [-json <out.json>] [-all]");
+        return 1;
+    }
+
+    string? json = null;
+    var all = false;
+    for (var i = 2; i < args.Length; i++)
+        switch (args[i].ToLowerInvariant())
+        {
+            case "-json": json = args[++i]; break;
+            case "-all": all = true; break;
+            default:
+                Console.Error.WriteLine($"uknown argument: {args[i]}");
+                return 1;
+        }
+
+    return ProbeCommand.Run(args[1], json, all);
+}
+
+static int Autoconfigure(string[] args)
+{
+    if (args.Length < 2)
+    {
+        Console.Error.WriteLine(
+            "usage: recompone --autoconfigure <disc> -out <dir> [-name <game>] [-signatures <psyq.json>] [-sweep-all]");
+        return 1;
+    }
+
+    string? outDir = null, name = null, signatures = null;
+    var sweepAll = false;
+    for (var i = 2; i < args.Length; i++)
+        switch (args[i].ToLowerInvariant())
+        {
+            case "-out": outDir = args[++i]; break;
+            case "-name": name = args[++i]; break;
+            case "-signatures": signatures = args[++i]; break;
+            case "-sweep-all": sweepAll = true; break;
+            default:
+                Console.Error.WriteLine($"unknown argument: {args[i]}");
+                return 1;
+        }
+
+    if (outDir == null)
+    {
+        Console.Error.WriteLine("missing -out <dir>");
+        return 1;
+    }
+
+    return AutoConfigurator.Run(args[1], outDir, name, signatures, sweepAll);
+}
+
 static int GenerateFunctionFile(string[] args)
 {
     string? elfPath = null, mapPath = null, outPath = null;
     string? discPath = null, discFile = null, baseAddr = null;
     var linearSweep = false;
     int offset = 0, skip = 0, lba = -1, size = -1;
-    var decrypt = false;
-    var gzip = false;
+    string? compression = null;
     var rebase = 0;
 
     for (var i = 1; i < args.Length; i++)
@@ -95,8 +159,7 @@ static int GenerateFunctionFile(string[] args)
             case "-skip": skip = Convert.ToInt32(args[++i], 16); break;
             case "-lba": lba = int.Parse(args[++i]); break;
             case "-size": size = Convert.ToInt32(args[++i], 16); break;
-            case "-decrypt": decrypt = true; break;
-            case "-gzip": gzip = true; break;
+            case "-compression": compression = args[++i]; break;
             case "-rebase": rebase = Convert.ToInt32(args[++i], 16); break;
             default:
                 Console.Error.WriteLine($"unknown argument: {args[i]}");
@@ -118,7 +181,7 @@ static int GenerateFunctionFile(string[] args)
             return 1;
         }
 
-        return GenerateFromLinearSweep(discPath, discFile, baseAddr, offset, skip, lba, size, decrypt, gzip, rebase,
+        return GenerateFromLinearSweep(discPath, discFile, baseAddr, offset, skip, lba, size, compression, rebase,
             outPath);
     }
 
@@ -173,7 +236,7 @@ static int GenerateFunctionFile(string[] args)
 }
 
 static int GenerateFromLinearSweep(string discPath, string? discFile, string baseAddr,
-    int offset, int skip, int lba, int size, bool decrypt, bool gzip, int rebase, string outPath)
+    int offset, int skip, int lba, int size, string? compression, int rebase, string outPath)
 {
     discPath = Path.GetFullPath(discPath);
     if (!File.Exists(discPath))
@@ -191,8 +254,7 @@ static int GenerateFromLinearSweep(string discPath, string? discFile, string bas
         Skip = skip,
         Lba = lba,
         Size = size >= 0 ? size : null,
-        Decrypt = decrypt,
-        Gzip = gzip,
+        Compression = compression,
         Rebase = rebase,
         LinearSweep = true
     };

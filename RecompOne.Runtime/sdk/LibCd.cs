@@ -289,6 +289,32 @@ public static class LibCd
         }
     }
 
+    public static void Pump()
+    {
+        PumpSync();
+        FeedDataRead();
+        PumpDataIrq();
+        PumpReady(1);
+    }
+
+    private static void FeedDataRead()
+    {
+        if (!_readActive || (_mode & 0x40) != 0) return;
+        if (_cbReady == 0 && _cbData == 0) return;
+
+        lock (_dataIrqQueue)
+        {
+            if (_dataIrqQueue.Count > 0) return;
+        }
+
+        var lba = CurrentLba;
+        if (lba < 0 || Runtime.Cd == null || lba >= Runtime.Cd.Fs.DataSectors) return;
+
+        QueueDataIrq(lba);
+        AdvancePos(1);
+        Dispatcher.LoadByLba(CurrentLba);
+    }
+
     private static void PumpSync()
     {
         if (_inSyncCb || _cbSync == 0) return;

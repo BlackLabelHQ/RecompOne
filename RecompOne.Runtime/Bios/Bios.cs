@@ -54,6 +54,12 @@ public static class Bios
                 return true;
         }
 
+        if (BiosB.KernelStub(addr, out var stub))
+        {
+            BiosB.Dispatch(c, m, stub);
+            return true;
+        }
+
         if ((addr & 0xFF000000u) == 0xBFC00000u) return true;
         return false;
     }

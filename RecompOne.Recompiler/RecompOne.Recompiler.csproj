@@ -13,6 +13,10 @@
     </ItemGroup>
 
     <ItemGroup>
+        <None Include="AutoConfigure\signatures\*.json" CopyToOutputDirectory="PreserveNewest" Link="AutoConfigure\signatures\%(Filename)%(Extension)"/>
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="LibObjectFile" Version="2.1.1"/>
         <PackageReference Include="RabbitizerSharp" Version="0.1.0"/>
     </ItemGroup>

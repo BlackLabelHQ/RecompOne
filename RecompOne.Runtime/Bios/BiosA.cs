@@ -735,6 +735,9 @@ public static class BiosA
             c.FP = c.SP;
         }
 
+        BiosB.ResetCallbacks();
+        Interrupts.ClearPending();
+
         c.A0 = argc;
         c.A1 = argv;
         Dispatcher.Call(c, m, pc0);

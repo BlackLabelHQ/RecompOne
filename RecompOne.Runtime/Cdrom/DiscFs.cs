@@ -5,6 +5,8 @@ public sealed class DiscFs : IDisposable
 {
     private record Entry(int Lba, uint Size, bool IsDir, string Name);
 
+    public readonly record struct DiscEntry(string Path, int Lba, uint Size, bool IsDir);
+
     private readonly IDiscImage _image;
 
     private DiscFs(IDiscImage image)
@@ -79,6 +81,22 @@ public sealed class DiscFs : IDisposable
         catch
         {
             return false;
+        }
+    }
+
+    public IEnumerable<DiscEntry> Enumerate()
+    {
+        return Walk(Root(), "");
+    }
+
+    private IEnumerable<DiscEntry> Walk(Entry dir, string prefix)
+    {
+        foreach (var e in Entries(dir))
+        {
+            var path = prefix.Length > 0 ? prefix + "/" + e.Name : e.Name;
+            yield return new DiscEntry(path, e.Lba, e.Size, e.IsDir);
+            if (!e.IsDir) continue;
+            foreach (var child in Walk(e, path)) yield return child;
         }
     }
 
