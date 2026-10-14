@@ -97,7 +97,7 @@ internal sealed class InterfaceSettingsSection : ISettingsSection
         if (ImGui.InputFloat("##ui-scale", ref scale, 0.05f, 0.25f, "%.2fx"))
         {
             ConfigManager.View.UiScale = Math.Clamp(scale, 0.5f, 3f);
-            ImGui.GetIO().FontGlobalScale = ConfigManager.View.UiScale;
+            ImGui.GetIO().FontGlobalScale = ConfigManager.View.UiScale / HostWindow.FramebufferScale;
             Theme.Apply();
             ConfigManager.SaveView(PanelManager.Panels);
         }

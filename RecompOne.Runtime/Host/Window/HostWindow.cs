@@ -44,8 +44,14 @@ public static class HostWindow
     }
 
     private static float _dpiScale = 1f;
+    private static float _framebufferScale = 1f;
 
     public static float DpiScale => _dpiScale;
+
+    public static float FramebufferScale => _framebufferScale;
+
+    // display scale over what the framebuffer already applies, so 1 on retina
+    public static float LayoutScale => _dpiScale / _framebufferScale;
 
     private static unsafe float QueryDpiScale()
     {
@@ -65,15 +71,17 @@ public static class HostWindow
             Console.WriteLine($"[Host] cant read scale: {e.Message}");
         }
 
+        var fbScale = QueryFramebufferScale();
+        return fbScale >= 0.5f && fbScale <= 8f ? fbScale : 1f;
+    }
+
+    private static float QueryFramebufferScale()
+    {
         try
         {
             var fb = _window!.FramebufferSize;
             var size = _window.Size;
-            if (size.X > 0 && fb.X > 0)
-            {
-                var s = (float)fb.X / size.X;
-                if (s >= 0.5f && s <= 8f) return s;
-            }
+            if (size.X > 0 && fb.X > 0) return (float)fb.X / size.X;
         }
         catch
         {
@@ -536,12 +544,14 @@ public static class HostWindow
     private static void ConfigureImGui()
     {
         _dpiScale = QueryDpiScale();
-        Console.WriteLine($"[Host] display scale: {_dpiScale:0.##}x");
+        _framebufferScale = QueryFramebufferScale();
+        Console.WriteLine($"[Host] display scale: {_dpiScale:0.##}x, framebuffer scale: {_framebufferScale:0.##}x");
 
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
-        io.FontGlobalScale = ConfigManager.View.UiScale;
+        // atlas is already baked at 16 * dpiScale, dpi must not be applied again
+        io.FontGlobalScale = ConfigManager.View.UiScale / _framebufferScale;
         unsafe
         {
             io.NativePtr->IniFilename = null;

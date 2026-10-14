@@ -190,7 +190,7 @@ public static class Theme
         style.ScaleAllSizes(Scale);
     }
 
-    public static float Scale => HostWindow.DpiScale * ConfigManager.View.UiScale;
+    public static float Scale => HostWindow.LayoutScale * ConfigManager.View.UiScale;
 
     public static float TitleBarHeight
     {
