@@ -1295,7 +1295,7 @@
       "pt-BR": "Falha ao abrir o seletor nativo: {0}",
       "es-419": "No se pudo abrir el selector nativo: {0}",
       "ja-jp": "ネイティブのファイル選択ダイアログを開けませんでした: {0}",
-      "cn-zh": "无法打开native picker",
+      "zh-CN": "无法打开native picker",
       "fr-FR": "Impossible d'ouvrir le sélecteur natif: {0}"
     },
     "settings.input.sticks": {
