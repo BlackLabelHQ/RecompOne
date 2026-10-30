@@ -13,6 +13,7 @@ public struct HleVertex
     public int Transform;
     public bool Native;
     public bool IgnoreDepth;
+    public uint Prim;
     public Vector3 Camera;
 }
 

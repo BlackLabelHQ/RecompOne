@@ -10,7 +10,17 @@ internal sealed class TextureInspectorPanel : IPanel
 {
     public string Name => "Texture Inspector";
     public string TitleKey => "panel.texture_inspector";
-    public bool IsOpen { get; set; }
+    private bool _open;
+
+    public bool IsOpen
+    {
+        get => _open;
+        set
+        {
+            _open = value;
+            TextureRegistry.Collect(this, value);
+        }
+    }
 
     private string _filter = "";
     private bool _onlyReplaced;
@@ -27,19 +37,18 @@ internal sealed class TextureInspectorPanel : IPanel
         if (!ImGui.Begin(this.Title(), ref open))
         {
             IsOpen = open;
-            TextureRegistry.Enabled = open;
+            TextureRegistry.Collect(this, false);
             ImGui.End();
             return;
         }
 
-        TextureRegistry.Enabled = true;
+        TextureRegistry.Collect(this, true);
         ReleaseOrphans();
         DrawToolbar();
         ImGui.Separator();
         DrawTable();
 
         IsOpen = open;
-        TextureRegistry.Enabled = open;
         ImGui.End();
     }
 

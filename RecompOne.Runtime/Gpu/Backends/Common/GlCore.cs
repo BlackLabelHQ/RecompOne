@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Runtime.InteropServices;
 using Silk.NET.OpenGL;
 
@@ -31,7 +32,26 @@ public sealed class GlCore : IGpuBackend
     private long _frame;
     private long _depthScene;
     private bool _kDepth;
+    private byte _kMaterial;
+    private bool _drewSincePresent;
+    private float _surfaceArea;
+    private Vector4 _surfaceSum;
+    private uint _progPresentMaterial, _materialPresentTex, _materialPresentFbo;
+    private int _materialPresentW, _materialPresentH;
+    private int _uMaterialOrigin, _uMaterialSize, _uMaterialTexSize;
+    private bool _stencilTexturing;
+    private const int DepthStencilTextureMode = 0x90EA;
+    private bool _kStamp;
+    private bool _kLayer;
+    private uint _progPresentLayer, _layerPresentTex, _layerPresentFbo;
+    private int _layerPresentW, _layerPresentH;
+    private int _uLayerOrigin, _uLayerSize, _uLayerTexSize;
     private int _uDepthEnabled;
+    private int _uSurface;
+    private int _uLayerReset;
+    private uint _progPresentDepth, _depthPresentTex, _depthPresentFbo;
+    private int _depthPresentW, _depthPresentH;
+    private int _uDepthOrigin, _uDepthSize, _uDepthTexSize;
     
     public void AdvanceFrame()
     {
@@ -73,7 +93,7 @@ public sealed class GlCore : IGpuBackend
     private uint _kRepTex, _kRepClut;
     private float _kRepX, _kRepY, _kRepW, _kRepH;
     private int _kRepClutCount;
-    private int _uTexWindow, _uBlend, _uBlendOpaque, _uSetMask, _uCheckMask, _uPosBias, _uFbInv;
+    private int _uTexWindow, _uBlend, _uBlendOpaque, _uSetMask, _uCheckMask, _uPosBias, _uFbInv, _uTrueColor;
     private int _uRepRect, _uRepClutCount;
     private int _uPresentOrigin, _uPresentSize, _uPresentTexSize, _uPresent24Origin, _uPresent24Size;
 
@@ -113,9 +133,12 @@ public sealed class GlCore : IGpuBackend
         _uBlend = _gl.GetUniformLocation(_progPrim, "uBlend");
         _uBlendOpaque = _gl.GetUniformLocation(_progPrim, "uBlendOpaque");
         _uSetMask = _gl.GetUniformLocation(_progPrim, "uSetMask");
+        _uTrueColor = _gl.GetUniformLocation(_progPrim, "uTrueColor");
         _uCheckMask = _gl.GetUniformLocation(_progPrim, "uCheckMask");
         _uPosBias = _gl.GetUniformLocation(_progPrim, "uPosBias");
         _uDepthEnabled = _gl.GetUniformLocation(_progPrim, "uDepthEnabled");
+        _uSurface = _gl.GetUniformLocation(_progPrim, "uSurface");
+        _uLayerReset = _gl.GetUniformLocation(_progPrim, "uLayerReset");
         _uFbInv = _gl.GetUniformLocation(_progPrim, "uFbInv");
         _uRepRect = _gl.GetUniformLocation(_progPrim, "uRepRect");
         _uRepClutCount = _gl.GetUniformLocation(_progPrim, "uRepClutCount");
@@ -128,6 +151,28 @@ public sealed class GlCore : IGpuBackend
         _gl.Uniform1(_gl.GetUniformLocation(_progPrim, "uRepClut"), 4);
         SetScaleUniform(_progPrim);
         if (_uVramSize >= 0) _gl.Uniform2(_uVramSize, (float)GlVram.Width, GlVram.Height);
+
+        if (!_legacy)
+        {
+            _progPresentDepth = GlShaders.BuildFullscreen(_gl, fullVs, GlShaders.PresentDepthFs, "present-depth");
+            _progPresentLayer = GlShaders.BuildFullscreen(_gl, fullVs, GlShaders.PresentLayerFs, "present-layer");
+            _uLayerOrigin = _gl.GetUniformLocation(_progPresentLayer, "uOrigin");
+            _uLayerSize = _gl.GetUniformLocation(_progPresentLayer, "uSize");
+            _uLayerTexSize = _gl.GetUniformLocation(_progPresentLayer, "uTexSize");
+            _uDepthOrigin = _gl.GetUniformLocation(_progPresentDepth, "uOrigin");
+            _uDepthSize = _gl.GetUniformLocation(_progPresentDepth, "uSize");
+            _uDepthTexSize = _gl.GetUniformLocation(_progPresentDepth, "uTexSize");
+
+            var version = _gl.GetInteger(GetPName.MajorVersion) * 10 + _gl.GetInteger(GetPName.MinorVersion);
+            _stencilTexturing = version >= 43;
+            if (_stencilTexturing)
+            {
+                _progPresentMaterial = GlShaders.BuildFullscreen(_gl, fullVs, GlShaders.PresentMaterialFs, "present-material");
+                _uMaterialOrigin = _gl.GetUniformLocation(_progPresentMaterial, "uOrigin");
+                _uMaterialSize = _gl.GetUniformLocation(_progPresentMaterial, "uSize");
+                _uMaterialTexSize = _gl.GetUniformLocation(_progPresentMaterial, "uTexSize");
+            }
+        }
 
         _uPresentOrigin = _gl.GetUniformLocation(_progPresent, "uOrigin");
         _uPresentSize = _gl.GetUniformLocation(_progPresent, "uSize");
@@ -391,20 +436,29 @@ public sealed class GlCore : IGpuBackend
                                           _kClipX1 == _env.ClipX1 && _kClipY1 == _env.ClipY1;
     }
 
-    private void Begin(in PrimFlags f, int vertsNeeded, bool useDepth = false)
+    private void Begin(in PrimFlags f, int vertsNeeded, bool useDepth = false, byte material = 0, bool world = false)
     {
         var transparent = f.SemiTrans;
         var blend = f.BlendMode;
         var image = f.UseImage ? f.Image : -1;
         var target = Classify();
         useDepth &= target != null;
-        if (_count > 0 && (useDepth != _kDepth || target != _kTarget || _kQuantizedAlpha || f.QuantizedAlpha || !DesiredMatches(transparent, blend, image))) Flush();
+        if (useDepth) target!.GeometryScene = _depthScene;
+        var overScene = !useDepth && target != null && NativeGeometry.Enabled && NativeGeometry.DepthBuffer &&
+                        target.GeometryScene == _depthScene;
+        var layer = overScene && !world;
+        var stamp = layer && !transparent;
+        if (!useDepth) material = 0;
+        if (_count > 0 && (useDepth != _kDepth || stamp != _kStamp || layer != _kLayer || material != _kMaterial || target != _kTarget || _kQuantizedAlpha || f.QuantizedAlpha || !DesiredMatches(transparent, blend, image))) Flush();
         if (_count + vertsNeeded > MaxVerts) Flush();
         CheckTextureFeedback(f);
 
         if (target != null) ClearMargin(target);
 
         _kDepth = useDepth;
+        _kStamp = stamp;
+        _kLayer = layer;
+        _kMaterial = material;
         _kTarget = target;
         _kImage = image;
         _kQuantizedAlpha = f.QuantizedAlpha;
@@ -467,19 +521,33 @@ public sealed class GlCore : IGpuBackend
 
     private readonly Dictionary<Assets.ReplacementTexture, uint> _repTextures = [];
     private readonly Dictionary<Assets.ReplacementClut, uint> _repCluts = [];
+    private int _repGeneration = -1;
 
-    private void ResolveReplacement(in PrimFlags f, int uMin, int vMin, int uMax, int vMax)
+    private void ReleaseStaleReplacements()
+    {
+        var generation = Assets.AssetReplacerManager.Instance.Generation;
+        if (generation == _repGeneration) return;
+        _repGeneration = generation;
+        foreach (var handle in _repTextures.Values) _gl.DeleteTexture(handle);
+        foreach (var handle in _repCluts.Values) _gl.DeleteTexture(handle);
+        _repTextures.Clear();
+        _repCluts.Clear();
+    }
+
+    private void ResolveReplacement(in PrimFlags f, int uMin, int vMin, int uMax, int vMax, int edgeU = 0,
+        int edgeV = 0)
     {
         _pendingRepTex = 0;
         _pendingRepClut = 0;
 
         if (!f.Textured || f.UseImage) return;
+        ReleaseStaleReplacements();
 
         int twAndX = ~(_env.TwMaskX * 8) & 0xFF, twAndY = ~(_env.TwMaskY * 8) & 0xFF;
         int twOrX = (_env.TwOffX & _env.TwMaskX) * 8, twOrY = (_env.TwOffY & _env.TwMaskY) * 8;
 
         if (!Assets.Textures.TextureResolver.Resolve(f.TPage, f.Clut, uMin, vMin, uMax, vMax,
-                twAndX, twAndY, twOrX, twOrY, out var res))
+                twAndX, twAndY, twOrX, twOrY, out var res, edgeU, edgeV))
             return;
 
         if (res.Texture is { Mode: Assets.TextureMode.Rgba } tex)
@@ -505,12 +573,14 @@ public sealed class GlCore : IGpuBackend
         _gl.ActiveTexture(TextureUnit.Texture7);
         handle = _gl.GenTexture();
         _gl.BindTexture(TextureTarget.Texture2D, handle);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Linear);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter,
+            (int)(_legacy ? GLEnum.Linear : GLEnum.LinearMipmapLinear));
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
         _gl.TexImage2D<byte>(TextureTarget.Texture2D, 0, InternalFormat.Rgba8, (uint)tex.Width, (uint)tex.Height, 0,
             PixelFormat.Rgba, PixelType.UnsignedByte, tex.Rgba);
+        if (!_legacy) _gl.GenerateMipmap(TextureTarget.Texture2D);
         _gl.ActiveTexture(TextureUnit.Texture0);
 
         _repTextures[tex] = handle;
@@ -538,7 +608,7 @@ public sealed class GlCore : IGpuBackend
 
     private bool DitherOf(in PrimFlags f)
     {
-        return _env.Dither && (f.Gouraud || (f.Textured && !f.RawTexture));
+        return _env.Dither && Config.DisplayOptions.Dithering && (f.Gouraud || (f.Textured && !f.RawTexture));
     }
 
     private GlVertex V(in HleVertex v, in PrimFlags f, bool dither)
@@ -580,14 +650,56 @@ public sealed class GlCore : IGpuBackend
     {
         ResolveReplacement(f,
             (int)Math.Min(a.U, Math.Min(b.U, c.U)), (int)Math.Min(a.V, Math.Min(b.V, c.V)),
-            (int)Math.Max(a.U, Math.Max(b.U, c.U)), (int)Math.Max(a.V, Math.Max(b.V, c.V)));
+            (int)Math.Max(a.U, Math.Max(b.U, c.U)), (int)Math.Max(a.V, Math.Max(b.V, c.V)),
+            EdgeOf(a.X, a.U, b.X, b.U, c.X, c.U), EdgeOf(a.Y, a.V, b.Y, b.V, c.Y, c.V));
         var depth = NativeGeometry.Enabled && NativeGeometry.DepthBuffer &&
             DepthVertex(a) && DepthVertex(b) && DepthVertex(c);
-        Begin(f, 3, depth);
+        var material = depth && f.Textured && ShaderMaterials.Any
+            ? ShaderMaterials.Lookup(f.TPage, f.Clut, (a.U + b.U + c.U) / 3f, (a.V + b.V + c.V) / 3f)
+            : ShaderMaterials.None;
+        Begin(f, 3, depth, material, a.HasGteZ || b.HasGteZ || c.HasGteZ);
+        _drewSincePresent = true;
+        if (ShaderMaterials.IsSurface(material)) TrackSurface(a, b, c);
         var dith = DitherOf(f);
         _verts[_count++] = V(a, f, dith);
         _verts[_count++] = V(b, f, dith);
         _verts[_count++] = V(c, f, dith);
+    }
+
+    private static int EdgeOf(float p0, float t0, float p1, float t1, float p2, float t2)
+    {
+        float dp = p1 - p0, dt = t1 - t0;
+        if (MathF.Abs(p2 - p0) > MathF.Abs(dp)) (dp, dt) = (p2 - p0, t2 - t0);
+        if (MathF.Abs(p2 - p1) > MathF.Abs(dp)) (dp, dt) = (p2 - p1, t2 - t1);
+        if (dp == 0f || dt == 0f) return 0;
+        return MathF.Sign(dp) == MathF.Sign(dt) ? 1 : -1;
+    }
+
+    private void TrackSurface(in HleVertex a, in HleVertex b, in HleVertex c)
+    {
+        var area = MathF.Abs((b.X - a.X) * (c.Y - a.Y) - (c.X - a.X) * (b.Y - a.Y));
+        var normal = Vector3.Cross(b.Camera - a.Camera, c.Camera - a.Camera);
+        var length = normal.Length();
+        if (area <= 0f || length < 1e-3f) return;
+        normal /= length;
+        if (_surfaceArea > 0f && Vector3.Dot(normal, new Vector3(_surfaceSum.X, _surfaceSum.Y, _surfaceSum.Z)) < 0f)
+            normal = -normal;
+        var center = (a.Camera + b.Camera + c.Camera) / 3f;
+        _surfaceSum += new Vector4(normal, Vector3.Dot(normal, center)) * area;
+        _surfaceArea += area;
+    }
+
+    private void PublishSurface()
+    {
+        if (!_drewSincePresent) return;
+        var normal = new Vector3(_surfaceSum.X, _surfaceSum.Y, _surfaceSum.Z);
+        var length = normal.Length();
+        if (_surfaceArea > 0f && length > 1e-6f)
+            ShaderData.Set("SceneWaterPlane", new Vector4(normal / length, _surfaceSum.W / length));
+        else ShaderData.Remove("SceneWaterPlane");
+        _drewSincePresent = false;
+        _surfaceArea = 0f;
+        _surfaceSum = Vector4.Zero;
     }
 
     public void DrawRect(in HleRect r, in PrimFlags f)
@@ -611,8 +723,8 @@ public sealed class GlCore : IGpuBackend
     {
         _pendingRepTex = 0;
         _pendingRepClut = 0;
-        Begin(f, 6);
-        var dith = _env.Dither;
+        Begin(f, 6, world: a.HasGteZ || b.HasGteZ);
+        var dith = _env.Dither && Config.DisplayOptions.Dithering;
         float x1 = a.X, y1 = a.Y;
         float x2 = b.X, y2 = b.Y;
         float dx = x2 - x1, dy = y2 - y1;
@@ -921,12 +1033,23 @@ public sealed class GlCore : IGpuBackend
             rt.PrepareDepth(_gl, _depthScene);
             _gl.Enable(EnableCap.DepthTest);
             _gl.DepthFunc(DepthFunction.Lequal);
-            _gl.DepthMask(!_kTransparent);
+            _gl.DepthMask(!ShaderMaterials.IsSurface(_kMaterial) && (!_kTransparent || _kMaterial != ShaderMaterials.None));
+            Stencil(_kTransparent && _kMaterial == ShaderMaterials.None ? ShaderMaterials.Translucent : _kMaterial, true);
         }
+        else if (_kStamp && rt != null)
+        {
+            rt.PrepareDepth(_gl, _depthScene);
+            _gl.Enable(EnableCap.DepthTest);
+            _gl.DepthFunc(DepthFunction.Always);
+            _gl.DepthMask(true);
+            Stencil(ShaderMaterials.None, true);
+        }
+
         else
         {
             _gl.Disable(EnableCap.DepthTest);
             _gl.DepthMask(false);
+            _gl.Disable(EnableCap.StencilTest);
         }
         _gl.Disable(EnableCap.CullFace);
         _gl.Enable(EnableCap.ScissorTest);
@@ -982,7 +1105,9 @@ public sealed class GlCore : IGpuBackend
         }
 
         _gl.UseProgram(_progPrim);
-        _gl.Uniform1(_uDepthEnabled, _kDepth ? 1 : 0);
+        _gl.Uniform1(_uDepthEnabled, _kDepth ? 1 : _kStamp ? 2 : 0);
+        var surface = !_legacy && _kDepth && ShaderMaterials.IsSurface(_kMaterial);
+        if (_uSurface >= 0) _gl.Uniform1(_uSurface, surface ? 1 : 0);
         _gl.BindVertexArray(_vao);
         _gl.ActiveTexture(TextureUnit.Texture0);
         _gl.BindTexture(TextureTarget.Texture2D, _vram.Texture);
@@ -1025,6 +1150,7 @@ public sealed class GlCore : IGpuBackend
             _gl.Uniform4(_uTexWindow, (float)_kTwAndX, _kTwAndY, _kTwOrX, _kTwOrY);
             _gl.Uniform1(_uSetMask, _kSetMask == 1 ? 1f : 0f);
             _gl.Uniform1(_uCheckMask, _kCheckMask == 1 ? 1f : 0f);
+            _gl.Uniform1(_uTrueColor, GlVram.TrueColor ? 1f : 0f);
             if (_uDestSize >= 0) _gl.Uniform2(_uDestSize, (float)destW, destH);
             if (_uSemiTrans >= 0) _gl.Uniform1(_uSemiTrans, _kTransparent ? 1f : 0f);
             if (_uBlendMode >= 0) _gl.Uniform1(_uBlendMode, (float)_kBlend);
@@ -1034,6 +1160,7 @@ public sealed class GlCore : IGpuBackend
             _gl.Uniform4(_uTexWindow, _kTwAndX, _kTwAndY, _kTwOrX, _kTwOrY);
             _gl.Uniform1(_uSetMask, _kSetMask == 1 ? 1f : 0f);
             _gl.Uniform1(_uCheckMask, _kCheckMask);
+            _gl.Uniform1(_uTrueColor, GlVram.TrueColor ? 1 : 0);
             _gl.Uniform4(_uBlendOpaque, 1f, 1f, 1f, 0f);
         }
 
@@ -1045,6 +1172,15 @@ public sealed class GlCore : IGpuBackend
             _gl.Disable(EnableCap.Blend);
             _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
         }
+        else if (!_kTransparent && surface)
+        {
+            _gl.Enable(EnableCap.Blend);
+            _gl.BlendFuncSeparate(BlendingFactor.Src1Color, BlendingFactor.Src1Alpha, BlendingFactor.One,
+                BlendingFactor.Zero);
+            _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+            SetBlend(1f, 0f);
+            _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
+        }
         else if (!_kTransparent)
         {
             _gl.Disable(EnableCap.Blend);
@@ -1053,8 +1189,8 @@ public sealed class GlCore : IGpuBackend
         else
         {
             _gl.Enable(EnableCap.Blend);
-            _gl.BlendFuncSeparate(BlendingFactor.Src1Color, BlendingFactor.Src1Alpha, BlendingFactor.One,
-                BlendingFactor.Zero);
+            _gl.BlendFuncSeparate(BlendingFactor.Src1Color, BlendingFactor.Src1Alpha,
+                surface ? BlendingFactor.Zero : BlendingFactor.One, surface ? BlendingFactor.One : BlendingFactor.Zero);
             if (_kBlend == 2)
             {
                 _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
@@ -1080,11 +1216,15 @@ public sealed class GlCore : IGpuBackend
             }
         }
 
+        if (_kLayer && rt != null && !_legacy) DrawLayer(rt);
+        else if (_kDepth && rt != null && !_legacy && rt.HasUi(_depthScene)) ResetLayer(rt);
+
         _gl.Disable(EnableCap.ScissorTest);
         if (rt != null)
         {
             rt.Dirty = true;
             rt.LastDrawFrame = _frame;
+            rt.LastScene = _depthScene;
         }
         else
         {
@@ -1193,6 +1333,7 @@ public sealed class GlCore : IGpuBackend
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _presentFbo);
         _gl.Viewport(0, 0, (uint)fbW, (uint)fbH);
         _gl.Disable(EnableCap.DepthTest);
+        _gl.Disable(EnableCap.StencilTest);
         _gl.Disable(EnableCap.Blend);
         _gl.Disable(EnableCap.ScissorTest);
         _gl.Disable(EnableCap.CullFace);
@@ -1226,11 +1367,216 @@ public sealed class GlCore : IGpuBackend
         if (PostFx.Active)
         {
             _postChain ??= new SlangChain(_gl);
+            PublishSurface();
+            PresentDepth(src, dispX, dispY, w1x, h1x, fbW, fbH);
             outTex = _postChain.Apply(_presentTex, fbW, fbH, w1x, h1x, outW, outH, aspect, out outTexW, out outTexH);
         }
 
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         return (outTex, outTexW, outTexH, aspect);
+    }
+
+    private unsafe void PresentDepth(GlDisplayRt? src, int dispX, int dispY, int w1x, int h1x, int fbW, int fbH)
+    {
+        var chain = _postChain!;
+        if (_progPresentDepth == 0 || src is not { DepthCurrent: true })
+        {
+            chain.SetDepth(0, 0, 0);
+            chain.SetMaterial(0, 0, 0);
+            chain.SetUiLayer(0, 0, 0);
+            return;
+        }
+
+        if (_depthPresentTex == 0)
+        {
+            _depthPresentTex = _gl.GenTexture();
+            _depthPresentFbo = _gl.GenFramebuffer();
+        }
+
+        if (_depthPresentW != fbW || _depthPresentH != fbH)
+        {
+            _gl.BindTexture(TextureTarget.Texture2D, _depthPresentTex);
+            _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.R32f, (uint)fbW, (uint)fbH, 0, PixelFormat.Red,
+                PixelType.Float, null);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _depthPresentFbo);
+            _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
+                TextureTarget.Texture2D, _depthPresentTex, 0);
+            _depthPresentW = fbW;
+            _depthPresentH = fbH;
+        }
+
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _depthPresentFbo);
+        _gl.Viewport(0, 0, (uint)fbW, (uint)fbH);
+        _gl.UseProgram(_progPresentDepth);
+        _gl.BindVertexArray(_presentVao);
+        _gl.ActiveTexture(TextureUnit.Texture0);
+        _gl.BindTexture(TextureTarget.Texture2D, src.DepthTex);
+        _gl.Uniform2(_uDepthOrigin, (float)(dispX - src.X), dispY - src.Y);
+        _gl.Uniform2(_uDepthSize, (float)w1x, h1x);
+        _gl.Uniform2(_uDepthTexSize, (float)src.Wide1x, src.H);
+        _gl.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
+        chain.SetDepth(_depthPresentTex, fbW, fbH);
+        PresentMaterial(src, dispX, dispY, w1x, h1x, fbW, fbH);
+        PresentLayer(src, dispX, dispY, w1x, h1x, fbW, fbH);
+    }
+
+    private unsafe void PresentMaterial(GlDisplayRt src, int dispX, int dispY, int w1x, int h1x, int fbW, int fbH)
+    {
+        var chain = _postChain!;
+        if (_progPresentMaterial == 0 || !ShaderMaterials.Any)
+        {
+            chain.SetMaterial(0, 0, 0);
+            return;
+        }
+
+        if (_materialPresentTex == 0)
+        {
+            _materialPresentTex = _gl.GenTexture();
+            _materialPresentFbo = _gl.GenFramebuffer();
+        }
+
+        if (_materialPresentW != fbW || _materialPresentH != fbH)
+        {
+            _gl.BindTexture(TextureTarget.Texture2D, _materialPresentTex);
+            _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.R8, (uint)fbW, (uint)fbH, 0, PixelFormat.Red,
+                PixelType.UnsignedByte, null);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _materialPresentFbo);
+            _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
+                TextureTarget.Texture2D, _materialPresentTex, 0);
+            _materialPresentW = fbW;
+            _materialPresentH = fbH;
+        }
+
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _materialPresentFbo);
+        _gl.Viewport(0, 0, (uint)fbW, (uint)fbH);
+        _gl.UseProgram(_progPresentMaterial);
+        _gl.BindVertexArray(_presentVao);
+        _gl.ActiveTexture(TextureUnit.Texture0);
+        _gl.BindTexture(TextureTarget.Texture2D, src.DepthTex);
+        _gl.TexParameter(TextureTarget.Texture2D, (TextureParameterName)DepthStencilTextureMode, (int)GLEnum.StencilIndex);
+        _gl.Uniform2(_uMaterialOrigin, (float)(dispX - src.X), dispY - src.Y);
+        _gl.Uniform2(_uMaterialSize, (float)w1x, h1x);
+        _gl.Uniform2(_uMaterialTexSize, (float)src.Wide1x, src.H);
+        _gl.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
+        _gl.TexParameter(TextureTarget.Texture2D, (TextureParameterName)DepthStencilTextureMode, (int)GLEnum.DepthComponent);
+        chain.SetMaterial(_materialPresentTex, fbW, fbH);
+    }
+
+    private void DrawLayer(GlDisplayRt rt)
+    {
+        rt.PrepareUi(_gl, _depthScene);
+        _gl.Viewport(0, 0, (uint)rt.TexW, (uint)rt.TexH);
+        _gl.Enable(EnableCap.ScissorTest);
+        _gl.Disable(EnableCap.DepthTest);
+        _gl.Disable(EnableCap.StencilTest);
+        _gl.DepthMask(false);
+        _gl.Enable(EnableCap.Blend);
+        _gl.BlendFuncSeparate(BlendingFactor.Src1Color, BlendingFactor.Src1Alpha, BlendingFactor.Zero,
+            BlendingFactor.Src1Alpha);
+        _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+        _gl.Uniform4(_uBlendOpaque, 1f, 1f, 1f, 0f);
+
+        if (!_kTransparent)
+        {
+            SetBlend(1f, 0f);
+            _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
+        }
+        else if (_kBlend == 2)
+        {
+            SetBlend(0f, 1f);
+            _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
+            _gl.BlendEquationSeparate(BlendEquationModeEXT.FuncReverseSubtract, BlendEquationModeEXT.FuncAdd);
+            SetBlend(1f, 1f);
+            _gl.Uniform4(_uBlendOpaque, 0f, 0f, 0f, 1f);
+            _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
+        }
+        else
+        {
+            SetBlend(_kBlend switch { 0 => 0.5f, 3 => 0.25f, _ => 1f }, _kBlend == 0 ? 0.5f : 1f);
+            _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
+        }
+
+        _gl.Uniform4(_uBlendOpaque, 1f, 1f, 1f, 0f);
+        _gl.BlendEquation(BlendEquationModeEXT.FuncAdd);
+        RebindTarget(rt);
+    }
+
+    private void ResetLayer(GlDisplayRt rt)
+    {
+        rt.PrepareUi(_gl, _depthScene);
+        _gl.Viewport(0, 0, (uint)rt.TexW, (uint)rt.TexH);
+        _gl.Enable(EnableCap.ScissorTest);
+        _gl.Enable(EnableCap.DepthTest);
+        _gl.DepthFunc(DepthFunction.Lequal);
+        _gl.DepthMask(false);
+        _gl.Disable(EnableCap.StencilTest);
+        _gl.Disable(EnableCap.Blend);
+        _gl.Uniform1(_uLayerReset, 1);
+        _gl.DrawArrays(PrimitiveType.Triangles, 0, (uint)_count);
+        _gl.Uniform1(_uLayerReset, 0);
+        RebindTarget(rt);
+    }
+
+    private unsafe void PresentLayer(GlDisplayRt src, int dispX, int dispY, int w1x, int h1x, int fbW, int fbH)
+    {
+        var chain = _postChain!;
+        if (_progPresentLayer == 0 || !src.UiCurrent)
+        {
+            chain.SetUiLayer(0, 0, 0);
+            return;
+        }
+
+        if (_layerPresentTex == 0)
+        {
+            _layerPresentTex = _gl.GenTexture();
+            _layerPresentFbo = _gl.GenFramebuffer();
+        }
+
+        if (_layerPresentW != fbW || _layerPresentH != fbH)
+        {
+            _gl.BindTexture(TextureTarget.Texture2D, _layerPresentTex);
+            _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba16f, (uint)fbW, (uint)fbH, 0, PixelFormat.Rgba,
+                PixelType.HalfFloat, null);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Nearest);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
+            _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _layerPresentFbo);
+            _gl.FramebufferTexture2D(FramebufferTarget.Framebuffer, FramebufferAttachment.ColorAttachment0,
+                TextureTarget.Texture2D, _layerPresentTex, 0);
+            _layerPresentW = fbW;
+            _layerPresentH = fbH;
+        }
+
+        _gl.BindFramebuffer(FramebufferTarget.Framebuffer, _layerPresentFbo);
+        _gl.Viewport(0, 0, (uint)fbW, (uint)fbH);
+        _gl.Disable(EnableCap.Blend);
+        _gl.Disable(EnableCap.ScissorTest);
+        _gl.UseProgram(_progPresentLayer);
+        _gl.BindVertexArray(_presentVao);
+        _gl.ActiveTexture(TextureUnit.Texture0);
+        _gl.BindTexture(TextureTarget.Texture2D, src.UiTex);
+        _gl.Uniform2(_uLayerOrigin, (float)(dispX - src.X), dispY - src.Y);
+        _gl.Uniform2(_uLayerSize, (float)w1x, h1x);
+        _gl.Uniform2(_uLayerTexSize, (float)src.Wide1x, src.H);
+        _gl.DrawArrays(PrimitiveType.TriangleStrip, 0, 4);
+        chain.SetUiLayer(_layerPresentTex, fbW, fbH);
+    }
+
+    private void Stencil(byte material, bool write)
+    {
+        _gl.Enable(EnableCap.StencilTest);
+        _gl.StencilFunc(StencilFunction.Always, material, 0xFF);
+        _gl.StencilOp(StencilOp.Keep, StencilOp.Keep, StencilOp.Replace);
+        _gl.StencilMask(write ? 0xFFu : 0u);
     }
 
     private unsafe void EnsurePresentSize(int w, int h, bool nearest)
@@ -1260,6 +1606,15 @@ public sealed class GlCore : IGpuBackend
         if (_progPresent24 != 0) _gl.DeleteProgram(_progPresent24);
         if (_presentTex != 0) _gl.DeleteTexture(_presentTex);
         if (_presentFbo != 0) _gl.DeleteFramebuffer(_presentFbo);
+        if (_depthPresentTex != 0) _gl.DeleteTexture(_depthPresentTex);
+        if (_depthPresentFbo != 0) _gl.DeleteFramebuffer(_depthPresentFbo);
+        if (_progPresentDepth != 0) _gl.DeleteProgram(_progPresentDepth);
+        if (_progPresentLayer != 0) _gl.DeleteProgram(_progPresentLayer);
+        if (_layerPresentTex != 0) _gl.DeleteTexture(_layerPresentTex);
+        if (_layerPresentFbo != 0) _gl.DeleteFramebuffer(_layerPresentFbo);
+        if (_materialPresentTex != 0) _gl.DeleteTexture(_materialPresentTex);
+        if (_materialPresentFbo != 0) _gl.DeleteFramebuffer(_materialPresentFbo);
+        if (_progPresentMaterial != 0) _gl.DeleteProgram(_progPresentMaterial);
         _postChain?.Dispose();
     }
 }

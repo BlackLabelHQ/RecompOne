@@ -30,6 +30,7 @@ public static class Runtime
     {
         Mode = mode;
         //devkit vs retail, devkits reads from sim and has more ram
+        //todo: remove devkit mode
     }
 
     public static uint RamSize { get; internal set; } = MemoryMap.RetailRamSize;
@@ -178,7 +179,6 @@ public static class Runtime
     
     public static void Run(Action boot)
     {
-        Pgxp.PgxpGpu.Init();
         Host.GpuJobs.Claim();
         
         var thread = new Thread(() => RunGame(boot))
@@ -243,7 +243,7 @@ public static class Runtime
         
         var interp = Interp.Interp.Backend;
         
-        if (interp == null || !interp.Acquire())
+        if (interp == null || !interp.Present(out var fresh))
         {
             IdleRedraw();
             Thread.Sleep(1);
@@ -251,34 +251,20 @@ public static class Runtime
         }
         
         _idleMark = 0.0;
-        HostWindow.AdvanceFrame();
-        
-        var frames = interp.BeginPresent();
+        if (fresh) HostWindow.AdvanceFrame();
         var pace = interp.PaceMs;
-        
-        for (var i = 0; i < frames; i++)
-        {
-            if (!interp.Affordable(i))
-            {
-                interp.ComposeEndpoint();
-                HostWindow.Compose(Gpu);
-                Host.GpuJobs.Drain();
-                break;
-            }
-            
-            interp.Compose(i);
-            Pace(pace);
-            HostWindow.Compose(Gpu);
-            Host.GpuJobs.Drain();
-        }
-        
-        if (frames == 0)
-        {
-            interp.Compose(0);
-        }
-        
+        Pace(pace > 0.0 && _swapMs < pace * 0.5 ? pace : 0.0);
+        var swap = _presentWatch.Elapsed.TotalMilliseconds;
+        HostWindow.Compose(Gpu);
+        Host.GpuJobs.Drain();
+        swap = _presentWatch.Elapsed.TotalMilliseconds - swap;
+        _swapMs = _swapMs > 0.0 ? _swapMs * 0.9 + swap * 0.1 : swap;
         interp.EndPresent();
     }
+    
+    private static double _swapMs;
+    
+    public static bool SwapBlocks => _swapMs > 0.0 && Interp.Interp.Backend is { PaceMs: > 0.0 } b && _swapMs >= b.PaceMs * 0.5;
     
     //the display frames only read as smooth if they land evenly in time, so the schedule is held against the clock instead of leaving it to the swap
     private static void Pace(double intervalMs)
@@ -312,6 +298,9 @@ public static class Runtime
         Interp.Interp.Backend?.Publish();
         
         Audio.Attach(Spu);
+        Hle.NativeGeometry.EndFrame();
+        Hle.PrimIdentity.EndFrame();
+        Gte.CloseFrame();
         FrameClock.MarkFrame();
         Sdk.LibCd.Tick();
         if (Cpu != null && Mem != null) Sdk.LibMcrd.Tick(Cpu, Mem);

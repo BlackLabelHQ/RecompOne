@@ -238,8 +238,12 @@ public sealed partial class Gpu
         switch (op)
         {
             case 0x05:
-                _dispVramX = (int)(p & 0x3FF);
-                _dispVramY = (int)((p >> 10) & 0x1FF);
+                var x = (int)(p & 0x3FF);
+                var y = (int)((p >> 10) & 0x1FF);
+                if (x == _dispVramX && y == _dispVramY) break;
+                _dispVramX = x;
+                _dispVramY = y;
+                Interp.Interp.Backend?.NoteSwap();
                 break;
             case 0x06:
                 _hRange1 = (int)(p & 0xFFF);

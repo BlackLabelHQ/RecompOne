@@ -26,6 +26,12 @@ public static class FontSet
     public const string Circle = "";
     public const string Puzzle = "";
     public const string Download = "";
+    public const string Pen = "\uf304";
+    public const string Plus = "\uf067";
+    public const string FileImport = "\uf56f";
+    public const string Grip = "\uf58e";
+    public const string Star = "\uf005";
+    public const string ExternalLink = "\uf35d";
     public const string Info = ""; //need to pull the rest later?
 
     private static readonly List<GCHandle> _pinned = [];

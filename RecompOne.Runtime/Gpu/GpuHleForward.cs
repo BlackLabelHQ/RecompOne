@@ -31,13 +31,14 @@ public sealed partial class Gpu
         {
             X = x,
             Y = y,
-            Z = invalidW || !(v.Native || Pgxp.Pgxp.TextureCorrection) ? 1f : v.Pw,
-            HasGteZ = !invalidW && (v.Native || Pgxp.Pgxp.TextureCorrection),
+            Z = invalidW ? 1f : v.Pw,
+            HasGteZ = !invalidW,
             Depth = v.Precise && v.PreciseW && v.Transform > 0 && float.IsFinite(v.Pw) && v.Pw > 0f ? v.Pw : 0f,
             R = (byte)v.R, G = (byte)v.G, B = (byte)v.B, U = (short)v.U, V = (short)v.V,
             Camera = v.Camera,
             Native = v.Native,
             IgnoreDepth = v.IgnoreDepth,
+            Prim = v.Prim,
             Transform = v.Transform
         };
     }
@@ -75,17 +76,14 @@ public sealed partial class Gpu
             PrimOf(tex, semi, raw, clut));
     }
 
-    private void HleLine(int x0, int y0, int r0, int g0, int b0, int x1, int y1, int r1, int g1, int b1, bool semi,
-        bool gouraud)
+    private void HleLine(in Vert a, in Vert b, bool semi, bool gouraud)
     {
-        if (Math.Abs(x1 - x0) > 1023 || Math.Abs(y1 - y0) > 511) return;
+        if (Math.Abs(b.X - a.X) > 1023 || Math.Abs(b.Y - a.Y) > 511) return;
 
         var be = GpuHle.Backend!;
         be.SetDrawEnv(CurEnv());
-        be.DrawLine(
-            new HleVertex { X = x0, Y = y0, R = (byte)r0, G = (byte)g0, B = (byte)b0 },
-            new HleVertex { X = x1, Y = y1, R = (byte)r1, G = (byte)g1, B = (byte)b1 },
-            PrimOf(false, semi, false, 0, gouraud));
+        var invalidW = !a.PreciseW || !b.PreciseW;
+        be.DrawLine(HV(a, invalidW), HV(b, invalidW), PrimOf(false, semi, false, 0, gouraud));
     }
 
     private void HleFill(int x, int y, int w, int h, ushort color)

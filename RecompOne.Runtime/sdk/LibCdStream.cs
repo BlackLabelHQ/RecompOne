@@ -76,6 +76,7 @@ public static class LibCdStream
             Monitor.PulseAll(_lock);
         }
 
+        LibCd.ClearStreamCallbacks();
         Log.Sdk("StUnSetRing");
     }
 

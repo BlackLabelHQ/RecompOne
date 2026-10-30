@@ -132,7 +132,22 @@ public sealed class Spu
         public int VolCycL, VolCycR;
 
         public readonly short[] Buf = new short[31];
+
+        public short[]? Pcm;
+        public int PcmLen;
+        public int PcmLoopStart;
+        public bool PcmLoopFixed;
+        public bool? PcmLoop;
+        public bool PcmPitchFollow;
+        public int PcmGain;
+        public long PcmPos;
+        public long PcmRatio;
+        public long PcmFixedStep;
+        public double PcmScale;
+        public uint PcmStart;
     }
+
+    private readonly Dictionary<uint, (ulong Hash, int Bytes, bool Loops)> _samples = [];
 
     private readonly Voice[] _v = new Voice[24];
     private readonly object _sync = new();
@@ -495,6 +510,7 @@ public sealed class Spu
                 v.HasBlock = false;
                 v.EndX = false;
                 _endx &= ~bit;
+                Bind(v, i);
             }
             else if ((_koffPending & bit) != 0)
             {
@@ -505,6 +521,88 @@ public sealed class Spu
 
         _konPending = 0;
         _koffPending = 0;
+    }
+
+    private void Bind(Voice v, int index)
+    {
+        v.Pcm = null;
+
+        var registry = Assets.Sfx.SampleRegistry.Enabled;
+        var manager = Assets.AssetReplacerManager.Instance;
+        if (!registry && !manager.HasSfx) return;
+
+        var start = (uint)v.StartAddr << 3;
+        if (!_samples.TryGetValue(start, out var sample))
+        {
+            var bytes = Assets.Sfx.SpuAdpcm.Measure(Ram, start, out var loops);
+            if (bytes == 0) return;
+            sample = (Assets.Sfx.SpuAdpcm.Hash(Ram, start, bytes), bytes, loops);
+            if (_samples.Count >= 4096) _samples.Clear();
+            _samples[start] = sample;
+        }
+
+        if (registry) Assets.Sfx.SampleRegistry.Note(sample.Hash, Ram, start, sample.Bytes, sample.Loops, v.Pitch);
+
+        var modulator = index < 23 && ((uint)(_pmon | (_pmonHi << 16)) & (1u << (index + 1))) != 0;
+        if (modulator) return;
+
+        var asset = manager.ResolveSfx(sample.Hash);
+        if (asset == null) return;
+        var prepared = Assets.Sfx.SfxCache.TryGet(asset);
+        if (prepared == null || prepared.Mono.Length == 0) return;
+
+        var original = sample.Bytes / 16 * 28;
+        var ratio = prepared.BaseRate > 0
+            ? prepared.Rate / (double)prepared.BaseRate
+            : original > 0 ? prepared.Mono.Length / (double)original : 1.0;
+
+        v.Pcm = prepared.Mono;
+        v.PcmLen = prepared.Mono.Length;
+        v.PcmLoop = prepared.Loop;
+        v.PcmLoopStart = 0;
+        v.PcmLoopFixed = false;
+        v.PcmPitchFollow = prepared.PitchFollow;
+        v.PcmGain = prepared.GainQ15;
+        v.PcmPos = 0;
+        v.PcmScale = ratio;
+        v.PcmRatio = (long)(ratio * 4294967296.0) >> 12;
+        v.PcmFixedStep = (long)(prepared.Rate / 44100.0 * 4294967296.0);
+        v.PcmStart = start;
+        manager.Stats.SfxHits++;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int PcmSample(Voice v)
+    {
+        var pcm = v.Pcm!;
+        var idx = (int)(v.PcmPos >> 32);
+        if (idx >= v.PcmLen) return 0;
+
+        var frac = (int)((v.PcmPos >> 17) & 0x7FFF);
+        int s0 = pcm[idx];
+        int s1 = idx + 1 < v.PcmLen ? pcm[idx + 1] : s0;
+        var s = s0 + (((s1 - s0) * frac) >> 15);
+        s = (int)(((long)s * v.PcmGain) >> 15);
+        return Math.Clamp(s, -32768, 32767);
+    }
+
+    private static void PcmWrapped(Voice v, bool adpcmLoops)
+    {
+        var loops = v.PcmLoop ?? adpcmLoops;
+        if (!loops)
+        {
+            v.PcmPos = (long)v.PcmLen << 32;
+            return;
+        }
+
+        if (!v.PcmLoopFixed)
+        {
+            var offset = (long)((uint)v.RepeatAddr << 3) - v.PcmStart;
+            v.PcmLoopStart = offset <= 0 ? 0 : (int)Math.Min(offset / 16 * 28 * v.PcmScale, v.PcmLen - 1);
+            v.PcmLoopFixed = true;
+        }
+
+        v.PcmPos = (long)v.PcmLoopStart << 32;
     }
 
     public uint TransferAddrBytes()
@@ -565,6 +663,17 @@ public sealed class Spu
         {
             for (var i = 0; i < data.Length; i++)
                 Ram[(spuByteAddr + (uint)i) & (RamSize - 1)] = data[i];
+
+            if (_samples.Count == 0 || data.Length == 0) return;
+            var start = spuByteAddr & (RamSize - 1);
+            var end = start + (uint)data.Length;
+            List<uint>? stale = null;
+            foreach (var (addr, sample) in _samples)
+                if (addr < end && addr + (uint)sample.Bytes > start)
+                    (stale ??= []).Add(addr);
+            if (stale != null)
+                foreach (var addr in stale)
+                    _samples.Remove(addr);
         }
     }
 
@@ -665,6 +774,7 @@ public sealed class Spu
             var v = _v[i];
             if (v.Phase == AdsrPhase.Off)
             {
+                v.Pcm = null;
                 prevOutx = 0;
                 continue;
             }
@@ -684,6 +794,10 @@ public sealed class Spu
             if ((nonMask & (1u << i)) != 0)
             {
                 sample = (short)_noiseLevel;
+            }
+            else if (v.Pcm != null)
+            {
+                sample = PcmSample(v);
             }
             else
             {
@@ -707,6 +821,7 @@ public sealed class Spu
             if (step > 0x3FFF) step = 0x4000;
 
             v.PitchCounter += (uint)step;
+            if (v.Pcm != null) v.PcmPos += v.PcmPitchFollow ? v.PcmRatio * step : v.PcmFixedStep;
             if (v.PitchCounter >> 12 >= 28)
             {
                 v.PitchCounter -= 28u << 12;
@@ -805,6 +920,7 @@ public sealed class Spu
             v.EndX = true;
             _endx |= 1u << index;
             v.CurAddr = (uint)v.RepeatAddr << 3;
+            if (v.Pcm != null) PcmWrapped(v, (flags & 2) != 0);
 
             if ((flags & 2) == 0)
             {

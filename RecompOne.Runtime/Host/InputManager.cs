@@ -345,20 +345,16 @@ internal static unsafe class InputManager
         {
             var bind = Settings.System.Input[0].Gamepad;
             Controller.State = PadState(_pad0, bind, Controller.State);
-            Controller.LeftX = Axis(_pad0, bind.LeftStickX);
-            Controller.LeftY = Axis(_pad0, bind.LeftStickY);
-            Controller.RightX = Axis(_pad0, bind.RightStickX);
-            Controller.RightY = Axis(_pad0, bind.RightStickY);
+            (Controller.LeftX, Controller.LeftY) = Stick(_pad0, bind.LeftStickX, bind.LeftStickY);
+            (Controller.RightX, Controller.RightY) = Stick(_pad0, bind.RightStickX, bind.RightStickY);
         }
 
         if (_pad1 != null)
         {
             var bind = Settings.System.Input[1].Gamepad;
             Controller.State2 = PadState(_pad1, bind, Controller.State2);
-            Controller.LeftX2 = Axis(_pad1, bind.LeftStickX);
-            Controller.LeftY2 = Axis(_pad1, bind.LeftStickY);
-            Controller.RightX2 = Axis(_pad1, bind.RightStickX);
-            Controller.RightY2 = Axis(_pad1, bind.RightStickY);
+            (Controller.LeftX2, Controller.LeftY2) = Stick(_pad1, bind.LeftStickX, bind.LeftStickY);
+            (Controller.RightX2, Controller.RightY2) = Stick(_pad1, bind.RightStickX, bind.RightStickY);
         }
         else
         {
@@ -366,10 +362,22 @@ internal static unsafe class InputManager
         }
     }
 
-    private static byte Axis(GameController* ctrl, int index)
+    private static float Axis(GameController* ctrl, int index)
     {
-        if (_sdl == null || index < 0) return 0x80;
-        return AxisToByte(_sdl.GameControllerGetAxis(ctrl, (GameControllerAxis)index));
+        if (_sdl == null || index < 0) return 0f;
+        return Math.Clamp(_sdl.GameControllerGetAxis(ctrl, (GameControllerAxis)index) / 32767f, -1f, 1f);
+    }
+
+    private static (byte X, byte Y) Stick(GameController* ctrl, int xIndex, int yIndex)
+    {
+        var x = Axis(ctrl, xIndex);
+        var y = Axis(ctrl, yIndex);
+        var magnitude = MathF.Sqrt(x * x + y * y);
+        if (magnitude < 1e-4f) return (0x80, 0x80);
+
+        var extent = MathF.Max(MathF.Abs(x), MathF.Abs(y));
+        var scale = MathF.Min(magnitude, 1f) / extent;
+        return (AxisToByte(x * scale), AxisToByte(y * scale));
     }
 
     private static ushort PadState(GameController* ctrl, GamepadBindings pad, ushort s)
@@ -418,9 +426,9 @@ internal static unsafe class InputManager
         return _sdl.GameControllerGetButton(ctrl, (GameControllerButton)binding) != 0;
     }
 
-    private static byte AxisToByte(short axis)
+    private static byte AxisToByte(float value)
     {
-        var f = Math.Clamp(axis * 1.3f / 32768.0f, -1.0f, 1.0f);
+        var f = Math.Clamp(value, -1.0f, 1.0f);
         return (byte)Math.Clamp((int)MathF.Round((f + 1.0f) * 127.5f), 0, 255);
     }
 

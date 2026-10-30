@@ -59,7 +59,7 @@ internal sealed class InputPage
 
         if (_gamepadMode && !InputManager.IsPadConnected(_padIndex))
         {
-            ImGuiEx.TextColored(new Vector4(1f, 0.75f, 0.3f, 1f), Localization.T("settings.input.no_gamepad"));
+            ImGuiUtils.TextColored(new Vector4(1f, 0.75f, 0.3f, 1f), Localization.T("settings.input.no_gamepad"));
             ImGui.Spacing();
         }
 
@@ -96,7 +96,7 @@ internal sealed class InputPage
     private void DrawStickAxes()
     {
         var pad = Port.Gamepad;
-        ImGuiEx.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f), Localization.T("settings.input.sticks"));
+        ImGuiUtils.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f), Localization.T("settings.input.sticks"));
 
         foreach (var (label, get, set) in _axisRows)
         {
@@ -138,7 +138,7 @@ internal sealed class InputPage
         }
 
         ImGui.SameLine();
-        ImGuiEx.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f),
+        ImGuiUtils.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f),
             Localization.T(index == 1 ? "settings.input.kind.analog.hint" : "settings.input.kind.digital.hint"));
     }
 

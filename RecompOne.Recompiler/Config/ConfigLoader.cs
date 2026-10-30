@@ -30,7 +30,6 @@ public sealed class RecompOneConfig
         set;
     } //linear sweep is to find functions when the elf doesnt ptovide then properly (fuck you sh) this can and WILL get some data as code, use it by your own risk
 
-    [JsonPropertyName("pgxp")] public bool Pgxp { get; set; } //temporario enquanto penso se mantenho ou remove bruh bruh bruh
     [JsonPropertyName("debug")] public bool Debug { get; set; }
     [JsonPropertyName("addressComments")] public bool AddressComments { get; set; }
     [JsonPropertyName("disasmComments")] public bool DisasmComments { get; set; }

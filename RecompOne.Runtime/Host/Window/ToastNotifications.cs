@@ -75,8 +75,8 @@ public static class ToastNotifications
         }
 
         var origin = ImGui.GetWindowPos();
-        var areaMin = origin + ImGui.GetWindowContentRegionMin();
-        var areaMax = origin + ImGui.GetWindowContentRegionMax();
+        var areaMin = origin + ImGui.GetCursorStartPos();
+        var areaMax = origin + ImGui.GetWindowSize() - ImGui.GetStyle().WindowPadding;
         if (areaMax.X - areaMin.X < 1f || areaMax.Y - areaMin.Y < 1f) return;
 
         var style = ImGui.GetStyle();

@@ -17,10 +17,12 @@ public sealed class AssetPack : IDisposable
 
     public PackManifest Manifest { get; }
     public string Path => _root;
+    public bool IsZip => _isZip;
+    public bool Editable => !_isZip && Directory.Exists(_root);
+    public byte[]? Icon { get; private set; }
     public string Id => Manifest.Id;
     public string DisplayName => string.IsNullOrWhiteSpace(Manifest.Name) ? Manifest.Id : Manifest.Name!;
     public bool Enabled { get; set; } = true;
-    public string? LoadError { get; internal set; }
 
     private AssetPack(string root, bool isZip, PackManifest manifest)
     {
@@ -63,7 +65,9 @@ public sealed class AssetPack : IDisposable
                 return null;
             }
 
-            return new AssetPack(path, isZip, manifest);
+            var pack = new AssetPack(path, isZip, manifest);
+            pack.Icon = pack.ReadAsset(string.IsNullOrWhiteSpace(manifest.Preview) ? "pack-icon.png" : manifest.Preview!);
+            return pack;
         }
         catch (Exception ex)
         {
@@ -156,20 +160,8 @@ public sealed class AssetPack : IDisposable
 
         if (!Directory.Exists(full)) yield break;
 
-        foreach (var file in Directory.EnumerateFiles(full))
-            yield return prefix + System.IO.Path.GetFileName(file);
-    }
-
-    public bool TargetsGame(string gameId)
-    {
-        var g = Manifest.Game;
-        if (g == null) return true;
-        var ids = g.All().ToArray();
-        if (ids.Length == 0) return true;
-        foreach (var id in ids)
-            if (id.Equals(gameId, StringComparison.OrdinalIgnoreCase))
-                return true;
-        return !g.Strict;
+        foreach (var file in Directory.EnumerateFiles(full, "*", SearchOption.AllDirectories))
+            yield return prefix + System.IO.Path.GetRelativePath(full, file).Replace('\\', '/');
     }
 
     public void Dispose()

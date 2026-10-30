@@ -13,6 +13,8 @@ public sealed class SeenTexture
     public long LastSeen;
     public byte[] Thumb = [];
     public uint GlTex;
+    public string? Group;
+    public bool Evicted;
 }
 
 public static class TextureRegistry
@@ -23,6 +25,7 @@ public static class TextureRegistry
     private static readonly HashSet<ulong> _everSeen = [];
     private static readonly HashSet<ulong> _everSeenArt = [];
     private static readonly object _gate = new();
+    private static readonly HashSet<object> _collectors = [];
     private static long _clock;
 
     public static int UniqueKeys
@@ -49,6 +52,19 @@ public static class TextureRegistry
 
     public static bool Enabled { get; set; }
 
+    public static int Version => Volatile.Read(ref _version);
+    private static int _version;
+
+    public static void Collect(object owner, bool on)
+    {
+        lock (_collectors)
+        {
+            if (on) _collectors.Add(owner);
+            else _collectors.Remove(owner);
+            Enabled = _collectors.Count > 0;
+        }
+    }
+
     public static int Count
     {
         get
@@ -65,18 +81,22 @@ public static class TextureRegistry
         lock (_gate)
         {
             foreach (var entry in _seen.Values)
-                if (entry.GlTex != 0)
-                    _orphanTextures.Add(entry.GlTex);
+            {
+                entry.Evicted = true;
+                if (entry.GlTex != 0) _orphanTextures.Add(entry.GlTex);
+            }
             _seen.Clear();
             _everSeen.Clear();
             _everSeenArt.Clear();
+            _version++;
         }
     }
 
-    public static void Note(ushort[] vram, in TileRect rect, ulong indexHash, ulong clutHash,
-        int tpage, int clut, bool replaced, bool isPage = false, bool dynamic = false)
+    public static SeenTexture? Note(ushort[] vram, in TileRect rect, ulong indexHash, ulong clutHash,
+        int tpage, int clut, bool replaced, bool isPage = false, bool dynamic = false, ushort[]? window = null,
+        string? group = null)
     {
-        if (!Enabled) return;
+        if (!Enabled) return null;
 
         var id = indexHash ^ (clutHash * 1099511628211UL) ^ (isPage ? 0x5BF03635UL : 0);
         lock (_gate)
@@ -84,9 +104,9 @@ public static class TextureRegistry
             if (_seen.TryGetValue(id, out var known))
             {
                 known.Hits++;
-                known.LastSeen = ++_clock;
+                known.LastSeen = Interlocked.Increment(ref _clock);
                 known.Replaced = replaced;
-                return;
+                return known;
             }
 
             if (_seen.Count >= MaxEntries) Evict();
@@ -107,17 +127,29 @@ public static class TextureRegistry
             Dynamic = dynamic,
             Replaced = replaced,
             Hits = 1,
-            Thumb = TextureTile.Decode(vram, rect)
+            Group = group,
+            Thumb = window != null
+                ? TextureTile.DecodeFrom(window, TextureTile.CopyClut(vram, rect), rect)
+                : TextureTile.Decode(vram, rect)
         };
 
         lock (_gate)
         {
-            entry.FirstSeen = ++_clock;
+            entry.FirstSeen = Interlocked.Increment(ref _clock);
             entry.LastSeen = entry.FirstSeen;
-            _seen.TryAdd(id, entry);
+            if (!_seen.TryAdd(id, entry)) return _seen[id];
+            _version++;
             _everSeen.Add(id);
             _everSeenArt.Add(indexHash);
         }
+
+        return entry;
+    }
+
+    public static void Touch(SeenTexture entry)
+    {
+        if (!Enabled) return;
+        entry.LastSeen = Interlocked.Increment(ref _clock);
     }
 
     public static SeenTexture[] Snapshot()
@@ -136,9 +168,12 @@ public static class TextureRegistry
         var oldest = _seen.OrderBy(p => p.Value.LastSeen).Take(drop).ToArray();
         foreach (var (id, entry) in oldest)
         {
+            entry.Evicted = true;
             if (entry.GlTex != 0) _orphanTextures.Add(entry.GlTex);
             _seen.Remove(id);
         }
+
+        _version++;
     }
 
     public static uint[] TakeOrphanTextures()

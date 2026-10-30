@@ -10,13 +10,24 @@ public sealed class PackManifest
     public string? Description { get; set; }
     public string? Preview { get; set; }
     public int Priority { get; set; }
-    public PackGame? Game { get; set; }
     public PackDefaults? Defaults { get; set; }
     public List<XaEntryDto>? Xa { get; set; }
     public XaOptionsDto? XaOptions { get; set; }
     public List<TextureEntryDto>? Textures { get; set; }
     public List<ClutEntryDto>? Cluts { get; set; }
     public List<TextureRuleDto>? TextureRules { get; set; }
+    public List<SfxEntryDto>? Sfx { get; set; }
+}
+
+public sealed class SfxEntryDto
+{
+    public string? Hash { get; set; }
+    public string? File { get; set; }
+    public float? Gain { get; set; }
+    public bool? PitchFollow { get; set; }
+    public int? BaseRate { get; set; }
+    public bool? Loop { get; set; }
+    public string? Note { get; set; }
 }
 
 public sealed class TextureRuleDto
@@ -47,22 +58,6 @@ public sealed class ClutEntryDto
     public string? Hash { get; set; }
     public string? File { get; set; }
     public string? Note { get; set; }
-}
-
-public sealed class PackGame
-{
-    public string? Id { get; set; }
-    public List<string>? Ids { get; set; }
-    public bool Strict { get; set; } = true;
-
-    public IEnumerable<string> All()
-    {
-        if (!string.IsNullOrWhiteSpace(Id)) yield return Id.Trim();
-        if (Ids == null) yield break;
-        foreach (var s in Ids)
-            if (!string.IsNullOrWhiteSpace(s))
-                yield return s.Trim();
-    }
 }
 
 public sealed class PackDefaults

@@ -21,11 +21,13 @@ public static class Interp
 
     internal static InterpBackend? Backend { get; set; }
 
+    public static double PresentAt { get; set; } = double.NaN;
+
     public static int TargetFps { get; private set; }
 
     public static bool Requested => TargetFps != Native;
 
-    public static bool Available => Hle.NativeGeometry.Enabled || (Pgxp.Pgxp.Enabled && Pgxp.Pgxp.MemoryTracking);
+    public static bool Available => Hle.NativeGeometry.Enabled;
 
     public static bool Enabled => Requested && Available;
 

@@ -123,7 +123,8 @@ public sealed partial class Gpu
                 Vram[py * VramWidth + px] = color;
             }
 
-        Assets.Textures.VramTracker.MarkCpuWrite(x, y, w, h);
+        Assets.Textures.VramTracker.MarkFill(x, y, w, h);
+        Assets.Textures.TextureSources.OnClear(x, y, w, h);
 
         if (HleOn) HleFill(x, y, w, h, color);
     }
@@ -147,7 +148,8 @@ public sealed partial class Gpu
             Vram[d] = px;
         }
 
-        Assets.Textures.VramTracker.MarkCpuWrite(dx, dy, w, h);
+        Assets.Textures.VramTracker.MarkUpload(dx, dy, w, h);
+        Assets.Textures.TextureSources.OnUpload(Vram, dx, dy, w, h);
 
         if (HleOn) HleCopy(sx, sy, dx, dy, w, h);
     }
@@ -185,7 +187,8 @@ public sealed partial class Gpu
         if (++_loadPx >= _loadW * _loadH)
         {
             _loadImage = false;
-            Assets.Textures.VramTracker.MarkCpuWrite(_loadX, _loadY, _loadW, _loadH);
+            Assets.Textures.VramTracker.MarkUpload(_loadX, _loadY, _loadW, _loadH);
+            Assets.Textures.TextureSources.OnUpload(Vram, _loadX, _loadY, _loadW, _loadH);
             HleLoadFlush();
         }
     }

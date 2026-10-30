@@ -3,7 +3,6 @@ using ImGuiNET;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.OpenGL;
-using Silk.NET.OpenGL.Extensions.ImGui;
 using Silk.NET.Windowing;
 using RecompOne.Runtime.Config;
 using RecompOne.Runtime.Hardware;
@@ -111,7 +110,6 @@ public static class HostWindow
     {
         Settings.EnsureLoaded();
         InterfaceLayout.Load();
-        Pgxp.Pgxp.Load();
         Interp.Interp.Load();
 
         foreach (var api in ApiChain())
@@ -480,6 +478,7 @@ public static class HostWindow
         _ramTex = CreateTexture(_gl);
 
         Hle.GlVram.Scale = DisplayOptions.RenderScale;
+        Hle.GlVram.TrueColor = DisplayOptions.TrueColor;
         _glBackend = (Hle.GlCore)Hle.GpuBackendFactory.Create(_gl,
             Hle.GpuBackendFactory.Parse(DisplayOptions.Backend));
         _glBackend.InitGl();
@@ -487,7 +486,8 @@ public static class HostWindow
         Hle.GpuHle.Backend = new Interp.InterpBackend(_glBackend);
         ApplySwapInterval();
 
-        _imgui = new ImGuiController(_gl, _window, input, null, ConfigureImGui);
+        _imgui = new ImGuiController(_gl, _window, input, ConfigureImGui);
+        Interp.InterpOptions.TargetFps.Changed += _ => ApplySwapInterval();
 
         PanelManager.Register(new OutputPanel());
         PanelManager.Register(new VramViewerPanel());
@@ -497,11 +497,17 @@ public static class HostWindow
         PanelManager.Register(new MemoryEditorPanel());
         PanelManager.Register(new SpuViewerPanel());
         PanelManager.Register(new CdDebugPanel());
+        PanelManager.Register(new InterpDebugPanel());
         PanelManager.Register(new ConsolePanel());
         PanelManager.Register(new OverlayEventsPanel());
+        PanelManager.Register(new AssetPackEditor());
 
         PopupManager.Register(new SettingsPopup());
         PopupManager.Register(new ModsPopup());
+        PopupManager.Register(new ModHubPopup());
+        PopupManager.Register(new AssetPacksPopup());
+        PopupManager.Register(new NewPackPopup());
+        PopupManager.Register(new ConfirmPopup());
         PopupManager.Register(new ModLoadingPopup());
         PopupManager.Register(new NoticePopup());
         PopupManager.Register(new CrashPopup());
@@ -578,11 +584,13 @@ public static class HostWindow
             Console.WriteLine($"[Host] monitor refresh: {refresh} hz");
         }
         
-        var interval = Interp.Interp.VSync ? -1 : 0;
-        if (!SetSwapInterval(interval)) interval = SetSwapInterval(1) ? 1 : 0;
+        var target = Features.FrameInterpolation ? Interp.InterpOptions.TargetFps.Value : 0;
+        var divisor = target > 0 && refresh > target && refresh % target == 0 ? refresh / target : 1;
+        var interval = Interp.Interp.VSync ? -divisor : 0;
+        if (!SetSwapInterval(interval)) interval = SetSwapInterval(divisor) ? divisor : 0;
         
         Console.WriteLine($"[Host] swap interval: {interval}" +
-                          (interval == -1 ? " (adaptive)" : ""));
+                          (interval < 0 ? " (adaptive)" : ""));
     }
     
     private static bool SetSwapInterval(int interval)
@@ -633,6 +641,7 @@ public static class HostWindow
 
         Runtime.RamLog.Tick();
         Settings.SaveIfDue();
+        Assets.AssetReplacerManager.Instance.Pump();
         Memory.RamLogger.TrackReads =
             PanelManager.Get<RamMapPanel>()?.IsOpen == true ||
             PanelManager.Get<MemoryEditorPanel>()?.IsOpen == true;
@@ -641,13 +650,25 @@ public static class HostWindow
         var gpu = _gpu;
         if (gpu != null)
         {
-            if (Hle.GpuHle.Active && _glBackend is { Ready: true } && gpu.DisplayEnabled)
+            var display = new Interp.DisplayState(gpu.DisplayX, gpu.DisplayY, gpu.DisplayWidth, gpu.DisplayHeight,
+                gpu.Display24Bit, gpu.DisplayEnabled);
+            var backend = Interp.Interp.Backend;
+            var recorded = default(Interp.DisplayState);
+            var shown = backend != null && backend.TryShownDisplay(out recorded) &&
+                        (recorded.Width != display.Width || recorded.Height != display.Height ||
+                         recorded.Rgb24 != display.Rgb24 || recorded.Enabled != display.Enabled);
+            if (shown) display = recorded;
+
+            if (Hle.GpuHle.Active && _glBackend is { Ready: true } && display.Enabled)
             {
                 var wf = _window!.FramebufferSize;
+                var dispX = display.X;
+                var dispY = display.Y;
+                if (!shown) backend?.MapDisplay(ref dispX, ref dispY, display.Width, display.Height);
                 var (tex, tw, th, aspect) = _glBackend.PresentDisplay(
-                    gpu.DisplayX, gpu.DisplayY,
-                    gpu.DisplayWidth, gpu.DisplayHeight,
-                    gpu.Display24Bit,
+                    dispX, dispY,
+                    display.Width, display.Height,
+                    display.Rgb24,
                     OutputPanel.ViewWidth, OutputPanel.ViewHeight);
                 if (tex != 0) OutputPanel.SetTexture(tex, tw, th, aspect);
                 gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);

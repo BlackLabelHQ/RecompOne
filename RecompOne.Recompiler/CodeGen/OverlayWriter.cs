@@ -272,7 +272,7 @@ public static class OverlayWriter
         foreach (var result in overlayResults)
         {
             Console.WriteLine($"[Recompiler] emiting {result.Name}.cs ({result.Functions.Count} functions)");
-            EmitOverlayFile(result.Name, overlayParts[result.Name], knownFuncs, config.Debug, config.Pgxp,
+            EmitOverlayFile(result.Name, overlayParts[result.Name], knownFuncs, config.Debug,
                 config.AddressComments, config.DisasmComments, result.LbaStart, result.Base, result.Size,
                 result.Instructions, outDir,
                 SymbolRelocator.Plan(result.Functions, config.Relocations, result.Name));
@@ -323,7 +323,7 @@ public static class OverlayWriter
     private sealed record OverlayPart(string Class, List<MipsFunction> Functions);
 
     private static void EmitOverlayFile(string overlayName, List<OverlayPart> parts,
-        Dictionary<uint, string> knownFuncs, bool debug, bool pgxp, bool addressComments,
+        Dictionary<uint, string> knownFuncs, bool debug, bool addressComments,
         bool disasmComments, int lbaStart, uint ovlBase, uint ovlSize, MipsInstruction[] instrs, string outDir,
         Dictionary<uint, uint> relocations)
     {
@@ -357,7 +357,7 @@ public static class OverlayWriter
                     Labels = labels,
                     BackEdges = backEdges,
                     Debug = debug,
-                    Pgxp = pgxp,
+                    Precise = func.Precise,
                     AddressComments = addressComments,
                     DisasmComments = disasmComments,
                     JumpTablesByJr = func.JumpTables.ToDictionary(j => j.JrVram),
@@ -503,6 +503,9 @@ public static class OverlayWriter
                     case "post":
                         if (!func.PostHookTargets.Contains(patch.Target))
                             func.PostHookTargets.Add(patch.Target);
+                        break;
+                    case "precise":
+                        func.Precise = true;
                         break;
                     default:
                         if (func.IsPatch && !string.Equals(func.PatchTarget, patch.Target, StringComparison.Ordinal))

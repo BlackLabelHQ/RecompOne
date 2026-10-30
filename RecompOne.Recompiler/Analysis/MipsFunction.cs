@@ -12,6 +12,7 @@ public sealed class MipsFunction
     public string EmittedName = "";
     public bool IsStub;
     public bool IsPatch;
+    public bool Precise;
     public string PatchTarget = "";
     public List<string> PreHookTargets = [];
     public List<string> PostHookTargets = [];

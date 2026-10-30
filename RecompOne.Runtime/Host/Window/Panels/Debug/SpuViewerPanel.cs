@@ -26,6 +26,14 @@ internal sealed class SpuViewerPanel : IPanel
         }
 
         var spu = Runtime.Spu;
+        if (spu == null)
+        {
+            ImGui.TextDisabled("SPU not running");
+            IsOpen = open;
+            ImGui.End();
+            return;
+        }
+
         spu.CaptureDebug(_voices, out var st);
 
         DrawGlobals(st);

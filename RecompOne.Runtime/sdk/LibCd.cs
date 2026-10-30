@@ -680,10 +680,13 @@ public static class LibCd
     private static double _xaCredit;
     private const double XaBurst = 16.0;
 
-    private static void StartXaPacer()
+    private const double SeekMs = 120.0;
+    private static bool _seekPending;
+
+    private static void StartXaPacer(bool seek = false)
     {
         _xaLastMs = _xaClock.Elapsed.TotalMilliseconds;
-        _xaCredit = XaBurst;
+        _xaCredit = seek ? -SeekMs * SectorsPerSecond / 1000.0 : XaBurst;
     }
 
     private static void PumpXa()
@@ -985,6 +988,12 @@ public static class LibCd
         if (c.A0 != 0) _readyOnlyRead = false;
     }
 
+    internal static void ClearStreamCallbacks()
+    {
+        _cbData = 0;
+        _cbReady = 0;
+    }
+
     public static void CdStatus(CpuContext c, IMemory m)
     {
         PumpReady(1);
@@ -1106,6 +1115,7 @@ public static class LibCd
                         for (var i = 0; i < 4; i++) _pos[i] = m.ReadU8(param + (uint)i);
                     }
 
+                _seekPending = true;
                 _readActive = false;
                 _readyOnlyRead = false;
                 lock (_dataIrqQueue)
@@ -1140,7 +1150,8 @@ public static class LibCd
                 _readyOnlyRead = _cbData == 0;
                 _xaActive = true;
                 _xaFirstSector = true;
-                StartXaPacer();
+                StartXaPacer(_seekPending);
+                _seekPending = false;
                 WakeXa();
 
                 _status = (byte)(StatMotor | StatRead);
@@ -1178,6 +1189,12 @@ public static class LibCd
                 _xaFirstSector = true;
                 _readActive = (_mode & 0x40) == 0;
                 _readyOnlyRead = _cbData == 0;
+                lock (_streamGate)
+                {
+                    StartXaPacer(_seekPending);
+                }
+
+                _seekPending = false;
                 LibCdStream.OnReadStream(CurrentLba);
                 EnsureXaThread();
                 break;
@@ -1263,7 +1280,7 @@ public static class LibCd
                 }
 
                 _cddaPlaying = false;
-                XaAudio.Reset();
+                if (com != Pause) XaAudio.Reset();
                 LibCdStream.OnStopStream();
                 _readActive = false;
                 _readyOnlyRead = false;

@@ -344,6 +344,14 @@
       "zh-CN": "SCP查看器",
       "fr-FR": "Visualisation du SPU"
     },
+    "panel.interp_debug": {
+      "en": "Interpolation",
+      "pt-BR": "Interpolação",
+      "es-419": "Interpolación",
+      "ja-JP": "補間",
+      "zh-CN": "插帧",
+      "fr-FR": "Interpolation"
+    },
     "panel.cd_debug": {
       "en": "CD Debug",
       "pt-BR": "Depuração do CD",
@@ -690,6 +698,22 @@
       "zh-CN": "内部分辨率的倍率。1x为原作PSX版本来的输出比率。",
       "fr-FR": "Multiplie la résolution interne. 1x étant la résolution d'origine de la PSX"
     },
+    "settings.display.true_color": {
+      "en": "True color (24-bit)",
+      "pt-BR": "Cor real (24 bits)"
+    },
+    "settings.display.true_color_hint": {
+      "en": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart.",
+      "pt-BR": "Renderiza com 8 bits por canal em vez da cor de 15 bits do PSX, removendo o banding. Vale após reiniciar."
+    },
+    "settings.display.dithering": {
+      "en": "Apply dithering",
+      "pt-BR": "Aplicar dithering"
+    },
+    "settings.display.dithering_hint": {
+      "en": "Uses the PSX dither pattern to smooth gradients. Not needed with true color.",
+      "pt-BR": "Usa o padrão de dithering do PSX para suavizar gradientes. Não é necessário com cor real."
+    },
     "settings.display.render_scale_lines": {
       "en": "{1} lines in the current context, {3} after scale ({4}x)",
       "pt-BR": "{1} linhas no contexto atual, {3} após a escala ({4}x)",
@@ -746,157 +770,13 @@
       "zh-CN": "显示刷新率。超过原作游戏原生帧率的部分通过插值生成。",
       "fr-FR": "Framerate du jeu. Aller au delà de celui d'origine utilise l'interpolation. "
     },
-    "settings.display.frame_rate_needs_pgxp": {
-      "en": "Needs PGXP memory tracking.",
-      "pt-BR": "Precisa do rastreio de memória do PGXP.",
-      "es-419": "Necesita el rastreo de memoria de PGXP.",
-      "ja-JP": "Needs PGXP memory tracking.",
-      "zh-CN": "需要 PGXP 内存追踪。",
-      "fr-FR": "Besoin du PGXP memory tracking."
-    },
-    "settings.display.pgxp": {
-      "en": "Geometry precision (PGXP)",
-      "pt-BR": "Precisão de geometria (PGXP)",
-      "es-419": "Precisión de geometría (PGXP)",
-      "ja-JP": "Geometry precision (PGXP)",
-      "zh-CN": "几何精度 (PGXP)",
-      "fr-FR": "Geometrie précise (PGXP)"
-    },
-    "settings.display.pgxp_enable": {
-      "en": "Enable PGXP",
-      "pt-BR": "Ativar PGXP",
-      "es-419": "Activar PGXP",
-      "ja-JP": "Enable PGXP",
-      "zh-CN": "启用 PGXP",
-      "fr-FR": "Activer PGXP"
-    },
-    "settings.display.pgxp_enable_hint": {
-      "en": "Recomputes the geometry transform in floating point, removing vertex jitter.",
-      "pt-BR": "Recalcula a transformação de geometria em ponto flutuante, removendo o tremor dos vértices.",
-      "es-419": "Recalcula la transformación de geometría en punto flotante, eliminando el temblor de los vértices.",
-      "ja-JP": "Recomputes the geometry transform in floating point, removing vertex jitter.",
-      "zh-CN": "以浮点精度重新计算几何变换，从而消除顶点抖动。",
-      "fr-FR": "Recalcule la géométrie du jeu en virgule flottante, supprimant le vertex jitter."
-    },
-    "settings.display.pgxp_culling": {
-      "en": "Culling correction",
-      "pt-BR": "Correção de culling",
-      "es-419": "Corrección de culling",
-      "ja-JP": "Culling correction",
-      "zh-CN": "剔除修正",
-      "fr-FR": "Correction du Culling"
-    },
-    "settings.display.pgxp_culling_hint": {
-      "en": "Uses the precise coordinates for backface culling, so thin triangles stop disappearing. May hang games that rely on the original result.",
-      "pt-BR": "Usa as coordenadas precisas no culling, então triângulos finos param de sumir. Pode travar jogos que dependem do resultado original.",
-      "es-419": "Usa las coordenadas precisas en el culling, así los triángulos finos dejan de desaparecer. Puede colgar juegos que dependan del resultado original.",
-      "ja-JP": "Uses the precise coordinates for backface culling, so thin triangles stop disappearing. May hang games that rely on the original result.",
-      "zh-CN": "使用精确坐标进行背面剔除，从而避免细窄三角形消失的问题。但这可能会导致依赖原有剔除结果的游戏发生错误。",
-      "fr-FR": "Utilise des coordonnées précises pour les faces cachés d'un objet, afin que les triangles fins ne disparaissent plus. Peut ne pas fonctionner sur des jeux qui en dépendent."
-    },
-    "settings.display.pgxp_texture": {
-      "en": "Perspective correct textures",
-      "pt-BR": "Texturas com perspectiva correta",
-      "es-419": "Texturas con perspectiva correcta",
-      "ja-JP": "Perspective correct textures",
-      "zh-CN": "透视校正纹理",
-      "fr-FR": "Perspective correct des texture"
-    },
-    "settings.display.pgxp_texture_hint": {
-      "en": "Interpolates texture coordinates with depth, removing the warping on large angled surfaces.",
-      "pt-BR": "Interpola as coordenadas de textura com profundidade, removendo a distorção em superfícies grandes em ângulo.",
-      "es-419": "Interpola las coordenadas de textura con profundidad, eliminando la distorsión en superficies grandes en ángulo.",
-      "ja-JP": "Interpolates texture coordinates with depth, removing the warping on large angled surfaces.",
-      "zh-CN": "结合深度信息对纹理坐标进行插值，从而消除大倾角表面上的扭曲现象。",
-      "fr-FR": "Mélange les coordonnées des textures avec la profondeur, supprimant l'effet de téléportation sur de grandes surfaces anglées."
-    },
-    "settings.display.pgxp_vertex_cache": {
-      "en": "Vertex cache",
-      "pt-BR": "Cache de vértices",
-      "es-419": "Caché de vértices",
-      "ja-JP": "Vertex cache",
-      "zh-CN": "顶点缓存",
-      "fr-FR": "Cache de vertex"
-    },
-    "settings.display.pgxp_vertex_cache_hint": {
-      "en": "Recovers precision for vertices the game stored in memory. Can pick the wrong vertex when two land on the same pixel, which shows up as broken geometry.",
-      "pt-BR": "Recupera precisão de vértices que o jogo guardou na memória. Pode pegar o vértice errado quando dois caem no mesmo pixel, o que aparece como geometria quebrada.",
-      "es-419": "Recupera precisión de vértices que el juego guardó en memoria. Puede tomar el vértice equivocado cuando dos caen en el mismo píxel, lo que se ve como geometría rota.",
-      "ja-JP": "Recovers precision for vertices the game stored in memory. Can pick the wrong vertex when two land on the same pixel, which shows up as broken geometry.",
-      "zh-CN": "恢复游戏存储在内存中的顶点精度。当两个顶点落在同一个像素上时，可能会选中错误的顶点，从而导致几何形状破损。",
-      "fr-FR": "Améliore la précision des vertices du jeu stocké dans la mémoire. Peut prendre la mauvaise vertex quand deux terrains différents sont sur le même pixel, résultant en une géométrie cassée."
-    },
-    "settings.display.pgxp_memory": {
-      "en": "Memory tracking",
-      "pt-BR": "Rastreio de memória",
-      "es-419": "Rastreo de memoria",
-      "ja-JP": "Memory tracking",
-      "zh-CN": "内存追踪",
-      "fr-FR": "Memory tracking"
-    },
-    "settings.display.pgxp_memory_hint": {
-      "en": "Tracks vertices stored in RAM.",
-      "pt-BR": "Rastreia vértices guardados na RAM.",
-      "es-419": "Rastrea vértices guardados en la RAM.",
-      "ja-JP": "Tracks vertices stored in RAM.",
-      "zh-CN": "追踪存储在 RAM 中的顶点。",
-      "fr-FR": "Liste les vertices stockés dans la RAM."
-    },
-    "settings.display.pgxp_cache_w": {
-      "en": "Cache depth",
-      "pt-BR": "Profundidade do cache",
-      "es-419": "Profundidad del caché",
-      "ja-JP": "Cache depth",
-      "zh-CN": "缓存深度",
-      "fr-FR": "Profondeur du cache"
-    },
-    "settings.display.pgxp_cache_w_hint": {
-      "en": "Uses depth from the cache too, not only just position.",
-      "pt-BR": "Usa também a profundidade do cache, não apenas a posição.",
-      "es-419": "Usa también la profundidad del caché, no solo la posición.",
-      "ja-JP": "Uses depth from the cache too, not only just position.",
-      "zh-CN": "在缓存中不仅使用位置信息，还使用深度信息。",
-      "fr-FR": "Utilise également la profondeur du cache, pas seulement sa position."
-    },
-    "settings.display.pgxp_cpu": {
-      "en": "CPU tracking",
-      "pt-BR": "Rastreio de CPU",
-      "es-419": "Rastreo de CPU",
-      "ja-JP": "CPU tracking}",
-      "zh-CN": "CPU 追踪",
-      "fr-FR": "CPU tracking"
-    },
-    "settings.display.pgxp_cpu_hint": {
-      "en": "Follows the precise value through the game's own loads and stores, so geometry the game buffers in memory keeps its precision.",
-      "pt-BR": "Acompanha o valor preciso pelos loads e stores do próprio jogo, para que a geometria que ele guarda na memória mantenha a precisão.",
-      "es-419": "Sigue el valor preciso a través de los loads y stores del propio juego, para que la geometría que guarda en memoria mantenga la precisión.",
-      "ja-JP": "Follows the precise value through the game's own loads and stores, so geometry the game buffers in memory keeps its precision.",
-      "zh-CN": "在游戏自身的加载与存储操作过程中追踪精确数值，从而确保游戏缓存在内存中的几何数据保持其精度。",
-      "fr-FR": "Suit une valeur précise à travers les opérations de chargement et de stockage du jeu, afin que la géométrie que le jeu conserve en mémoire préserve sa précision."
-    },
-    "settings.display.pgxp_tolerance": {
-      "en": "Geometry tolerance",
-      "pt-BR": "Tolerância de geometria",
-      "es-419": "Tolerancia de geometría",
-      "ja-JP": "Geometry tolerance",
-      "zh-CN": "几何公差",
-      "fr-FR": "Tolérance de la géometrie"
-    },
-    "settings.display.pgxp_tolerance_hint": {
-      "en": "Rejects precise coordinates that differ from the original by more than this, which keeps 2D drawing untouched. Off applies precision everywhere.",
-      "pt-BR": "Rejeita coordenadas precisas que diferem da original por mais que isto, o que mantém o desenho 2D intocado. Desligado aplica precisão em tudo.",
-      "es-419": "Rechaza coordenadas precisas que difieran de la original más que esto, lo que mantiene el dibujo 2D intacto. Apagado aplica precisión en todo.",
-      "ja-JP": "Rejects precise coordinates that differ from the original by more than this, which keeps 2D drawing untouched. Off applies precision everywhere.",
-      "zh-CN": "若精确坐标与原始坐标的偏差超过此值，则予以拒绝，从而保持二维图纸不变。设置为“关”（Off）则在各处均应用该精度设置。",
-      "fr-FR": "Rejette les coordonnées précises qui diffèrent de l'original de plus de cette valeur, ce qui préserve les dessins en 2D. Off applique la précision partout."
-    },
-    "settings.display.pgxp_tolerance_off": {
-      "en": "off",
-      "pt-BR": "desligado",
-      "es-419": "apagado",
-      "ja-JP": "off",
-      "zh-CN": "关闭",
-      "fr-FR": "off"
+    "settings.display.frame_rate_needs_native": {
+      "en": "Needs the game's native geometry (precise rendering) to be enabled.",
+      "pt-BR": "Precisa da geometria nativa do jogo (renderização precisa) ativada.",
+      "es-419": "Necesita la geometría nativa del juego (renderizado preciso) activada.",
+      "ja-JP": "ゲームのネイティブジオメトリ（高精度描画）を有効にする必要があります。",
+      "zh-CN": "需要启用游戏的原生几何（精确渲染）。",
+      "fr-FR": "Nécessite la géométrie native du jeu (rendu précis) activée."
     },
     "settings.audio": {
       "en": "Audio",
@@ -1258,6 +1138,138 @@
       "zh-CN": "正在读取模组",
       "fr-FR": "Chargement des mods"
     },
+    "modhub.title": {
+      "en": "Mod Hub",
+      "pt-BR": "Mod Hub"
+    },
+    "modhub.count": {
+      "en": "{0} in the hub",
+      "pt-BR": "{0} no hub"
+    },
+    "modhub.installed_count": {
+      "en": "{0} installed",
+      "pt-BR": "{0} instalados"
+    },
+    "modhub.refresh": {
+      "en": "Refresh",
+      "pt-BR": "Atualizar"
+    },
+    "modhub.open_hub": {
+      "en": "Open the hub repository",
+      "pt-BR": "Abrir o repositório do hub"
+    },
+    "modhub.open_repository": {
+      "en": "Open repository",
+      "pt-BR": "Abrir repositório"
+    },
+    "modhub.search": {
+      "en": "Search",
+      "pt-BR": "Pesquisar"
+    },
+    "modhub.all_types": {
+      "en": "All types",
+      "pt-BR": "Todos os tipos"
+    },
+    "modhub.sort_stars": {
+      "en": "Most stars",
+      "pt-BR": "Mais estrelas"
+    },
+    "modhub.sort_name": {
+      "en": "Name",
+      "pt-BR": "Nome"
+    },
+    "modhub.sort_installed": {
+      "en": "Installed first",
+      "pt-BR": "Instalados primeiro"
+    },
+    "modhub.loading": {
+      "en": "Loading the hub...",
+      "pt-BR": "Carregando o hub..."
+    },
+    "modhub.empty": {
+      "en": "The hub is empty.",
+      "pt-BR": "O hub está vazio."
+    },
+    "modhub.empty_hint": {
+      "en": "Submit yours with a pull request to the hub repository.",
+      "pt-BR": "Envie o seu com um pull request no repositório do hub."
+    },
+    "modhub.failed": {
+      "en": "Could not load the hub.",
+      "pt-BR": "Não foi possível carregar o hub."
+    },
+    "modhub.no_results": {
+      "en": "Nothing matches.",
+      "pt-BR": "Nada encontrado."
+    },
+    "modhub.install": {
+      "en": "Install",
+      "pt-BR": "Instalar"
+    },
+    "modhub.update": {
+      "en": "Update",
+      "pt-BR": "Atualizar"
+    },
+    "modhub.remove": {
+      "en": "Remove",
+      "pt-BR": "Remover"
+    },
+    "modhub.remove_title": {
+      "en": "Remove {0}?",
+      "pt-BR": "Remover {0}?"
+    },
+    "modhub.remove_message": {
+      "en": "Its files are deleted. You can install it again later.",
+      "pt-BR": "Os arquivos dele são apagados. Você pode instalar de novo depois."
+    },
+    "modhub.warning_title": {
+      "en": "{0} - warning",
+      "pt-BR": "{0} - aviso"
+    },
+    "modhub.installing": {
+      "en": "Installing...",
+      "pt-BR": "Instalando..."
+    },
+    "modhub.removing": {
+      "en": "Removing...",
+      "pt-BR": "Removendo..."
+    },
+    "modhub.dismiss": {
+      "en": "Dismiss",
+      "pt-BR": "Dispensar"
+    },
+    "modhub.state_installed": {
+      "en": "Installed",
+      "pt-BR": "Instalado"
+    },
+    "modhub.state_outdated": {
+      "en": "Update available",
+      "pt-BR": "Atualização disponível"
+    },
+    "modhub.state_conflict": {
+      "en": "A folder with this name already exists and was not installed by the hub",
+      "pt-BR": "Já existe uma pasta com esse nome que não foi instalada pelo hub"
+    },
+    "modhub.state_missing": {
+      "en": "Not installed",
+      "pt-BR": "Não instalado"
+    },
+    "modhub.no_stars": {
+      "en": "(can't retrieve)",
+      "pt-BR": "(indisponível)"
+    },
+    "modhub.type.mod": {
+      "en": "Mod",
+      "pt-BR": "Mod"
+    },
+    "modhub.type.assetpack": {
+      "en": "Asset pack",
+      "pt-BR": "Pacote de assets"
+    },
+    "modhub.type.shader": {
+      "en": "Shader",
+      "pt-BR": "Shader"
+    },
     "disc.title": {
       "en": "Disc image not found",
       "pt-BR": "Imagem do disco não encontrada",
@@ -1305,6 +1317,26 @@
       "ja-jp": "アナログスティック",
       "zh-CN": "类比摇杆",
       "fr-FR": "Sticks analogique"
+    },
+    "common.open_folder": {
+      "en": "Open folder",
+      "pt-BR": "Abrir pasta"
+    },
+    "menu.mods.asset_packs": {
+      "en": "Asset Packs",
+      "pt-BR": "Pacotes de Assets"
+    },
+    "assetpacks.title": {
+      "en": "Asset Packs",
+      "pt-BR": "Pacotes de Assets"
+    },
+    "assetpacks.new_title": {
+      "en": "New Asset Pack",
+      "pt-BR": "Novo Pacote de Assets"
+    },
+    "panel.asset_pack_editor": {
+      "en": "Asset Pack Editor",
+      "pt-BR": "Editor de Pacotes de Assets"
     }
   }
 }

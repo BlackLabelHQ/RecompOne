@@ -87,7 +87,7 @@ public static class FunctionEmitter
             }
             else
             {
-                var line = InstructionEmitter.EmitSingle(instr, ctx.Relocations, ctx.Pgxp);
+                var line = InstructionEmitter.EmitSingle(instr, ctx.Relocations, ctx.Precise);
                 if (!string.IsNullOrEmpty(line))
                     body.AppendLine(ctx.Trail(instr, $"{ind}{line}"));
             }

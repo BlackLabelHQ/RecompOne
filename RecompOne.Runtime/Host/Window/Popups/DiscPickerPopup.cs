@@ -34,7 +34,7 @@ public sealed class DiscPickerPopup : Popup
         if (_error.Length > 0)
         {
             ImGui.Spacing();
-            ImGuiEx.TextWrappedColored(new Vector4(1f, 0.38f, 0.38f, 1f), _error);
+            ImGuiUtils.TextWrappedColored(new Vector4(1f, 0.38f, 0.38f, 1f), _error);
         }
 
         ImGui.Spacing();

@@ -153,9 +153,9 @@ public static class Theme
 
         Set(ImGuiCol.Tab, Surface(0.06f));
         Set(ImGuiCol.TabHovered, accent with { W = 0.70f });
-        Set(ImGuiCol.TabActive, Mix(Surface(0.06f), accent, 0.55f));
-        Set(ImGuiCol.TabUnfocused, Surface(0.04f));
-        Set(ImGuiCol.TabUnfocusedActive, Mix(Surface(0.04f), accent, 0.30f));
+        Set(ImGuiCol.TabSelected, Mix(Surface(0.06f), accent, 0.55f));
+        Set(ImGuiCol.TabDimmed, Surface(0.04f));
+        Set(ImGuiCol.TabDimmedSelected, Mix(Surface(0.04f), accent, 0.30f));
 
         Set(ImGuiCol.DockingPreview, accent with { W = 0.45f });
         Set(ImGuiCol.DockingEmptyBg, Surface(-0.03f));
@@ -182,7 +182,7 @@ public static class Theme
             ? new Vector4(0f, 0f, 0f, 0.03f)
             : new Vector4(1f, 1f, 1f, 0.025f));
 
-        Set(ImGuiCol.NavHighlight, accent);
+        Set(ImGuiCol.NavCursor, accent);
         Set(ImGuiCol.ModalWindowDimBg, IsLight
             ? new Vector4(0.35f, 0.35f, 0.38f, 0.55f)
             : new Vector4(0.04f, 0.04f, 0.05f, 0.65f));

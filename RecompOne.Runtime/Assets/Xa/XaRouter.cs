@@ -80,6 +80,7 @@ public static class XaRouter
                          lba < _lastLba || lba > _lastLba + MaxGap;
 
             if (newRun) BeginRun(lba, file, channel, sec, fromStr);
+            XaRegistry.Note(lba, file, channel, coding, newRun);
 
             _lastLba = lba;
             _lastSectorTick = Environment.TickCount64;

@@ -106,6 +106,61 @@ public static class TextureTile
         return true;
     }
 
+    public static bool HashWindow(ushort[] window, ushort[] vram, in TileRect r, out ulong indexHash, out ulong clutHash)
+    {
+        indexHash = 0;
+        clutHash = 0;
+        if (r.W <= 0 || r.H <= 0 || r.W * r.H > MaxTexels || window.Length < r.VramW * r.H) return false;
+
+        Span<ulong> used = stackalloc ulong[4];
+        used.Clear();
+
+        var h = 1469598103934665603UL;
+        Fnv(ref h, (byte)r.Bpp);
+        Fnv(ref h, (byte)(r.W & 0xFF));
+        Fnv(ref h, (byte)(r.W >> 8));
+        Fnv(ref h, (byte)(r.H & 0xFF));
+        Fnv(ref h, (byte)(r.H >> 8));
+
+        foreach (var v in window.AsSpan(0, r.VramW * r.H))
+        {
+            Fnv(ref h, (byte)(v & 0xFF));
+            Fnv(ref h, (byte)(v >> 8));
+
+            if (r.Bpp == 4)
+            {
+                used[0] |= 1UL << ((v >> 0) & 0xF);
+                used[0] |= 1UL << ((v >> 4) & 0xF);
+                used[0] |= 1UL << ((v >> 8) & 0xF);
+                used[0] |= 1UL << ((v >> 12) & 0xF);
+            }
+            else if (r.Bpp == 8)
+            {
+                int a = v & 0xFF, b = (v >> 8) & 0xFF;
+                used[a >> 6] |= 1UL << (a & 63);
+                used[b >> 6] |= 1UL << (b & 63);
+            }
+        }
+
+        indexHash = h;
+
+        if (r.ClutCount == 0) return true;
+
+        var c = 1469598103934665603UL;
+        var clutRow = (r.ClutY & 511) * 1024;
+        for (var i = 0; i < r.ClutCount; i++)
+        {
+            if ((used[i >> 6] & (1UL << (i & 63))) == 0) continue;
+            var e = vram[clutRow + ((r.ClutX + i) & 1023)];
+            Fnv(ref c, (byte)(i & 0xFF));
+            Fnv(ref c, (byte)(e & 0xFF));
+            Fnv(ref c, (byte)(e >> 8));
+        }
+
+        clutHash = c;
+        return true;
+    }
+
     private static void Fnv(ref ulong h, byte b)
     {
         h ^= b;

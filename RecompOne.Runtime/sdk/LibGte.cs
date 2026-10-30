@@ -1,6 +1,5 @@
 using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Memory;
-using RecompOne.Runtime.Pgxp;
 
 namespace RecompOne.Runtime.Sdk;
 
@@ -62,26 +61,21 @@ public static class LibGte
     {
         Gte.Write(index * 2, m.ReadU32(address));
         Gte.Write(index * 2 + 1, m.ReadU32(address + 4));
-        PgxpGte.Data(index * 2).Flags = PgxpFlags.None;
-        PgxpGte.Data(index * 2 + 1).Flags = PgxpFlags.None;
     }
 
     private static void StoreVertex(IMemory m, uint address, int register)
     {
         var value = Gte.Read(register);
         m.WriteU32(address, value);
-        if (Pgxp.Pgxp.Enabled) PgxpMemory.Store(address, in PgxpGte.Data(register), value);
     }
 
     private static void StoreResult(IMemory m, uint address, uint value)
     {
         m.WriteU32(address, value);
-        PgxpMemory.Invalidate(address, value);
     }
 
     private static void ReturnDepth(CpuContext c)
     {
         c.V0 = Gte.Read(19) >> 2;
-        PgxpCpu.Invalidate(2);
     }
 }

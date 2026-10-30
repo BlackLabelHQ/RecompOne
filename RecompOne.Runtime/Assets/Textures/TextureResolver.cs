@@ -21,7 +21,22 @@ public static class TextureResolver
         public TileRect Rect;
         public TileRect PageRect;
         public bool Valid;
+        public SeenTexture? Seen;
     }
+
+    private sealed class SourceEntry
+    {
+        public int Generation = -1;
+        public ulong IndexHash;
+        public ulong ClutHash;
+        public TextureAsset? Texture;
+        public ClutAsset? Clut;
+        public bool Valid;
+        public SeenTexture? Seen;
+        public ushort[] Window = [];
+    }
+
+    private static readonly Dictionary<(long, int), SourceEntry> _sources = [];
 
     private sealed class PageEntry
     {
@@ -128,6 +143,11 @@ public static class TextureResolver
             _version++;
         }
 
+        lock (_sources)
+        {
+            _sources.Clear();
+        }
+
         lock (_pages)
         {
             _pages.Clear();
@@ -145,8 +165,116 @@ public static class TextureResolver
         }
     }
 
+    private static readonly Dictionary<long, (int Version, int U0, int V0, int W, int H)> _snaps = [];
+
+    private static void SnapToUpload(int tpage, int clut, ref int u0, ref int v0, ref int w, ref int h)
+    {
+        var key = (long)(tpage & 0x1FF)
+                  | ((long)(u0 & 0xFF) << 9)
+                  | ((long)(v0 & 0xFF) << 17)
+                  | ((long)(w & 0x1FF) << 25)
+                  | ((long)(h & 0x1FF) << 34);
+        var version = VramTracker.OwnerVersion;
+
+        lock (_snaps)
+        {
+            if (_snaps.TryGetValue(key, out var hit) && hit.Version == version)
+            {
+                (u0, v0, w, h) = (hit.U0, hit.V0, hit.W, hit.H);
+                return;
+            }
+        }
+
+        Snap(tpage, clut, ref u0, ref v0, ref w, ref h);
+
+        lock (_snaps)
+        {
+            if (_snaps.Count > 65536) _snaps.Clear();
+            _snaps[key] = (version, u0, v0, w, h);
+        }
+
+    }
+
+    private static void Snap(int tpage, int clut, ref int u0, ref int v0, ref int w, ref int h)
+    {
+        var probe = TextureTile.Describe(tpage, clut, u0, v0, w, h);
+        if (!VramTracker.FindUpload(probe.VramX, probe.VramY, probe.VramW, probe.H, out var ux, out var uy, out var uw,
+                out var uh))
+            return;
+
+        var texels = probe.Bpp switch { 4 => 4, 8 => 2, _ => 1 };
+        var su0 = Math.Max(0, (ux - probe.PageX) * texels);
+        var sv0 = Math.Max(0, uy - probe.PageY);
+        var su1 = Math.Min(256, (ux + uw - probe.PageX) * texels);
+        var sv1 = Math.Min(256, uy + uh - probe.PageY);
+        if (su1 <= su0 || sv1 <= sv0 || su0 > u0 || sv0 > v0 || su1 < u0 + w || sv1 < v0 + h) return;
+
+        u0 = su0;
+        v0 = sv0;
+        w = su1 - su0;
+        h = sv1 - sv0;
+    }
+
+    private static bool ResolveSource(Gpu gpu, AssetReplacerManager mgr, bool dumping, int tpage, int clut,
+        in SourceTexture source, out ResolvedTexture result)
+    {
+        result = default;
+        var rect = source.Rect;
+        var key = (source.Identity, clut & 0x7FFF);
+        var generation = VramTracker.Generation(rect.ClutX, rect.ClutY, rect.ClutCount, 1);
+
+        SourceEntry entry;
+        lock (_sources)
+        {
+            if (!_sources.TryGetValue(key, out entry!))
+            {
+                if (_sources.Count > 16384) _sources.Clear();
+                entry = new SourceEntry();
+                _sources[key] = entry;
+            }
+        }
+
+        if (entry.Generation == generation)
+        {
+            Interlocked.Increment(ref _statMemo);
+            if (entry.Seen is { Evicted: false }) TextureRegistry.Touch(entry.Seen);
+            else if (entry.Valid && TextureRegistry.Enabled)
+                entry.Seen = TextureRegistry.Note(gpu.Vram, rect, entry.IndexHash, entry.ClutHash, tpage, clut,
+                    entry.Texture != null || entry.Clut != null, window: entry.Window, group: source.Group);
+        }
+        else
+        {
+            Interlocked.Increment(ref _statHashed);
+            entry.Generation = generation;
+            entry.Window = TextureSources.Window(source);
+            entry.Valid = TextureTile.HashWindow(entry.Window, gpu.Vram, rect, out entry.IndexHash, out entry.ClutHash);
+            entry.Texture = null;
+            entry.Clut = null;
+
+            if (entry.Valid)
+            {
+                if (dumping)
+                    TextureDumper.Offer(gpu.Vram, rect, entry.IndexHash, entry.ClutHash, tpage, clut, entry.Window);
+                entry.Texture = mgr.ResolveTexture(entry.IndexHash, entry.ClutHash);
+                entry.Clut = mgr.ResolveClut(entry.ClutHash);
+                if (entry.Texture != null || entry.Clut != null) mgr.Stats.TextureHits++;
+                else mgr.Stats.TextureMisses++;
+                entry.Seen = TextureRegistry.Note(gpu.Vram, rect, entry.IndexHash, entry.ClutHash, tpage, clut,
+                    entry.Texture != null || entry.Clut != null, window: entry.Window, group: source.Group);
+            }
+        }
+
+        if (!entry.Valid) return false;
+        result.Rect = rect;
+        result.Texture = entry.Texture != null ? mgr.LoadTexture(entry.Texture) : null;
+        if (result.Texture != null) CheckAspect(entry.Texture!, result.Texture, rect, "tile");
+        result.Clut = entry.Clut != null ? mgr.LoadClut(entry.Clut) : null;
+        result.Hit = result.Texture != null || result.Clut != null;
+        return result.Hit;
+    }
+
     public static bool Resolve(int tpage, int clut, int uMin, int vMin, int uMax, int vMax,
-        int twAndX, int twAndY, int twOrX, int twOrY, out ResolvedTexture result)
+        int twAndX, int twAndY, int twOrX, int twOrY, out ResolvedTexture result, int edgeU = 0, int edgeV = 0)
     {
         result = default;
         if (!Enabled) return false;
@@ -189,6 +317,18 @@ public static class TextureResolver
             Interlocked.Increment(ref _statRejectSize);
             return false;
         }
+
+        var plain = twAndX == 0xFF && twOrX == 0 && twAndY == 0xFF && twOrY == 0;
+        if (plain && TextureSources.Active)
+            switch (TextureSources.Find(tpage, clut, u0, v0, w, h, edgeU, edgeV, out var source))
+            {
+                case SourceMatch.Discard:
+                    return false;
+                case SourceMatch.Found:
+                    return ResolveSource(gpu, mgr, dumping, tpage, clut, source, out result);
+            }
+
+        if (plain) SnapToUpload(tpage, clut, ref u0, ref v0, ref w, ref h);
 
         var rect = TextureTile.Describe(tpage, clut, u0, v0, w, h);
 
@@ -235,6 +375,10 @@ public static class TextureResolver
         if (entry.Generation == generation)
         {
             Interlocked.Increment(ref _statMemo);
+            if (entry.Seen is { Evicted: false }) TextureRegistry.Touch(entry.Seen);
+            else if (entry.Valid && TextureRegistry.Enabled)
+                entry.Seen = TextureRegistry.Note(gpu.Vram, rect, entry.IndexHash, entry.ClutHash, tpage, clut,
+                    entry.Texture != null || entry.Clut != null || entry.PageTexture != null, false, dirty);
         }
         else
         {
@@ -263,7 +407,7 @@ public static class TextureResolver
                 if (entry.Texture != null || entry.Clut != null || entry.PageTexture != null) mgr.Stats.TextureHits++;
                 else mgr.Stats.TextureMisses++;
 
-                TextureRegistry.Note(gpu.Vram, rect, entry.IndexHash, entry.ClutHash, tpage, clut,
+                entry.Seen = TextureRegistry.Note(gpu.Vram, rect, entry.IndexHash, entry.ClutHash, tpage, clut,
                     entry.Texture != null || entry.Clut != null || entry.PageTexture != null, false, dirty);
             }
         }

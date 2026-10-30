@@ -14,6 +14,7 @@ public sealed partial class Gpu
         public bool PreciseW;
         public bool Native;
         public bool IgnoreDepth;
+        public uint Prim;
         public Vector3 Camera; //camera space, for interp
         public int Transform;
     }
@@ -32,7 +33,6 @@ public sealed partial class Gpu
 
         Span<Vert> v = stackalloc Vert[4];
         Span<uint> words = stackalloc uint[4];
-        Span<uint> seqs = stackalloc uint[4];
         var idx = 1;
         var clut = 0;
         int cr = (int)(cmd & 0xFF), cg = (int)((cmd >> 8) & 0xFF), cb = (int)((cmd >> 16) & 0xFF);
@@ -60,6 +60,7 @@ public sealed partial class Gpu
             v[i].PreciseW = false;
             v[i].Native = false;
             v[i].IgnoreDepth = false;
+            v[i].Prim = 0;
             
             if (_fifoBase != 0u && Hle.NativeGeometry.TryTake(_fifoBase + (uint)slot * 4u, vw, out var native))
             {
@@ -70,40 +71,6 @@ public sealed partial class Gpu
                 v[i].Transform = native.Transform;
                 v[i].Native = v[i].Precise = v[i].PreciseW = true;
                 v[i].IgnoreDepth = native.IgnoreDepth;
-            }
-            else if (Pgxp.Pgxp.Enabled)
-            {
-                float px = 0f, py = 0f, pw = 1f;
-                var validW = false;
-                var seq = 0u;
-                var transform = 0;
-                var found = _fifoBase != 0u &&
-                            Pgxp.PgxpMemory.TryLoad(_fifoBase + (uint)slot * 4u, vw, out px, out py, out pw,
-                                out validW, out seq, out transform);
-
-                if (!found) found = Pgxp.PgxpGpu.TryGetVertex(vw, 0u, false, out px, out py, out pw, out validW, out seq, out transform);
-
-                if (found)
-                {
-                    if (!validW && WithinTolerance(px, py, vw) && Pgxp.PgxpGpu.TryGetVertex(vw, seq, true, out var cx, out var cy, out var cw, out var cacheW, out var cacheSeq, out var cacheTransform) && cacheW && Math.Abs(cx - px) <= 0.25f && Math.Abs(cy - py) <= 0.25f && (transform == 0 || cacheTransform == 0 || transform == cacheTransform)) //holy line
-                    {
-                        pw = cw;
-                        validW = true;
-                        seq = cacheSeq;
-                        transform = cacheTransform != 0 ? cacheTransform : transform;
-                    }
-                    v[i].Pw = pw;
-                    v[i].Transform = transform != 0 ? transform : -1;
-                    seqs[i] = seq;
-
-                    if (WithinTolerance(px, py, vw))
-                    {
-                        v[i].Px = _drawOffsetX + px;
-                        v[i].Py = _drawOffsetY + py;
-                        v[i].Precise = true;
-                        v[i].PreciseW = validW;
-                    }
-                }
             }
 
             if (tex)
@@ -116,7 +83,12 @@ public sealed partial class Gpu
             }
         }
 
-        if (Pgxp.Pgxp.Enabled) ResolveAmbiguous(v, words, seqs, n);
+        if (quad && Hle.NativeGeometry.HasAnchors && AnchorBillboard(v, words) && tex && semi && _blendMode == 1)
+            EmitLight(v, clut, raw);
+
+        if (_fifoBase != 0u && Hle.PrimIdentity.Any && !v[0].Native && Hle.PrimIdentity.TryResolve(_fifoBase, out var prim))
+            for (var i = 0; i < n; i++)
+                v[i].Prim = prim;
 
         //dispatch the render event for prims
         if (Event.HasAnyListeners<RenderPrimEvent>())
@@ -236,7 +208,7 @@ public sealed partial class Gpu
         var idx = 1;
 
         int r0 = (int)(cmd & 0xFF), g0 = (int)((cmd >> 8) & 0xFF), b0 = (int)((cmd >> 16) & 0xFF);
-        var v0w = _fifo[idx++];
+        var a = LineVert(idx++, r0, g0, b0);
         int r1 = r0, g1 = g0, b1 = b0;
         if (gouraud)
         {
@@ -246,9 +218,8 @@ public sealed partial class Gpu
             b1 = (int)((cw >> 16) & 0xFF);
         }
 
-        var v1w = _fifo[idx++];
-
-        LineSegment(CoordX(v0w), CoordY(v0w), r0, g0, b0, CoordX(v1w), CoordY(v1w), r1, g1, b1, semi, gouraud);
+        var b = LineVert(idx, r1, g1, b1);
+        HleLine(in a, in b, semi, gouraud);
     }
 
     private void ExecutePolyline()
@@ -257,7 +228,7 @@ public sealed partial class Gpu
         var gouraud = (cmd & (1u << 28)) != 0;
         var semi = (cmd & (1u << 25)) != 0;
 
-        var pts = new List<(int X, int Y, int R, int G, int B)>();
+        var pts = new List<Vert>();
         var idx = 1;
         int r = (int)(cmd & 0xFF), g = (int)((cmd >> 8) & 0xFF), b = (int)((cmd >> 16) & 0xFF);
         var first = true;
@@ -272,24 +243,40 @@ public sealed partial class Gpu
             }
 
             if (idx >= _fifoCount) break;
-            var vw = _fifo[idx++];
-            pts.Add((CoordX(vw), CoordY(vw), r, g, b));
+            pts.Add(LineVert(idx++, r, g, b));
             first = false;
         }
 
         for (var i = 0; i + 1 < pts.Count; i++)
-            LineSegment(pts[i].X, pts[i].Y, pts[i].R, pts[i].G, pts[i].B,
-                pts[i + 1].X, pts[i + 1].Y, pts[i + 1].R, pts[i + 1].G, pts[i + 1].B, semi, gouraud);
+        {
+            var a = pts[i];
+            var c = pts[i + 1];
+            HleLine(in a, in c, semi, gouraud);
+        }
     }
 
-    private void LineSegment(int x0, int y0, int r0, int g0, int b0, int x1, int y1, int r1, int g1, int b1, bool semi,
-        bool gouraud)
+    private Vert LineVert(int slot, int r, int g, int b)
     {
-        x0 += _drawOffsetX;
-        y0 += _drawOffsetY;
-        x1 += _drawOffsetX;
-        y1 += _drawOffsetY;
-        HleLine(x0, y0, r0, g0, b0, x1, y1, r1, g1, b1, semi, gouraud);
+        var vw = _fifo[slot];
+        var v = new Vert
+        {
+            X = _drawOffsetX + CoordX(vw),
+            Y = _drawOffsetY + CoordY(vw),
+            R = r, G = g, B = b
+        };
+
+        if (_fifoBase != 0u && Hle.NativeGeometry.TryTake(_fifoBase + (uint)slot * 4u, vw, out var native))
+        {
+            v.Px = _drawOffsetX + native.Screen.X;
+            v.Py = _drawOffsetY + native.Screen.Y;
+            v.Pw = native.Camera.Z;
+            v.Camera = native.Camera;
+            v.Transform = native.Transform;
+            v.Native = v.Precise = v.PreciseW = true;
+            v.IgnoreDepth = native.IgnoreDepth;
+        }
+
+        return v;
     }
 
     private void SetTexpageFromWord(uint tp)
@@ -307,15 +294,6 @@ public sealed partial class Gpu
         return (x & 0x400) != 0 ? x - 0x800 : x;
     }
 
-    private static bool WithinTolerance(float px, float py, uint w)
-    {
-        if (!float.IsFinite(px) || !float.IsFinite(py)) return false;
-        var tolerance = Pgxp.Pgxp.Tolerance;
-        if (tolerance < 0f) return true;
-        
-        return Math.Abs(px - CoordX(w)) <= tolerance && Math.Abs(py - CoordY(w)) <= tolerance;
-    }
-    
     private static int CoordY(uint w)
     {
         var y = (int)((w >> 16) & 0x7FF);
@@ -327,32 +305,112 @@ public sealed partial class Gpu
         return (ushort)(((r >> 3) & 0x1F) | (((g >> 3) & 0x1F) << 5) | (((b >> 3) & 0x1F) << 10));
     }
 
-    private void ResolveAmbiguous(Span<Vert> v, ReadOnlySpan<uint> words, ReadOnlySpan<uint> seqs, int n) //try to disambiguiate, not the best 
+    private static bool AnchorBillboard(Span<Vert> v, ReadOnlySpan<uint> words)
     {
-        var hint = 0u;
-        var resolved = 0;
+        for (var i = 0; i < 4; i++)
+            if (v[i].Precise) return false;
 
-        for (var i = 0; i < n; i++)
+        int x0 = CoordX(words[0]), x1 = CoordX(words[1]), y0 = CoordY(words[0]), y2 = CoordY(words[2]);
+        if (CoordX(words[2]) != x0 || CoordX(words[3]) != x1 || CoordY(words[1]) != y0 || CoordY(words[3]) != y2) return false;
+        if (((x0 + x1) & 1) != 0 || ((y0 + y2) & 1) != 0) return false;
+
+        var cx = (x0 + x1) >> 1;
+        var cy = (y0 + y2) >> 1;
+        if (!Hle.NativeGeometry.TryAnchor(cx, cy, out var anchor)) return false;
+
+        var dx = anchor.Screen.X - cx;
+        var dy = anchor.Screen.Y - cy;
+        if (MathF.Abs(dx) > 1f || MathF.Abs(dy) > 1f) return false;
+
+        for (var i = 0; i < 4; i++)
         {
-            if (!v[i].Precise) continue;
-            if (resolved == 0) hint = seqs[i];
-            resolved++;
+            v[i].Px = v[i].X + dx;
+            v[i].Py = v[i].Y + dy;
+            v[i].Pw = anchor.Camera.Z;
+            v[i].Precise = v[i].PreciseW = true;
+            v[i].Transform = anchor.Transform;
+            v[i].IgnoreDepth = anchor.IgnoreDepth;
+            v[i].Camera = anchor.Camera;
         }
 
-        if (resolved == 0 || resolved == n) return;
+        return true;
+    }
 
-        for (var i = 0; i < n; i++)
+    private const int LightSamples = 6;
+    private const float LightMinimum = 0.3f;
+    private const float LightReach = 8f;
+    private readonly Dictionary<ulong, Vector3> _textureAverages = new();
+
+    private void EmitLight(ReadOnlySpan<Vert> v, int clut, bool raw)
+    {
+        var h = (short)Gte.ReadControl(26);
+        if (h <= 0 || v[0].Pw <= 0f) return;
+
+        int u0 = v[0].U, v0 = v[0].V, u1 = v[0].U, v1 = v[0].V;
+        for (var i = 1; i < 4; i++)
         {
-            if (v[i].Precise) continue;
-            if (!Pgxp.PgxpGpu.TryGetVertex(words[i], hint, true, out var px, out var py, out var pw, out var validW, out _, out var transform)) continue;
-            if (!WithinTolerance(px, py, words[i])) continue;
+            u0 = Math.Min(u0, v[i].U);
+            v0 = Math.Min(v0, v[i].V);
+            u1 = Math.Max(u1, v[i].U);
+            v1 = Math.Max(v1, v[i].V);
+        }
 
-            v[i].Px = _drawOffsetX + px;
-            v[i].Py = _drawOffsetY + py;
-            v[i].Pw = pw;
-            v[i].Precise = true;
-            v[i].PreciseW = validW;
-            v[i].Transform = transform != 0 ? transform : -1;
+        var texture = TextureAverage(u0, v0, u1, v1, clut);
+        var tint = raw ? Vector3.One : new Vector3(v[0].R, v[0].G, v[0].B) / 128f;
+        var color = texture * tint;
+        if (Math.Max(color.X, Math.Max(color.Y, color.Z)) < LightMinimum) return;
+
+        var half = Math.Max(Math.Abs(v[1].X - v[0].X), Math.Abs(v[2].Y - v[0].Y)) * 0.5f;
+        var radius = half * v[0].Pw / h * LightReach;
+        Hle.NativeGeometry.Light(new Hle.SceneLight(v[0].Camera, color, radius));
+    }
+
+    private Vector3 TextureAverage(int u0, int v0, int u1, int v1, int clut)
+    {
+        var page = CurTPage() & 0x19F;
+        var key = (ulong)(uint)page | (ulong)(uint)clut << 16 | (ulong)(byte)u0 << 32 | (ulong)(byte)v0 << 40 |
+                  (ulong)(byte)u1 << 48 | (ulong)(byte)v1 << 56;
+        if (_textureAverages.TryGetValue(key, out var cached)) return cached;
+        if (_textureAverages.Count > 4096) _textureAverages.Clear();
+
+        var sum = Vector3.Zero;
+        var count = 0;
+        for (var y = 0; y < LightSamples; y++)
+        for (var x = 0; x < LightSamples; x++)
+        {
+            var u = u0 + (u1 - u0) * (x + 0.5f) / LightSamples;
+            var t = v0 + (v1 - v0) * (y + 0.5f) / LightSamples;
+            var texel = Texel((int)u & 0xFF, (int)t & 0xFF, clut);
+            if (texel == 0) continue;
+            sum += new Vector3(texel & 0x1F, (texel >> 5) & 0x1F, (texel >> 10) & 0x1F) / 31f;
+            count++;
+        }
+
+        var average = count > 0 ? sum / (LightSamples * LightSamples) : Vector3.Zero;
+        _textureAverages[key] = average;
+        return average;
+    }
+
+    private ushort Texel(int u, int v, int clut)
+    {
+        var x = _texPageX;
+        var y = _texPageY + v;
+        switch (_texDepth)
+        {
+            case 0:
+            {
+                var word = Shadow[(x + (u >> 2)) & 1023, y & 511];
+                var index = (word >> ((u & 3) << 2)) & 0xF;
+                return Shadow[((clut & 0x3F) * 16 + index) & 1023, (clut >> 6) & 511];
+            }
+            case 1:
+            {
+                var word = Shadow[(x + (u >> 1)) & 1023, y & 511];
+                var index = (word >> ((u & 1) << 3)) & 0xFF;
+                return Shadow[((clut & 0x3F) * 16 + index) & 1023, (clut >> 6) & 511];
+            }
+            default:
+                return Shadow[(x + u) & 1023, y & 511];
         }
     }
 

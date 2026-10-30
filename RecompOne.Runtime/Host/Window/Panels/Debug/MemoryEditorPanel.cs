@@ -169,7 +169,7 @@ internal sealed class MemoryEditorPanel : IPanel
         var virtAddr = 0x80000000u + (uint)baseOff;
         var log = Runtime.RamLog;
 
-        ImGuiEx.TextDisabled($"{virtAddr:X8}  ");
+        ImGuiUtils.TextDisabled($"{virtAddr:X8}  ");
         ImGui.SameLine();
 
         _asciiSb.Clear();
@@ -196,7 +196,7 @@ internal sealed class MemoryEditorPanel : IPanel
         }
 
         ImGui.SameLine();
-        ImGuiEx.TextDisabled($"  {_asciiSb}");
+        ImGuiUtils.TextDisabled($"  {_asciiSb}");
     }
 
     private void DrawByteCell(PSMemory mem, RamLogger log, int idx, byte b)
@@ -216,16 +216,14 @@ internal sealed class MemoryEditorPanel : IPanel
         if (wHeat > 0.01f)
         {
             var wc = log.WriteColor;
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(wc.X, wc.Y, wc.Z, 0.4f + wHeat * 0.6f));
-            ImGui.Text($"{b:X2}");
-            ImGui.PopStyleColor();
+            using (ImGuiUtils.Color(ImGuiCol.Text, new Vector4(wc.X, wc.Y, wc.Z, 0.4f + wHeat * 0.6f)))
+                ImGui.Text($"{b:X2}");
         }
         else if (rHeat > 0.01f)
         {
             var rc = log.ReadColor;
-            ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(rc.X, rc.Y, rc.Z, 0.4f + rHeat * 0.6f));
-            ImGui.Text($"{b:X2}");
-            ImGui.PopStyleColor();
+            using (ImGuiUtils.Color(ImGuiCol.Text, new Vector4(rc.X, rc.Y, rc.Z, 0.4f + rHeat * 0.6f)))
+                ImGui.Text($"{b:X2}");
         }
         else
         {

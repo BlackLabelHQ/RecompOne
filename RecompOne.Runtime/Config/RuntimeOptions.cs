@@ -23,4 +23,7 @@ public static class DisplayOptions
         .Normalized(static v => Math.Clamp(v, 1, 8));
 
     public static readonly Option<string> Backend = Options.String("display.backend", "auto");
+
+    public static readonly Option<bool> Dithering = Options.Bool("display.dithering", true);
+    public static readonly Option<bool> TrueColor = Options.Bool("display.true_color");
 }

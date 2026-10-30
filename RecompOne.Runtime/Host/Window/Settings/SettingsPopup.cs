@@ -30,7 +30,7 @@ public sealed class SettingsPopup : Popup
 
     private static void DrawSidebar(SettingsPage[] pages, SettingsPage? current)
     {
-        ImGui.BeginChild("##settings-sidebar", new Vector2(SidebarWidth, 0f), ImGuiChildFlags.Border);
+        ImGui.BeginChild("##settings-sidebar", new Vector2(SidebarWidth, 0f), ImGuiChildFlags.Borders);
 
         foreach (var page in pages)
             if (ImGui.Selectable($"{Localization.T(page.TitleKey)}##page-{page.Id}", current == page))
@@ -41,7 +41,7 @@ public sealed class SettingsPopup : Popup
 
     private static void DrawPage(SettingsPage? current)
     {
-        ImGui.BeginChild("##settings-content", Vector2.Zero, ImGuiChildFlags.Border);
+        ImGui.BeginChild("##settings-content", Vector2.Zero, ImGuiChildFlags.Borders);
 
         if (current == null)
         {

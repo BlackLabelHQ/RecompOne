@@ -35,7 +35,7 @@ internal static class PathsPage
         }
 
         if (_discError.Length > 0)
-            ImGuiEx.TextWrappedColored(new Vector4(1f, 0.38f, 0.38f, 1f), _discError);
+            ImGuiUtils.TextWrappedColored(new Vector4(1f, 0.38f, 0.38f, 1f), _discError);
     }
 
     private static void DrawMemoryCards()

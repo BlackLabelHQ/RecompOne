@@ -33,7 +33,7 @@ public static class LibEtc
         }
 
         LastWaitMs = Interrupts.ClockMs;
-        Interp.VideoRate.Push(mode == 0 ? 1 : mode);
+        Interp.Interp.PresentAt = Math.Max(_lastVSyncCount + (mode == 0 ? 1 : mode), Interrupts.VBlankCount);
         Runtime.PresentFrame();
         WaitVBlanks(c, m, mode == 0 ? 1 : mode);
         var elapsed = Elapsed();

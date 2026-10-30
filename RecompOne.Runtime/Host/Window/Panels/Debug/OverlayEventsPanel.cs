@@ -66,7 +66,7 @@ internal sealed class OverlayEventsPanel : IPanel
                 ImGui.SameLine();
             }
 
-            ImGuiEx.TextColored(ColLoaded, name);
+            ImGuiUtils.TextColored(ColLoaded, name);
             any = true;
         }
 
@@ -96,7 +96,7 @@ internal sealed class OverlayEventsPanel : IPanel
             ImGui.TableNextRow();
 
             ImGui.TableSetColumnIndex(0);
-            ImGuiEx.TextDisabled(FormatTime(ev.TimestampMs));
+            ImGuiUtils.TextDisabled(FormatTime(ev.TimestampMs));
 
             ImGui.TableSetColumnIndex(1);
             var (label, color) = ev.Kind switch
@@ -107,14 +107,14 @@ internal sealed class OverlayEventsPanel : IPanel
                 OverlayEventKind.VramCollision => ("vram collision", ColVramCollision),
                 _ => ("?", ColUnloaded)
             };
-            ImGuiEx.TextColored(color, label);
+            ImGuiUtils.TextColored(color, label);
 
             ImGui.TableSetColumnIndex(2);
             ImGui.TextUnformatted(ev.OverlayName);
 
             ImGui.TableSetColumnIndex(3);
             if (ev.DisplacedBy != null)
-                ImGuiEx.TextDisabled(ev.Kind == OverlayEventKind.VramCollision
+                ImGuiUtils.TextDisabled(ev.Kind == OverlayEventKind.VramCollision
                     ? $"with {ev.DisplacedBy}"
                     : $"by {ev.DisplacedBy}");
         }

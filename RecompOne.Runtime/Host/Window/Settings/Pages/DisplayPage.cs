@@ -1,6 +1,5 @@
 using ImGuiNET;
 using RecompOne.Runtime.Config;
-using RecompOne.Runtime.Pgxp;
 
 namespace RecompOne.Runtime.Host.Window;
 
@@ -15,8 +14,7 @@ internal static class DisplayPage
             .Add("window", DrawWindow, 0)
             .Add("renderer", DrawRenderer, 100)
             .Add("frame_rate", DrawFrameRate, 200, "settings.display.frame_rate",
-                static () => Features.FrameInterpolation)
-            .Add("pgxp", DrawPgxp, 300, "settings.display.pgxp", static () => Features.Pgxp);
+                static () => Features.FrameInterpolation);
     }
 
     private static void DrawWindow()
@@ -51,28 +49,40 @@ internal static class DisplayPage
             NoticePopup.Show(Localization.T("common.restart_required"));
 
         ImGui.TextDisabled(Localization.T("settings.display.backend_running", Hle.GpuBackendFactory.Selected));
+
+        ImGui.Spacing();
+
+        if (SettingsWidgets.Toggle(DisplayOptions.TrueColor, "settings.display.true_color", "settings.display.true_color_hint"))
+            NoticePopup.Show(Localization.T("common.restart_required"));
+
+        var trueColor = Hle.GlVram.TrueColor;
+        using (ImGuiUtils.Disabled(trueColor))
+        {
+            SettingsWidgets.Toggle(DisplayOptions.Dithering, "settings.display.dithering", "settings.display.dithering_hint");
+        }
     }
 
     private static void DrawFrameRate()
     {
         var available = Interp.Interp.Available;
-        if (!available) ImGui.BeginDisabled();
-
-        var steps = Interp.Interp.Steps;
-        var index = Math.Max(Array.IndexOf(steps, Interp.InterpOptions.TargetFps.Value), 0);
-
-        if (ImGui.SliderInt("##frame-rate", ref index, 0, steps.Length - 1, StepLabel(steps[index])))
+        using (ImGuiUtils.Disabled(!available))
         {
-            Interp.InterpOptions.TargetFps.Value = steps[Math.Clamp(index, 0, steps.Length - 1)];
-            HostWindow.RefreshVSync();
+
+            var steps = Interp.Interp.Steps;
+            var index = Math.Max(Array.IndexOf(steps, Interp.InterpOptions.TargetFps.Value), 0);
+
+            if (ImGui.SliderInt("##frame-rate", ref index, 0, steps.Length - 1, StepLabel(steps[index])))
+            {
+                Interp.InterpOptions.TargetFps.Value = steps[Math.Clamp(index, 0, steps.Length - 1)];
+                HostWindow.RefreshVSync();
+            }
+
+            SettingsWidgets.Hint("settings.display.frame_rate_hint");
+
         }
 
-        SettingsWidgets.Hint("settings.display.frame_rate_hint");
-
-        if (!available) ImGui.EndDisabled();
-
         if (!available)
-            ImGui.TextDisabled(Localization.T("settings.display.frame_rate_needs_pgxp"));
+            ImGui.TextDisabled(Localization.T("settings.display.frame_rate_needs_native"));
     }
 
     private static string StepLabel(int fps)
@@ -81,36 +91,5 @@ internal static class DisplayPage
 
         var effective = Interp.Interp.Resolve(fps, Interp.Interp.RefreshRate, Interp.Interp.VSync);
         return effective > 0 && effective != fps ? $"{fps} FPS ({effective})" : $"{fps} FPS";
-    }
-
-    private static void DrawPgxp()
-    {
-        SettingsWidgets.Toggle(PgxpOptions.Enable, "settings.display.pgxp_enable", "settings.display.pgxp_enable_hint");
-
-        var enabled = PgxpOptions.Enable.Value;
-        if (!enabled) ImGui.BeginDisabled();
-
-        var column = ImGui.GetContentRegionAvail().X / 3f;
-        
-        //1
-        SettingsWidgets.Toggle(PgxpOptions.TextureCorrection, "settings.display.pgxp_texture", "settings.display.pgxp_texture_hint");
-        ImGui.SameLine(column);
-        SettingsWidgets.Toggle(PgxpOptions.Culling, "settings.display.pgxp_culling", "settings.display.pgxp_culling_hint");
-        ImGui.SameLine(column * 2f);
-        SettingsWidgets.Toggle(PgxpOptions.Cpu, "settings.display.pgxp_cpu", "settings.display.pgxp_cpu_hint");
-        //2
-        SettingsWidgets.Toggle(PgxpOptions.VertexCache, "settings.display.pgxp_vertex_cache", "settings.display.pgxp_vertex_cache_hint");
-        ImGui.SameLine(column);
-        SettingsWidgets.Toggle(PgxpOptions.Memory, "settings.display.pgxp_memory", "settings.display.pgxp_memory_hint");
-        ImGui.SameLine(column * 2f);
-        SettingsWidgets.Toggle(PgxpOptions.CacheW, "settings.display.pgxp_cache_w", "settings.display.pgxp_cache_w_hint");
-
-        var tolerance = PgxpOptions.Tolerance.Value;
-        if (ImGui.SliderFloat(Localization.T("settings.display.pgxp_tolerance"), ref tolerance, -1f, 10f, tolerance < 0f ? Localization.T("settings.display.pgxp_tolerance_off") : "%.2f"))
-            PgxpOptions.Tolerance.Value = tolerance;
-
-        SettingsWidgets.Hint("settings.display.pgxp_tolerance_hint");
-
-        if (!enabled) ImGui.EndDisabled();
     }
 }

@@ -16,6 +16,9 @@ internal static unsafe class Audio
     private const int FramesPerBuffer = 256;
 
     private static uint _source;
+    private static uint _previewSource;
+    private static uint _previewBuffer;
+    private static readonly object _previewGate = new();
     private static uint[] _buffers = new uint[NumBuffers];
     private static short[] _sampleBuf = new short[FramesPerBuffer * 2];
 
@@ -80,6 +83,53 @@ internal static unsafe class Audio
         _spu = null;
     }
 
+    public static void Preview(short[] pcm, int channels, int rate)
+    {
+        if (_al == null || pcm.Length == 0) return;
+
+        lock (_previewGate)
+        {
+            StopPreviewLocked();
+            if (_previewSource == 0) _previewSource = _al.GenSource();
+            _previewBuffer = _al.GenBuffer();
+            _al.BufferData(_previewBuffer, channels >= 2 ? BufferFormat.Stereo16 : BufferFormat.Mono16, pcm, rate);
+            _al.SetSourceProperty(_previewSource, SourceFloat.Gain, _masterVolume);
+            _al.SetSourceProperty(_previewSource, SourceInteger.Buffer, (int)_previewBuffer);
+            _al.SourcePlay(_previewSource);
+        }
+    }
+
+    public static void StopPreview()
+    {
+        if (_al == null) return;
+        lock (_previewGate)
+        {
+            StopPreviewLocked();
+        }
+    }
+
+    public static bool PreviewPlaying
+    {
+        get
+        {
+            if (_al == null || _previewSource == 0) return false;
+            lock (_previewGate)
+            {
+                _al.GetSourceProperty(_previewSource, GetSourceInteger.SourceState, out var state);
+                return state == (int)SourceState.Playing;
+            }
+        }
+    }
+
+    private static void StopPreviewLocked()
+    {
+        if (_previewSource == 0) return;
+        _al!.SourceStop(_previewSource);
+        _al.SetSourceProperty(_previewSource, SourceInteger.Buffer, 0);
+        if (_previewBuffer != 0) _al.DeleteBuffer(_previewBuffer);
+        _previewBuffer = 0;
+    }
+
     public static void SetMasterVolume(float volume)
     {
         _masterVolume = Math.Clamp(volume, 0f, 1f);
@@ -126,6 +176,8 @@ internal static unsafe class Audio
         _mixerThread?.Join();
         if (_al != null)
         {
+            StopPreview();
+            if (_previewSource != 0) _al.DeleteSource(_previewSource);
             _al.SourceStop(_source);
             _al.DeleteSource(_source);
             _al.DeleteBuffers(_buffers);

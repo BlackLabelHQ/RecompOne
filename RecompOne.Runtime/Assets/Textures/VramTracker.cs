@@ -7,15 +7,103 @@ public static class VramTracker
     public const int Cols = 1024 / BlockW;
     public const int Rows = 512 / BlockH;
 
+    private const int Width = 1024;
+    private const int Height = 512;
+    private const int MaxUploads = 1 << 20;
+
     private static readonly int[] _gen = new int[Cols * Rows];
     private static readonly bool[] _gpuDirty = new bool[Cols * Rows];
+    private static readonly int[] _owner = new int[Width * Height];
+    private static readonly List<(int X, int Y, int W, int H)> _uploads = [];
     private static int _clock;
+
+    public static int OwnerVersion { get; private set; }
 
     public static void Reset()
     {
         Array.Clear(_gen);
         Array.Clear(_gpuDirty);
+        Array.Clear(_owner);
+        _uploads.Clear();
         _clock = 0;
+        OwnerVersion++;
+        TextureSources.Reset();
+    }
+
+    private static bool Clip(ref int x, ref int y, ref int w, ref int h)
+    {
+        if (w < 0)
+        {
+            x += w;
+            w = -w;
+        }
+
+        if (h < 0)
+        {
+            y += h;
+            h = -h;
+        }
+
+        if (x < 0)
+        {
+            w += x;
+            x = 0;
+        }
+
+        if (y < 0)
+        {
+            h += y;
+            y = 0;
+        }
+
+        w = Math.Min(w, Width - x);
+        h = Math.Min(h, Height - y);
+        return w > 0 && h > 0;
+    }
+
+    public static void MarkUpload(int x, int y, int w, int h)
+    {
+        MarkCpuWrite(x, y, w, h);
+        if (!Clip(ref x, ref y, ref w, ref h)) return;
+
+        if (_uploads.Count >= MaxUploads)
+        {
+            Array.Clear(_owner);
+            _uploads.Clear();
+        }
+
+        OwnerVersion++;
+        _uploads.Add((x, y, w, h));
+        var id = _uploads.Count;
+        for (var row = y; row < y + h; row++) _owner.AsSpan(row * Width + x, w).Fill(id);
+    }
+
+    public static void MarkFill(int x, int y, int w, int h)
+    {
+        MarkCpuWrite(x, y, w, h);
+        if (!Clip(ref x, ref y, ref w, ref h)) return;
+        OwnerVersion++;
+        for (var row = y; row < y + h; row++) _owner.AsSpan(row * Width + x, w).Clear();
+    }
+
+    public static bool FindUpload(int x, int y, int w, int h, out int ux, out int uy, out int uw, out int uh)
+    {
+        ux = uy = uw = uh = 0;
+        if (!Clip(ref x, ref y, ref w, ref h)) return false;
+
+        var id = _owner[y * Width + x];
+        if (id <= 0 || id > _uploads.Count) return false;
+
+        for (var row = y; row < y + h; row++)
+            if (_owner.AsSpan(row * Width + x, w).IndexOfAnyExcept(id) >= 0)
+                return false;
+
+        (ux, uy, uw, uh) = _uploads[id - 1];
+        for (var row = uy; row < uy + uh; row++)
+            if (_owner.AsSpan(row * Width + ux, uw).IndexOfAnyExcept(id) >= 0)
+                return false;
+
+        return !IsGpuDirty(ux, uy, uw, uh);
     }
 
     private static void Bounds(int x, int y, int w, int h, out int c0, out int r0, out int c1, out int r1)

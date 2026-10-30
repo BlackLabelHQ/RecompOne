@@ -144,7 +144,8 @@ public static class TextureDumper
         _worker.Start();
     }
 
-    public static void Offer(ushort[] vram, in TileRect rect, ulong indexHash, ulong clutHash, int tpage, int clut)
+    public static void Offer(ushort[] vram, in TileRect rect, ulong indexHash, ulong clutHash, int tpage, int clut,
+        ushort[]? window = null)
     {
         if (!Enabled) return;
         if (!Tiles)
@@ -169,7 +170,7 @@ public static class TextureDumper
             ClutHash = clutHash,
             TPage = tpage,
             ClutId = clut,
-            Window = TextureTile.CopyWindow(vram, rect),
+            Window = window ?? TextureTile.CopyWindow(vram, rect),
             Clut = TextureTile.CopyClut(vram, rect)
         };
 

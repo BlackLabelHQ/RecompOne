@@ -90,43 +90,224 @@ public static class Gte
     private static readonly short[] _snapRt = new short[SnapshotSlots * 9];
     private static readonly int[] _snapTr = new int[SnapshotSlots * 3];
     private static readonly int[] _snapView = new int[SnapshotSlots * 3];
+    private static readonly uint[] _snapId = new uint[SnapshotSlots];
+    private static readonly short[] _snapCamRt = new short[SnapshotSlots * 9];
+    private static readonly int[] _snapCamTr = new int[SnapshotSlots * 3];
+    private static readonly bool[] _snapCam = new bool[SnapshotSlots];
+
+    private const int MaxCameraDepth = 8;
+    private static readonly short[] _cameraRt = new short[(MaxCameraDepth + 1) * 9];
+    private static readonly int[] _cameraTr = new int[(MaxCameraDepth + 1) * 3];
+    private static bool _hasDefaultCamera;
+    private static int _cameraDepth;
+    private static readonly TransformKind[] _snapKind = new TransformKind[SnapshotSlots];
     private static int _snapSerial;
     private static bool _snapDirty = true;
-    
+    private static bool _snapForced = true;
+
+    private static uint _rtSite;
+    private static uint _trSite;
+    private static uint _rtCaller;
+    private static readonly Dictionary<uint, uint> _autoOrdinals = new();
+
+    private const int MaxGroupDepth = 16;
+    private static readonly uint[] _groupBases = new uint[MaxGroupDepth];
+    private static readonly uint[] _groupIds = new uint[MaxGroupDepth];
+    private static readonly uint[] _groupOrdinals = new uint[MaxGroupDepth];
+    private static readonly bool[] _groupIgnore = new bool[MaxGroupDepth];
+    private static int _groupDepth;
+
     public static int TransformSerial
     {
         get
         {
             if (!_snapDirty) return _snapSerial;
-            
-            _snapSerial++;
+
             _snapDirty = false;
-            
+            if (!_snapForced && _snapSerial > 0 && SameAsSnapshot(_snapSerial)) return _snapSerial;
+            _snapForced = false;
+
+            _snapSerial++;
+
             var slot = (_snapSerial & (SnapshotSlots - 1)) * 9;
             for (var i = 0; i < 9; i++) _snapRt[slot + i] = RT[i];
-            
+
             slot = (_snapSerial & (SnapshotSlots - 1)) * 3;
             for (var i = 0; i < 3; i++) _snapTr[slot + i] = TR[i];
-            
+
             _snapView[slot] = H;
             _snapView[slot + 1] = OFX;
             _snapView[slot + 2] = OFY;
-            
+
+            slot = _snapSerial & (SnapshotSlots - 1);
+            _snapId[slot] = NextId(out _snapKind[slot]);
+            StoreCamera(slot);
+
             return _snapSerial;
         }
     }
-    
+
+    private static bool SameAsSnapshot(int serial)
+    {
+        var slot = (serial & (SnapshotSlots - 1)) * 9;
+        for (var i = 0; i < 9; i++)
+            if (_snapRt[slot + i] != RT[i]) return false;
+
+        slot = (serial & (SnapshotSlots - 1)) * 3;
+        for (var i = 0; i < 3; i++)
+            if (_snapTr[slot + i] != TR[i]) return false;
+
+        return _snapView[slot] == H && _snapView[slot + 1] == OFX && _snapView[slot + 2] == OFY;
+    }
+
+    private static uint NextId(out TransformKind kind)
+    {
+        if (_groupDepth > 0)
+        {
+            var top = _groupDepth - 1;
+            kind = _groupIgnore[top] ? TransformKind.Ignored : TransformKind.Explicit;
+            return Mix(Mix(_groupIds[top], _groupOrdinals[top]++), 0x51ED270Bu) | 1u;
+        }
+
+        var key = Mix(Mix(_rtSite, _trSite), _rtCaller);
+        _autoOrdinals.TryGetValue(key, out var ordinal);
+        _autoOrdinals[key] = ordinal + 1;
+        kind = TransformKind.Auto;
+        return Mix(key, ordinal) | 1u;
+    }
+
+    private static uint Mix(uint hash, uint value)
+    {
+        hash ^= value + 0x9E3779B9u + (hash << 6) + (hash >> 2);
+        hash ^= hash >> 15;
+        hash *= 0x2C1B3C6Du;
+        hash ^= hash >> 12;
+        return hash;
+    }
+
+    private static void StoreCamera(int slot)
+    {
+        var level = _cameraDepth > 0 ? _cameraDepth : _hasDefaultCamera ? 0 : -1;
+        _snapCam[slot] = level >= 0;
+        if (level < 0) return;
+
+        Array.Copy(_cameraRt, level * 9, _snapCamRt, slot * 9, 9);
+        Array.Copy(_cameraTr, level * 3, _snapCamTr, slot * 3, 3);
+    }
+
+    public static void SetCamera(ReadOnlySpan<short> rotation, ReadOnlySpan<int> translation)
+    {
+        rotation[..9].CopyTo(_cameraRt.AsSpan(0, 9));
+        translation[..3].CopyTo(_cameraTr.AsSpan(0, 3));
+        _hasDefaultCamera = true;
+        _snapForced = true;
+        _snapDirty = true;
+    }
+
+    public static void ClearCamera()
+    {
+        _hasDefaultCamera = false;
+        _snapForced = true;
+        _snapDirty = true;
+    }
+
+    public static void PushCamera(ReadOnlySpan<short> rotation, ReadOnlySpan<int> translation)
+    {
+        if (_cameraDepth >= MaxCameraDepth) return;
+
+        _cameraDepth++;
+        rotation[..9].CopyTo(_cameraRt.AsSpan(_cameraDepth * 9, 9));
+        translation[..3].CopyTo(_cameraTr.AsSpan(_cameraDepth * 3, 3));
+        _snapForced = true;
+        _snapDirty = true;
+    }
+
+    public static void PopCamera()
+    {
+        if (_cameraDepth == 0) return;
+
+        _cameraDepth--;
+        _snapForced = true;
+        _snapDirty = true;
+    }
+
+    public static bool SnapshotCamera(int serial, Span<short> rotation, Span<int> translation)
+    {
+        if (serial <= 0 || _snapSerial - serial >= SnapshotSlots) return false;
+
+        var slot = serial & (SnapshotSlots - 1);
+        if (!_snapCam[slot]) return false;
+
+        _snapCamRt.AsSpan(slot * 9, 9).CopyTo(rotation);
+        _snapCamTr.AsSpan(slot * 3, 3).CopyTo(translation);
+        return true;
+    }
+
+    public static void BeginFrame()
+    {
+        _autoOrdinals.Clear();
+        _groupDepth = 0;
+        _cameraDepth = 0;
+        _snapForced = true;
+        _snapDirty = true;
+    }
+
+    public static void PushGroup(uint id, bool ignore = false)
+    {
+        if (_groupDepth >= MaxGroupDepth) return;
+
+        _groupBases[_groupDepth] = id;
+        _groupIds[_groupDepth] = id;
+        _groupOrdinals[_groupDepth] = 0;
+        _groupIgnore[_groupDepth] = ignore;
+        _groupDepth++;
+        _snapForced = true;
+        _snapDirty = true;
+    }
+
+    public static void SetGroupPart(uint part)
+    {
+        if (_groupDepth == 0) return;
+
+        var top = _groupDepth - 1;
+        _groupIds[top] = Mix(_groupBases[top], part);
+        _groupOrdinals[top] = 0;
+        _snapForced = true;
+        _snapDirty = true;
+    }
+
+    public static void PopGroup()
+    {
+        if (_groupDepth == 0) return;
+
+        _groupDepth--;
+        _snapForced = true;
+        _snapDirty = true;
+    }
+
     public static bool Snapshot(int serial, Span<short> rotation, Span<int> translation, Span<int> view)
     {
         if (serial <= 0 || _snapSerial - serial >= SnapshotSlots) return false;
-        
+
         var slot = (serial & (SnapshotSlots - 1)) * 9;
         for (var i = 0; i < 9; i++) rotation[i] = _snapRt[slot + i];
-        
+
         slot = (serial & (SnapshotSlots - 1)) * 3;
         for (var i = 0; i < 3; i++) translation[i] = _snapTr[slot + i];
         for (var i = 0; i < 3; i++) view[i] = _snapView[slot + i];
-        
+
+        return true;
+    }
+
+    public static bool SnapshotId(int serial, out uint id, out TransformKind kind)
+    {
+        id = 0;
+        kind = TransformKind.Auto;
+        if (serial <= 0 || _snapSerial - serial >= SnapshotSlots) return false;
+
+        var slot = serial & (SnapshotSlots - 1);
+        id = _snapId[slot];
+        kind = _snapKind[slot];
         return true;
     }
     
@@ -384,7 +565,6 @@ public static class Gte
         SY[1] = SY[2];
         SY[2] = (short)ny;
 
-        if (Pgxp.Pgxp.Enabled) PushPrecise(m3, nx, ny);
 
         if (last)
         {
@@ -399,23 +579,45 @@ public static class Gte
         if ((FLAG & 0x7F87E000u) != 0) FLAG |= 0x80000000u;
     }
 
-    private static void PushPrecise(long zAcc, int nx, int ny)
+    private static int _hCandidate, _hVotes;
+
+    public static int SceneH { get; private set; }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static void VoteH()
     {
-        var z = zAcc * (1.0 / 4096.0);
-        var w = Math.Max(z, H / 2.0);
-        var hDivSz = H / w;
+        if (_hVotes == 0)
+        {
+            _hCandidate = H;
+            _hVotes = 1;
+        }
+        else if (_hCandidate == H)
+        {
+            _hVotes++;
+        }
+        else
+        {
+            _hVotes--;
+        }
+    }
 
-        var px = (float)(OFX / 65536.0 + IR1 * hDivSz);
-        var py = (float)(OFY / 65536.0 + IR2 * hDivSz);
+    public static void CloseFrame()
+    {
+        if (_hVotes > 0) SceneH = _hCandidate;
+        _hVotes = 0;
+    }
 
-        px = Math.Clamp(px, -0x400, 0x3FF);
-        py = Math.Clamp(py, -0x400, 0x3FF);
-
-        Pgxp.PgxpGte.PushVertex(px, py, (float)w, Pgxp.PgxpGte.PackXy(nx, ny), TransformSerial);
+    public static bool TryGetCamera(Span<short> rotation, Span<int> translation)
+    {
+        if (!_hasDefaultCamera) return false;
+        _cameraRt.AsSpan(0, 9).CopyTo(rotation);
+        _cameraTr.AsSpan(0, 3).CopyTo(translation);
+        return true;
     }
 
     public static void Rtps(int sf, bool lm)
     {
+        VoteH();
         FLAG = 0;
         Rtp(V[0], V[1], V[2], sf, lm, true);
         EndFlag();
@@ -423,6 +625,7 @@ public static class Gte
 
     public static void Rtpt(int sf, bool lm)
     {
+        VoteH();
         FLAG = 0;
         Rtp(V[0], V[1], V[2], sf, lm, false);
         Rtp(V[3], V[4], V[5], sf, lm, false);
@@ -433,14 +636,6 @@ public static class Gte
     public static void Nclip()
     {
         FLAG = 0;
-
-        if (Pgxp.Pgxp.CullingCorrection &&
-            Pgxp.PgxpGte.TryNclip(SX[0], SY[0], SX[1], SY[1], SX[2], SY[2], out var precise))
-        {
-            MAC0 = (int)CheckMac0((long)precise);
-            EndFlag();
-            return;
-        }
 
         MAC0 = (int)CheckMac0((long)SX[0] * (SY[1] - SY[2]) + (long)SX[1] * (SY[2] - SY[0]) +
                               (long)SX[2] * (SY[0] - SY[1]));
@@ -916,11 +1111,23 @@ public static class Gte
         }
     }
 
+    public static void WriteControl(int reg, uint val, uint site)
+    {
+        if (reg <= 4)
+        {
+            _rtSite = site;
+            _rtCaller = Runtime.Cpu?.RA ?? 0u;
+        }
+        else if (reg <= 7) _trSite = site;
+
+        WriteControl(reg, val);
+    }
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void WriteControl(int reg, uint val)
     {
         if (reg <= 7 || reg is 24 or 25 or 26) _snapDirty = true;
-        
+
         switch (reg)
         {
             case 0:

@@ -25,13 +25,15 @@ public static class MainMenuBar
 
         MenuRegistry.Menu("menu.mods").After("menu.system")
             .Popup<ModsPopup>("menu.mods.manage")
-            .Item("menu.mods.hub", static () => { }).Disabled();
+            .Popup<ModHubPopup>("menu.mods.hub").Enabled(static () => Hub.ModHub.Configured)
+            .Popup<AssetPacksPopup>("menu.mods.asset_packs");
 
         MenuRegistry.Menu("menu.debug")
             .Submenu("menu.debug.gpu")
             .Panel<OutputPanel>("panel.output")
             .Panel<VramViewerPanel>("panel.vram_viewer")
             .Panel<TextureInspectorPanel>("panel.texture_inspector")
+            .Panel<InterpDebugPanel>("panel.interp_debug")
             .Separator()
             .Check("menu.debug.dump_textures",
                 static () => Assets.Textures.TextureDumper.Tiles,

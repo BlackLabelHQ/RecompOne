@@ -13,6 +13,7 @@ internal sealed class TransformInterp
     private const float OrdPenalty = 64f;
     private const float KeyPenalty = 2048f;
     private const float UvPenalty = 48f;
+    private const float IdMaxTurn = 1.5f;
     private const int PageCount = 32; //performance improv
     
     private struct Pose
@@ -36,7 +37,19 @@ internal sealed class TransformInterp
     private int[] _candidateMarks = [];
     private int _candidateGeneration;
     
-    public int Matched { get; private set; }
+
+    public int IdMatched { get; private set; }
+
+    public int HeuristicMatched { get; private set; }
+
+    public int Rejected { get; private set; }
+
+
+
+
+    public int CameraJumps { get; private set; }
+
+    public int CameraOnly { get; private set; }
     
     public int Groups { get; private set; }
     
@@ -46,10 +59,21 @@ internal sealed class TransformInterp
     
     
     private readonly Dictionary<uint, int> _order = new();
+    private readonly Dictionary<uint, int> _byId = new();
+    private bool[] _done = [];
+    private bool[] _taken = [];
     
-    private const int PreparedStride = 39;
+    private const int EndpointStride = 22;
+    private const int WorldOffset = 9;
+    private const int CameraOffset = WorldOffset + EndpointStride;
+    private const int MotionOffset = CameraOffset + EndpointStride;
+    private const int PreparedStride = MotionOffset + 12;
+    private const float CameraCut = 2048f;
+    private const float NearDepth = 1f;
+    private const float CameraTurn = 0.6f;
     private float[] _prepared = [];
     private bool[] _preparedValid = [];
+    private bool[] _split = [];
 
     private void Prepare(FrameGraph current, FrameGraph previous)
     {
@@ -57,30 +81,223 @@ internal sealed class TransformInterp
         if (_preparedValid.Length < count)
         {
             _preparedValid = new bool[count];
+            _split = new bool[count];
             _prepared = new float[count * PreparedStride];
         }
+        
+        Span<float> a = stackalloc float[9];
+        Span<float> b = stackalloc float[9];
+        CameraJumps = CameraOnly = 0;
+        MapCameras(current, previous);
         for (var i = 0; i < count; i++)
         {
             var group = current.Transforms[i];
             _preparedValid[i] = false;
-            if (group.Match < 0 || !group.Lerp) continue;
-            var from = previous.Transforms[group.Match];
+            _split[i] = false;
+            if (group.Kind == TransformKind.Ignored) continue;
             var data = _prepared.AsSpan(i * PreparedStride, PreparedStride);
-            _preparedValid[i] = Invert(in group, data[..9]) &&
-                Decompose(in from, data.Slice(9, 9), data.Slice(27, 6)) &&
-                Decompose(in group, data.Slice(18, 9), data.Slice(33, 6));
+            
+            if (group.Match < 0 || !group.Lerp)
+            {
+                if (!group.HasCamera || !_cameras.TryGetValue(CameraKey(in group), out var source)) continue;
+                var eye = previous.Transforms[source];
+                if (CameraJump(in eye, in group) || !Invert(in group, data[..9]) || !Static(in eye, in group, data)) continue;
+                _split[i] = true;
+                _preparedValid[i] = true;
+                CameraOnly++;
+                continue;
+            }
+            
+            var from = previous.Transforms[group.Match];
+            if (!Invert(in group, data[..9])) continue;
+            
+            if (group.HasCamera && from.HasCamera)
+            {
+                if (CameraJump(in from, in group))
+                {
+                    CameraJumps++;
+                    continue;
+                }
+                if (Split(in from, in group, data))
+                {
+                    _split[i] = true;
+                    _preparedValid[i] = true;
+                    continue;
+                }
+            }
+            
+            Rotation(in from, a);
+            Rotation(in group, b);
+            _preparedValid[i] = Endpoints(a, b, data.Slice(WorldOffset, EndpointStride));
         }
+    }
+    
+    private readonly Dictionary<ulong, int> _cameras = new();
+    
+    private void MapCameras(FrameGraph current, FrameGraph previous)
+    {
+        _cameras.Clear();
+        for (var i = 0; i < current.Transforms.Count; i++)
+        {
+            var group = current.Transforms[i];
+            if (!group.HasCamera || group.Match < 0) continue;
+            
+            var from = previous.Transforms[group.Match];
+            if (!from.HasCamera) continue;
+            
+            _cameras.TryAdd(CameraKey(in group), group.Match);
+        }
+    }
+    
+    private static ulong CameraKey(in TransformRecord m)
+    {
+        var hash = 1469598103934665603ul;
+        void Add(int value) => hash = (hash ^ (uint)value) * 1099511628211ul;
+        Add(m.C0); Add(m.C1); Add(m.C2); Add(m.C3); Add(m.C4); Add(m.C5); Add(m.C6); Add(m.C7); Add(m.C8);
+        Add(m.CX); Add(m.CY); Add(m.CZ);
+        return hash;
+    }
+    
+    private static bool Static(in TransformRecord eye, in TransformRecord to, Span<float> data)
+    {
+        Span<float> cameraA = stackalloc float[9];
+        Span<float> cameraB = stackalloc float[9];
+        Span<float> inverseB = stackalloc float[9];
+        Span<float> rotation = stackalloc float[9];
+        Span<float> world = stackalloc float[9];
+        
+        Camera(in eye, cameraA);
+        Camera(in to, cameraB);
+        if (!Invert(cameraB, inverseB)) return false;
+        
+        Rotation(in to, rotation);
+        Multiply(inverseB, rotation, world);
+        if (!Endpoints(world, world, data.Slice(WorldOffset, EndpointStride))) return false;
+        if (!Endpoints(cameraA, cameraB, data.Slice(CameraOffset, EndpointStride))) return false;
+        
+        var motion = data.Slice(MotionOffset, 12);
+        World(inverseB, in to, motion[..3]);
+        motion[..3].CopyTo(motion.Slice(3, 3));
+        motion[6] = eye.CX;
+        motion[7] = eye.CY;
+        motion[8] = eye.CZ;
+        motion[9] = to.CX;
+        motion[10] = to.CY;
+        motion[11] = to.CZ;
+        return true;
+    }
+    
+    internal static bool CameraJump(in TransformRecord from, in TransformRecord to)
+    {
+        var dx = (float)to.CX - from.CX;
+        var dy = (float)to.CY - from.CY;
+        var dz = (float)to.CZ - from.CZ;
+        if (MathF.Sqrt(dx * dx + dy * dy + dz * dz) > CameraCut) return true;
+        
+        var turn =
+            Row(to.C0, to.C1, to.C2, from.C0, from.C1, from.C2) +
+            Row(to.C3, to.C4, to.C5, from.C3, from.C4, from.C5) +
+            Row(to.C6, to.C7, to.C8, from.C6, from.C7, from.C8);
+        return turn > CameraTurn;
+    }
+    
+    private static bool Split(in TransformRecord from, in TransformRecord to, Span<float> data)
+    {
+        Span<float> cameraA = stackalloc float[9];
+        Span<float> cameraB = stackalloc float[9];
+        Span<float> inverseA = stackalloc float[9];
+        Span<float> inverseB = stackalloc float[9];
+        Span<float> rotation = stackalloc float[9];
+        Span<float> worldA = stackalloc float[9];
+        Span<float> worldB = stackalloc float[9];
+        
+        Camera(in from, cameraA);
+        Camera(in to, cameraB);
+        if (!Invert(cameraA, inverseA) || !Invert(cameraB, inverseB)) return false;
+        
+        Rotation(in from, rotation);
+        Multiply(inverseA, rotation, worldA);
+        Rotation(in to, rotation);
+        Multiply(inverseB, rotation, worldB);
+        
+        if (!Endpoints(worldA, worldB, data.Slice(WorldOffset, EndpointStride))) return false;
+        if (!Endpoints(cameraA, cameraB, data.Slice(CameraOffset, EndpointStride))) return false;
+        
+        var motion = data.Slice(MotionOffset, 12);
+        World(inverseA, in from, motion[..3]);
+        World(inverseB, in to, motion.Slice(3, 3));
+        motion[6] = from.CX;
+        motion[7] = from.CY;
+        motion[8] = from.CZ;
+        motion[9] = to.CX;
+        motion[10] = to.CY;
+        motion[11] = to.CZ;
+        return true;
+    }
+    
+    private static void World(ReadOnlySpan<float> inverse, in TransformRecord m, Span<float> result)
+    {
+        result[0] = inverse[0] * m.TX + inverse[1] * m.TY + inverse[2] * m.TZ + m.CX;
+        result[1] = inverse[3] * m.TX + inverse[4] * m.TY + inverse[5] * m.TZ + m.CY;
+        result[2] = inverse[6] * m.TX + inverse[7] * m.TY + inverse[8] * m.TZ + m.CZ;
+    }
+    
+    private static void Rotation(in TransformRecord m, Span<float> result)
+    {
+        result[0] = m.R0 * Scale; result[1] = m.R1 * Scale; result[2] = m.R2 * Scale;
+        result[3] = m.R3 * Scale; result[4] = m.R4 * Scale; result[5] = m.R5 * Scale;
+        result[6] = m.R6 * Scale; result[7] = m.R7 * Scale; result[8] = m.R8 * Scale;
+    }
+    
+    private static void Camera(in TransformRecord m, Span<float> result)
+    {
+        result[0] = m.C0 * Scale; result[1] = m.C1 * Scale; result[2] = m.C2 * Scale;
+        result[3] = m.C3 * Scale; result[4] = m.C4 * Scale; result[5] = m.C5 * Scale;
+        result[6] = m.C6 * Scale; result[7] = m.C7 * Scale; result[8] = m.C8 * Scale;
+    }
+    
+    private static void Multiply(ReadOnlySpan<float> a, ReadOnlySpan<float> b, Span<float> result)
+    {
+        for (var row = 0; row < 3; row++)
+        for (var col = 0; col < 3; col++)
+            result[row * 3 + col] = a[row * 3] * b[col] + a[row * 3 + 1] * b[3 + col] + a[row * 3 + 2] * b[6 + col];
+    }
+
+    private static bool Endpoints(ReadOnlySpan<float> from, ReadOnlySpan<float> to, Span<float> data)
+    {
+        Span<float> rotation = stackalloc float[9];
+        var qa = data[..4];
+        var qb = data.Slice(4, 4);
+
+        if (!Decompose(from, rotation, data.Slice(10, 6))) return false;
+        Quaternion(rotation, qa);
+        if (!Decompose(to, rotation, data.Slice(16, 6))) return false;
+        Quaternion(rotation, qb);
+
+        var dot = qa[0] * qb[0] + qa[1] * qb[1] + qa[2] * qb[2] + qa[3] * qb[3];
+        if (dot < 0f)
+        {
+            dot = -dot;
+            for (var i = 0; i < 4; i++) qb[i] = -qb[i];
+        }
+
+        var angle = dot > 0.9995f ? 0f : MathF.Acos(MathF.Min(dot, 1f));
+        data[8] = angle;
+        data[9] = angle > 0f ? 1f / MathF.Sin(angle) : 0f;
+        return true;
     }
 
     public void Match(FrameGraph current, FrameGraph previous)
     {
         
-        Matched = 0;
+        IdMatched = HeuristicMatched = Rejected = 0;
         Groups = current.Transforms.Count;
         
         Order(current);
         Order(previous);
         
+        EnsureBestCapacity(current.Transforms.Count, previous.Transforms.Count);
+        MatchIds(current, previous);
         Assign(current, previous);
         Prepare(current, previous);
     }
@@ -99,23 +316,86 @@ internal sealed class TransformInterp
         }
     }
     
+    private void MatchIds(FrameGraph current, FrameGraph previous)
+    {
+        var here = current.Transforms.Count;
+        var there = previous.Transforms.Count;
+        Array.Clear(_done, 0, here);
+        Array.Clear(_taken, 0, there);
+
+        _byId.Clear();
+        for (var j = 0; j < there; j++)
+        {
+            var group = previous.Transforms[j];
+            if (group.Id == 0 || group.Kind == TransformKind.Ignored) continue;
+            _byId[group.Id] = _byId.ContainsKey(group.Id) ? -1 : j;
+        }
+
+        for (var i = 0; i < here; i++)
+        {
+            var group = current.Transforms[i];
+            if (group.Kind == TransformKind.Ignored)
+            {
+                _done[i] = true;
+                continue;
+            }
+
+            if (group.Kind == TransformKind.Explicit) _done[i] = true;
+            if (group.Id == 0 || !_byId.TryGetValue(group.Id, out var j) || j < 0 || _taken[j]) continue;
+
+            var from = previous.Transforms[j];
+            if (from.Kind != group.Kind) continue;
+
+            _done[i] = true;
+            if (!Compatible(in group, in from))
+            {
+                Rejected++;
+                continue;
+            }
+
+            _taken[j] = true;
+            Accept(current, previous, i, j);
+            IdMatched++;
+        }
+    }
+
+    private static bool Compatible(in TransformRecord current, in TransformRecord previous)
+    {
+        if (current.H != previous.H) return false;
+        if (Determinant(in current) * Determinant(in previous) < 0f) return false;
+
+        var dx = current.TX - (previous.TX + previous.Vx);
+        var dy = current.TY - (previous.TY + previous.Vy);
+        var dz = current.TZ - (previous.TZ + previous.Vz);
+        if (MathF.Sqrt(dx * dx + dy * dy + dz * dz) > Reach) return false;
+
+        var orientation =
+            Row(current.R0, current.R1, current.R2, previous.R0, previous.R1, previous.R2) +
+            Row(current.R3, current.R4, current.R5, previous.R3, previous.R4, previous.R5) +
+            Row(current.R6, current.R7, current.R8, previous.R6, previous.R7, previous.R8);
+
+        return orientation <= IdMaxTurn;
+    }
+
     private void Assign(FrameGraph current, FrameGraph previous)
     {
         var here = current.Transforms.Count;
         var there = previous.Transforms.Count;
 
-        EnsureBestCapacity(here, there);
         ResetBest(here, there);
         BuildPageIndex(previous);
 
         for (var i = 0; i < here; i++)
         {
+            if (_done[i]) continue;
             var currentGroup = current.Transforms[i];
             var pageCount = AddPageCandidates(currentGroup.Pages);
             for (var candidateIndex = 0; candidateIndex < pageCount; candidateIndex++)
             {
                 var j = _pageCandidates[candidateIndex];
+                if (_taken[j]) continue;
                 var previousGroup = previous.Transforms[j];
+                if (previousGroup.Kind != TransformKind.Auto) continue;
                 if (!CanMatch(in currentGroup, in previousGroup)) continue;
                 if (!Score(in currentGroup, in previousGroup, out var score)) continue;
 
@@ -140,12 +420,14 @@ internal sealed class TransformInterp
 
         for (var i = 0; i < here; i++)
         {
+            if (_done[i]) continue;
             var j = _bestCur[i];
             if (j < 0 || _bestPrev[j] != i ||
                 _secondCur[i] - _scoreCur[i] <= 0.001f ||
                 _secondPrev[j] - _scorePrev[j] <= 0.001f) continue;
             
             Accept(current, previous, i, j);
+            HeuristicMatched++;
         }
 
     }
@@ -211,6 +493,7 @@ internal sealed class TransformInterp
             _bestCur = new int[here];
             _scoreCur = new float[here];
             _secondCur = new float[here];
+            _done = new bool[here];
         }
 
         if (_bestPrev.Length < there)
@@ -218,6 +501,7 @@ internal sealed class TransformInterp
             _bestPrev = new int[there];
             _scorePrev = new float[there];
             _secondPrev = new float[there];
+            _taken = new bool[there];
         }
     }
 
@@ -260,7 +544,6 @@ internal sealed class TransformInterp
         group.Lerp = steady || group.Held < Doubts;
         
         current.Transforms[index] = group;
-        Matched++;
     }
     
     private static bool CanMatch(in TransformRecord current, in TransformRecord previous)
@@ -350,6 +633,8 @@ internal sealed class TransformInterp
         if (_poses.Length < current.Transforms.Count) _poses = new Pose[current.Transforms.Count];
         
         Span<float> blended = stackalloc float[9];
+        Span<float> world = stackalloc float[9];
+        Span<float> camera = stackalloc float[9];
         
         for (var i = 0; i < current.Transforms.Count; i++)
         {
@@ -358,11 +643,31 @@ internal sealed class TransformInterp
             var group = current.Transforms[i];
             if (!_preparedValid[i]) continue;
             
-            var from = previous.Transforms[group.Match];
-            
             var prepared = _prepared.AsSpan(i * PreparedStride, PreparedStride);
             var inverse = prepared[..9];
-            if (!Blend(prepared, weight, blended)) continue;
+            float tx, ty, tz;
+            if (_split[i])
+            {
+                if (!Blend(prepared.Slice(WorldOffset, EndpointStride), weight, world) ||
+                    !Blend(prepared.Slice(CameraOffset, EndpointStride), weight, camera)) continue;
+                Multiply(camera, world, blended);
+                
+                var motion = prepared.Slice(MotionOffset, 12);
+                var wx = motion[0] + (motion[3] - motion[0]) * weight - (motion[6] + (motion[9] - motion[6]) * weight);
+                var wy = motion[1] + (motion[4] - motion[1]) * weight - (motion[7] + (motion[10] - motion[7]) * weight);
+                var wz = motion[2] + (motion[5] - motion[2]) * weight - (motion[8] + (motion[11] - motion[8]) * weight);
+                tx = camera[0] * wx + camera[1] * wy + camera[2] * wz;
+                ty = camera[3] * wx + camera[4] * wy + camera[5] * wz;
+                tz = camera[6] * wx + camera[7] * wy + camera[8] * wz;
+            }
+            else
+            {
+                if (!Blend(prepared.Slice(WorldOffset, EndpointStride), weight, blended)) continue;
+                var from = previous.Transforms[group.Match];
+                tx = from.TX + (group.TX - from.TX) * weight;
+                ty = from.TY + (group.TY - from.TY) * weight;
+                tz = from.TZ + (group.TZ - from.TZ) * weight;
+            }
             
             ref var pose = ref _poses[i];
             
@@ -380,9 +685,9 @@ internal sealed class TransformInterp
             pose.CY = group.TY;
             pose.CZ = group.TZ;
             
-            pose.TX = from.TX + (group.TX - from.TX) * weight;
-            pose.TY = from.TY + (group.TY - from.TY) * weight;
-            pose.TZ = from.TZ + (group.TZ - from.TZ) * weight;
+            pose.TX = tx;
+            pose.TY = ty;
+            pose.TZ = tz;
             
             pose.H = group.H;
             pose.OFX = group.OFX / 65536f;
@@ -405,22 +710,6 @@ internal sealed class TransformInterp
         if (index < 0 || index >= _poses.Length || !_poses[index].Valid) return false;
         
         return Place(ref _poses[index], in vertex, ref result);
-    }
-    
-    public bool Warp(int group, in HleVertex a, in HleVertex b, in HleVertex c,
-        out HleVertex wa, out HleVertex wb, out HleVertex wc)
-    {
-        wa = a;
-        wb = b;
-        wc = c;
-        
-        var index = group - 1;
-        if (index < 0 || index >= _poses.Length || !_poses[index].Valid) return false;
-        
-        ref var shared = ref _poses[index];
-        
-        return Place(ref shared, in a, ref wa) && Place(ref shared, in b, ref wb) &&
-               Place(ref shared, in c, ref wc);
     }
     
     private static bool Place(ref Pose pose, in HleVertex vertex, ref HleVertex result)
@@ -448,8 +737,7 @@ internal sealed class TransformInterp
         var ny = pose.M3 * vx + pose.M4 * vy + pose.M5 * vz + pose.TY;
         var nz = pose.M6 * vx + pose.M7 * vy + pose.M8 * vz + pose.TZ;
         
-        var near = pose.H / 2f;
-        if (!float.IsFinite(nz) || nz < near) return false;
+        if (!float.IsFinite(nz) || nz < NearDepth) return false;
         
         var x = pose.OFX + nx * pose.H / nz;
         var y = pose.OFY + ny * pose.H / nz;
@@ -467,43 +755,74 @@ internal sealed class TransformInterp
         return true;
     }
     
-    private static bool Blend(Span<float> prepared, float weight, Span<float> result)
+    private static bool Blend(Span<float> data, float weight, Span<float> result)
     {
-        var qa = prepared.Slice(9, 9);
-        var qb = prepared.Slice(18, 9);
-        var ka = prepared.Slice(27, 6);
-        var kb = prepared.Slice(33, 6);
+        var angle = data[8];
 
-        Span<float> rotation = stackalloc float[9];
-        if (!Slerp(qa, qb, weight, rotation)) return false;
+        float wa, wb;
+        if (angle <= 0f)
+        {
+            wa = 1f - weight;
+            wb = weight;
+        }
+        else
+        {
+            wa = MathF.Sin((1f - weight) * angle) * data[9];
+            wb = MathF.Sin(weight * angle) * data[9];
+        }
 
-        Span<float> k = stackalloc float[6];
-        for (var i = 0; i < 6; i++) k[i] = ka[i] + (kb[i] - ka[i]) * weight;
+        var x = data[0] * wa + data[4] * wb;
+        var y = data[1] * wa + data[5] * wb;
+        var z = data[2] * wa + data[6] * wb;
+        var w = data[3] * wa + data[7] * wb;
+
+        var length = x * x + y * y + z * z + w * w;
+        if (length < 1e-12f) return false;
+
+        var scale = 2f / length;
+        var r0 = 1f - scale * (y * y + z * z);
+        var r1 = scale * (x * y - z * w);
+        var r2 = scale * (x * z + y * w);
+        var r3 = scale * (x * y + z * w);
+        var r4 = 1f - scale * (x * x + z * z);
+        var r5 = scale * (y * z - x * w);
+        var r6 = scale * (x * z - y * w);
+        var r7 = scale * (y * z + x * w);
+        var r8 = 1f - scale * (x * x + y * y);
+
+        var ka = data.Slice(10, 6);
+        var kb = data.Slice(16, 6);
+        var k0 = ka[0] + (kb[0] - ka[0]) * weight;
+        var k1 = ka[1] + (kb[1] - ka[1]) * weight;
+        var k2 = ka[2] + (kb[2] - ka[2]) * weight;
+        var k3 = ka[3] + (kb[3] - ka[3]) * weight;
+        var k4 = ka[4] + (kb[4] - ka[4]) * weight;
+        var k5 = ka[5] + (kb[5] - ka[5]) * weight;
         
-        result[0] = rotation[0] * k[0];
-        result[1] = rotation[0] * k[1] + rotation[1] * k[3];
-        result[2] = rotation[0] * k[2] + rotation[1] * k[4] + rotation[2] * k[5];
-        result[3] = rotation[3] * k[0];
-        result[4] = rotation[3] * k[1] + rotation[4] * k[3];
-        result[5] = rotation[3] * k[2] + rotation[4] * k[4] + rotation[5] * k[5];
-        result[6] = rotation[6] * k[0];
-        result[7] = rotation[6] * k[1] + rotation[7] * k[3];
-        result[8] = rotation[6] * k[2] + rotation[7] * k[4] + rotation[8] * k[5];
+        result[0] = r0 * k0;
+        result[1] = r0 * k1 + r1 * k3;
+        result[2] = r0 * k2 + r1 * k4 + r2 * k5;
+        result[3] = r3 * k0;
+        result[4] = r3 * k1 + r4 * k3;
+        result[5] = r3 * k2 + r4 * k4 + r5 * k5;
+        result[6] = r6 * k0;
+        result[7] = r6 * k1 + r7 * k3;
+        result[8] = r6 * k2 + r7 * k4 + r8 * k5;
         
         return true;
     }
     
-    private static bool Decompose(in TransformRecord m, Span<float> q, Span<float> k)
+    private static bool Decompose(ReadOnlySpan<float> m, Span<float> q, Span<float> k)
     {
-        var c0x = m.R0 * Scale;
-        var c0y = m.R3 * Scale;
-        var c0z = m.R6 * Scale;
-        var c1x = m.R1 * Scale;
-        var c1y = m.R4 * Scale;
-        var c1z = m.R7 * Scale;
-        var c2x = m.R2 * Scale;
-        var c2y = m.R5 * Scale;
-        var c2z = m.R8 * Scale;
+        var c0x = m[0];
+        var c0y = m[3];
+        var c0z = m[6];
+        var c1x = m[1];
+        var c1y = m[4];
+        var c1z = m[7];
+        var c2x = m[2];
+        var c2y = m[5];
+        var c2z = m[8];
         
         var k00 = MathF.Sqrt(c0x * c0x + c0y * c0y + c0z * c0z);
         if (k00 < 1e-4f) return false;
@@ -563,15 +882,22 @@ internal sealed class TransformInterp
     
     private static bool Invert(in TransformRecord m, Span<float> result)
     {
-        var a = m.R0 * Scale;
-        var b = m.R1 * Scale;
-        var c = m.R2 * Scale;
-        var d = m.R3 * Scale;
-        var e = m.R4 * Scale;
-        var f = m.R5 * Scale;
-        var g = m.R6 * Scale;
-        var h = m.R7 * Scale;
-        var i = m.R8 * Scale;
+        Span<float> rotation = stackalloc float[9];
+        Rotation(in m, rotation);
+        return Invert(rotation, result);
+    }
+    
+    private static bool Invert(ReadOnlySpan<float> m, Span<float> result)
+    {
+        var a = m[0];
+        var b = m[1];
+        var c = m[2];
+        var d = m[3];
+        var e = m[4];
+        var f = m[5];
+        var g = m[6];
+        var h = m[7];
+        var i = m[8];
         
         var determinant = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g);
         if (MathF.Abs(determinant) < 1e-6f) return false;
@@ -587,64 +913,6 @@ internal sealed class TransformInterp
         result[6] = (d * h - e * g) * inverse;
         result[7] = (b * g - a * h) * inverse;
         result[8] = (a * e - b * d) * inverse;
-        
-        return true;
-    }
-    
-    private static bool Slerp(Span<float> from, Span<float> to, float weight, Span<float> result)
-    {
-        Span<float> a = stackalloc float[4];
-        Span<float> b = stackalloc float[4];
-        
-        if (!Quaternion(from, a) || !Quaternion(to, b)) return false;
-        
-        var dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
-        if (dot < 0f)
-        {
-            dot = -dot;
-            b[0] = -b[0];
-            b[1] = -b[1];
-            b[2] = -b[2];
-            b[3] = -b[3];
-        }
-        
-        float wa, wb;
-        
-        if (dot > 0.9995f)
-        {
-            wa = 1f - weight;
-            wb = weight;
-        }
-        else
-        {
-            var angle = MathF.Acos(dot);
-            var sin = MathF.Sin(angle);
-            wa = MathF.Sin((1f - weight) * angle) / sin;
-            wb = MathF.Sin(weight * angle) / sin;
-        }
-        
-        var x = a[0] * wa + b[0] * wb;
-        var y = a[1] * wa + b[1] * wb;
-        var z = a[2] * wa + b[2] * wb;
-        var w = a[3] * wa + b[3] * wb;
-        
-        var length = MathF.Sqrt(x * x + y * y + z * z + w * w);
-        if (length < 1e-6f) return false;
-        
-        x /= length;
-        y /= length;
-        z /= length;
-        w /= length;
-        
-        result[0] = 1f - 2f * (y * y + z * z);
-        result[1] = 2f * (x * y - z * w);
-        result[2] = 2f * (x * z + y * w);
-        result[3] = 2f * (x * y + z * w);
-        result[4] = 1f - 2f * (x * x + z * z);
-        result[5] = 2f * (y * z - x * w);
-        result[6] = 2f * (x * z - y * w);
-        result[7] = 2f * (y * z + x * w);
-        result[8] = 1f - 2f * (x * x + y * y);
         
         return true;
     }

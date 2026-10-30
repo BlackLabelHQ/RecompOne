@@ -28,6 +28,48 @@ internal static class GlShaders
                                     }
                                     """;
 
+    public const string PresentDepthFs = """
+                                         #version 330 core
+                                         in vec2 vUv;
+                                         uniform sampler2D uDepth;
+                                         uniform vec2 uOrigin;
+                                         uniform vec2 uSize;
+                                         uniform vec2 uTexSize;
+                                         out vec4 oColor;
+                                         void main() {
+                                             vec2 t = (uOrigin + vUv * uSize) / uTexSize;
+                                             oColor = vec4(texture(uDepth, t).r, 0.0, 0.0, 1.0);
+                                         }
+                                         """;
+
+    public const string PresentLayerFs = """
+                                         #version 330 core
+                                         in vec2 vUv;
+                                         uniform sampler2D uLayer;
+                                         uniform vec2 uOrigin;
+                                         uniform vec2 uSize;
+                                         uniform vec2 uTexSize;
+                                         out vec4 oColor;
+                                         void main() {
+                                             vec2 t = (uOrigin + vUv * uSize) / uTexSize;
+                                             oColor = texture(uLayer, t);
+                                         }
+                                         """;
+
+    public const string PresentMaterialFs = """
+                                            #version 330 core
+                                            in vec2 vUv;
+                                            uniform usampler2D uStencil;
+                                            uniform vec2 uOrigin;
+                                            uniform vec2 uSize;
+                                            uniform vec2 uTexSize;
+                                            out vec4 oColor;
+                                            void main() {
+                                                vec2 t = (uOrigin + vUv * uSize) / uTexSize;
+                                                oColor = vec4(float(texture(uStencil, t).r) / 255.0, 0.0, 0.0, 1.0);
+                                            }
+                                            """;
+
     public const string Present24Fs = """
                                       #version 330 core
                                       in vec2 vUv;
@@ -76,11 +118,11 @@ internal static class GlShaders
                                  uniform vec2 uVertexOffset;
                                  uniform vec2 uPosBias;
                                  uniform vec2 uFbInv;
-                                    uniform bool uDepthEnabled;
+                                    uniform int uDepthEnabled;
 
                                  void main() {
                                      vec2 p = (inPos + uVertexOffset + uPosBias) * uFbInv - 1.0;
-                                     gl_Position = vec4(p * inW, uDepthEnabled ? inW - 2.0 : 0.0, inW);
+                                     gl_Position = vec4(p * inW, uDepthEnabled == 1 ? inW - 2.0 : uDepthEnabled == 2 ? inW * 0.999998 : 0.0, inW);
 
                                      int inClut = int(inClutF + 0.5);
                                      int inTexpage = int(inTexpageF + 0.5);
@@ -130,9 +172,12 @@ internal static class GlShaders
                                  uniform vec4  uBlend;
                                  uniform vec4  uBlendOpaque = vec4(1.0, 1.0, 1.0, 0.0);
                                  uniform float uSetMask;
+                                 uniform int   uTrueColor;
                                  uniform int   uCheckMask;
                                  uniform int   uScale;
                                  uniform vec2  uPosBias;
+                                 uniform int   uSurface;
+                                 uniform int   uLayerReset;
 
                                  const int ditherTbl[16] = int[16](
                                      -4,  0, -3,  1,
@@ -147,6 +192,7 @@ internal static class GlShaders
                                      return u5(p.r) | (u5(p.g) << 5) | (u5(p.b) << 10) | (int(ceil(p.a)) << 15);
                                  }
                                  vec3 quant5(ivec3 c8) {
+                                     if (uTrueColor != 0) return vec3(clamp(c8, 0, 255)) / 255.0;
                                      if (vDither != 0) {
                                          ivec2 vp = ivec2(floor(gl_FragCoord.xy / float(uScale) - uPosBias));
                                          c8 = clamp(c8 + ditherTbl[(vp.y & 3) * 4 + (vp.x & 3)], 0, 255);
@@ -154,7 +200,17 @@ internal static class GlShaders
                                      return vec3(min(c8 >> 3, 31)) / 31.0;
                                  }
 
+                                 void shade();
+
                                  void main() {
+                                     shade();
+                                     if (uLayerReset != 0) {
+                                         FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+                                         BlendColor = vec4(0.0);
+                                     }
+                                 }
+
+                                 void shade() {
                                      if (uCheckMask != 0 && texelFetch(uDest, ivec2(gl_FragCoord.xy), 0).a >= 0.5) discard;
 
                                      if (texMode == 4) {
@@ -165,17 +221,17 @@ internal static class GlShaders
 
                                      if (texMode == 7) {
                                          vec4 img = texture(uExtTex, vUV);
-                                         if (img.a <= 0.0) discard;
+                                         if (img.a <= 0.0) { if (uSurface != 0) { FragColor = vec4(0.0); BlendColor = vec4(0.0, 0.0, 0.0, 1.0); return; } discard; }
                                          vec3 dst = texelFetch(uDest, ivec2(gl_FragCoord.xy), 0).rgb;
                                          vec3 rgb = mix(dst, img.rgb, img.a);
-                                         FragColor = vec4(floor(rgb * 31.0 + 0.5) / 31.0, uSetMask);
+                                         FragColor = vec4(uTrueColor != 0 ? rgb : floor(rgb * 31.0 + 0.5) / 31.0, uSetMask);
                                          BlendColor = uBlendOpaque;
                                          return;
                                      }
 
                                      if (texMode == 5) {
                                          vec4 img = texture(uExtTex, vUV);
-                                         if (img.a < 0.5) discard;
+                                         if (img.a < 0.5) { if (uSurface != 0) { FragColor = vec4(0.0); BlendColor = vec4(0.0, 0.0, 0.0, 1.0); return; } discard; }
                                          ivec3 e8 = (ivec3(img.rgb * 255.0 + 0.5) * ivec3(vColor.rgb * 255.0 + 0.5)) >> 7;
                                          FragColor = vec4(quant5(e8), uSetMask);
                                          BlendColor = uBlend;
@@ -191,8 +247,8 @@ internal static class GlShaders
                                          vec2 win = vec2(uTexWindow.xy) + 1.0;
                                          vec2 fuv = mod(vUV, win) + vec2(uTexWindow.zw);
                                          vec2 t = (fuv - uRepRect.xy) / uRepRect.zw;
-                                         vec4 img = texture(uRepTex, t);
-                                         if (img.a < 0.5) discard;
+                                         vec4 img = textureGrad(uRepTex, t, dFdx(vUV) / uRepRect.zw, dFdy(vUV) / uRepRect.zw);
+                                         if (img.a < 0.5) { if (uSurface != 0) { FragColor = vec4(0.0); BlendColor = vec4(0.0, 0.0, 0.0, 1.0); return; } discard; }
                                          ivec3 e8 = (ivec3(img.rgb * 255.0 + 0.5) * ivec3(vColor.rgb * 255.0 + 0.5)) >> 7;
                                          float stp = img.a < 0.95 ? 1.0 : 0.0;
                                          FragColor = vec4(quant5(e8), max(stp, uSetMask));
@@ -219,7 +275,7 @@ internal static class GlShaders
                                      }
 
                                      if (vRepClut != 0 && texMode != 2) {
-                                         if (texel.a < 0.5) discard;
+                                         if (texel.a < 0.5) { if (uSurface != 0) { FragColor = vec4(0.0); BlendColor = vec4(0.0, 0.0, 0.0, 1.0); return; } discard; }
                                          ivec3 e8 = (ivec3(texel.rgb * 255.0 + 0.5) * ivec3(vColor.rgb * 255.0 + 0.5)) >> 7;
                                          float stp = texel.a < 0.95 ? 1.0 : 0.0;
                                          FragColor = vec4(quant5(e8), max(stp, uSetMask));
@@ -227,7 +283,7 @@ internal static class GlShaders
                                          return;
                                      }
 
-                                     if (texel.rgb == vec3(0.0) && texel.a < 0.5) discard;
+                                     if (texel.rgb == vec3(0.0) && texel.a < 0.5) { if (uSurface != 0) { FragColor = vec4(0.0); BlendColor = vec4(0.0, 0.0, 0.0, 1.0); return; } discard; }
                                      ivec3 t8 = ivec3(texel.rgb * 31.0 + 0.5) << 3;
                                      ivec3 c8 = (t8 * ivec3(vColor.rgb * 255.0 + 0.5)) >> 7;
                                      FragColor = vec4(quant5(c8), max(texel.a, uSetMask));
@@ -332,13 +388,13 @@ internal static class GlShaders
                                     uniform vec2 uVertexOffset;
                                     uniform vec2 uPosBias;
                                     uniform vec2 uFbInv;
-                                    uniform bool uDepthEnabled;
+                                    uniform int uDepthEnabled;
 
                                     float bitAt(float v, float bit) { return floor(mod(v / bit, 2.0)); }
 
                                     void main() {
                                         vec2 p = (inPos + uVertexOffset + uPosBias) * uFbInv - 1.0;
-                                        gl_Position = vec4(p * inW, uDepthEnabled ? inW - 2.0 : 0.0, inW);
+                                        gl_Position = vec4(p * inW, uDepthEnabled == 1 ? inW - 2.0 : uDepthEnabled == 2 ? inW * 0.999998 : 0.0, inW);
 
                                         float tp = floor(inTexpageF + 0.5);
                                         float clut = floor(inClutF + 0.5);
@@ -384,6 +440,7 @@ internal static class GlShaders
                                     uniform float uRepClutCount;
                                     uniform vec4  uTexWindow;
                                     uniform float uSetMask;
+                                    uniform float uTrueColor;
                                     uniform float uCheckMask;
                                     uniform float uScale;
                                     uniform vec2  uPosBias;
@@ -405,6 +462,7 @@ internal static class GlShaders
                                     }
 
                                     vec3 quant5(vec3 c8) {
+                                        if (uTrueColor > 0.5) return clamp(c8, 0.0, 255.0) / 255.0;
                                         if (vDither > 0.5) {
                                             vec2 vp = floor(gl_FragCoord.xy / uScale - uPosBias);
                                             float col = mod(vp.x, 4.0);
@@ -439,7 +497,7 @@ internal static class GlShaders
                                             vec4 img = texture2D(uExtTex, vUV);
                                             if (img.a <= 0.0) discard;
                                             vec3 blended = mix(dstTexel.rgb, img.rgb, img.a);
-                                            gl_FragColor = vec4(floor(blended * 31.0 + 0.5) / 31.0, uSetMask);
+                                            gl_FragColor = vec4(uTrueColor > 0.5 ? blended : floor(blended * 31.0 + 0.5) / 31.0, uSetMask);
                                             return;
                                         }
 
