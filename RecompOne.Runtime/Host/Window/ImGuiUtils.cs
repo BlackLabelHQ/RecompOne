@@ -104,12 +104,17 @@ internal static class ImGuiUtils
         ImGui.Separator();
     }
 
+    public static Vector2 TagSize(string text)
+    {
+        return ImGui.CalcTextSize(text) + new Vector2(12f, 2f) * Theme.Scale;
+    }
+
     public static void Tag(string text, Vector4 color, bool rounded = true)
     {
         var dl = ImGui.GetWindowDrawList();
         var pad = new Vector2(6f, 1f) * Theme.Scale;
         var pos = ImGui.GetCursorScreenPos();
-        var size = ImGui.CalcTextSize(text) + pad * 2f;
+        var size = TagSize(text);
         dl.AddRectFilled(pos, pos + size, ImGui.ColorConvertFloat4ToU32(color with { W = 0.22f }), rounded ? size.Y * 0.5f : 0f);
         dl.AddText(pos + pad, ImGui.ColorConvertFloat4ToU32(color), text);
         ImGui.Dummy(size);

@@ -18,6 +18,8 @@ internal sealed class Card
     public Action<float>? Icon;
     public (string Glyph, string Tip, bool Active)[] Actions = [];
     public Action? Footer;
+    public bool FooterSeparator = true;
+    public string[] Tags = [];
 }
 
 internal readonly record struct CardResult(bool Toggled, int Action, bool DragStarted, bool Dropped);
@@ -132,7 +134,9 @@ internal static class CardUi
         }
 
         var toggleW = 36f * scale;
-        var controls = (card.CanToggle ? toggleW : 0f) + card.Actions.Length * (IconSize + 4f * scale);
+        var gap = 4f * scale;
+        var tagsW = card.Tags.Sum(t => ImGuiUtils.TagSize(t).X + gap);
+        var controls = (card.CanToggle ? toggleW : 0f) + card.Actions.Length * (IconSize + gap) + tagsW;
         var dim = !card.Enabled;
         if (dim) ImGui.PushStyleVar(ImGuiStyleVar.Alpha, style.Alpha * 0.55f);
 
@@ -178,13 +182,25 @@ internal static class CardUi
             if (IconButton($"##act{i}", glyph, tip, active)) action = i;
         }
 
+        for (var i = card.Tags.Length - 1; i >= 0; i--)
+        {
+            var size = ImGuiUtils.TagSize(card.Tags[i]);
+            cx -= size.X + gap;
+            ImGui.SetCursorPos(new Vector2(cx, origin.Y + (IconSize - size.Y) * 0.5f));
+            ImGuiUtils.Tag(card.Tags[i], ImGuiUtils.Gray);
+        }
+
         ImGui.SetCursorPos(new Vector2(origin.X, bottom));
         ImGui.Dummy(Vector2.Zero);
 
         if (card.Footer != null)
         {
-            ImGui.Separator();
-            ImGui.Spacing();
+            if (card.FooterSeparator)
+            {
+                ImGui.Separator();
+                ImGui.Spacing();
+            }
+
             card.Footer();
         }
 

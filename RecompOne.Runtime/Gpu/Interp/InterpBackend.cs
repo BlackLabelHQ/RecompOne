@@ -452,8 +452,6 @@ public sealed class InterpBackend : IGpuBackend
     
     public bool TryShownCamera(Span<float> rotation, Span<float> translation)
     {
-        if (!Interp.Enabled) return false;
-
         lock (_gate)
         {
             if (_shownGraph is not { HasCamera: true } graph) return false;

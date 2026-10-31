@@ -170,7 +170,9 @@ public sealed class ModHubPopup : Popup
             CanToggle = false,
             Icon = size => DrawIcon(entry, size),
             Actions = actions.ToArray(),
-            Footer = entry.Warning.Length > 0 || entry.Tags.Length > 0 || job != null ? () => DrawFooter(entry, job) : null
+            Tags = entry.Tags,
+            Footer = entry.Warning.Length > 0 || job != null ? () => DrawFooter(entry, job) : null,
+            FooterSeparator = entry.Warning.Length > 0
         };
 
         var result = CardUi.Draw("card", card);
@@ -179,7 +181,6 @@ public sealed class ModHubPopup : Popup
 
     private static void DrawFooter(HubEntry entry, HubJob? job)
     {
-        if (entry.Tags.Length > 0) ImGuiUtils.Tags(entry.Tags.Select(t => (t, ImGuiUtils.Gray)).ToArray());
         if (entry.Warning.Length > 0)
             ImGuiUtils.TextWrappedColored(ImGuiUtils.Amber, $"{FontSet.Or(FontSet.Warning, "!")}  {entry.Warning}");
 
