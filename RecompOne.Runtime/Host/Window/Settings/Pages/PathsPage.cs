@@ -8,6 +8,7 @@ namespace RecompOne.Runtime.Host.Window;
 internal static class PathsPage
 {
     private static string _discError = "";
+    private static readonly Dictionary<string, string> _picked = new();
 
     public static void Register()
     {
@@ -96,16 +97,20 @@ internal static class PathsPage
             {
             }
 
-            using var dialog = new NativeFileDialog();
-            if (save) dialog.SaveFile();
-            else dialog.SelectFile();
-            if (!string.IsNullOrWhiteSpace(filter)) dialog.AddFilter("Files", filter);
-
-            if (dialog.Open(out string? picked, directory) == DialogResult.Okay && !string.IsNullOrWhiteSpace(picked))
+            ToolUi.Show(picked => _picked[id] = picked, "path", () =>
             {
-                result = picked;
-                changed = true;
-            }
+                using var dialog = new NativeFileDialog();
+                if (save) dialog.SaveFile();
+                else dialog.SelectFile();
+                if (!string.IsNullOrWhiteSpace(filter)) dialog.AddFilter("Files", filter);
+                return dialog.Open(out string? picked, directory) == DialogResult.Okay ? picked : null;
+            });
+        }
+
+        if (_picked.Remove(id, out var chosen))
+        {
+            result = chosen;
+            changed = true;
         }
 
         return changed;

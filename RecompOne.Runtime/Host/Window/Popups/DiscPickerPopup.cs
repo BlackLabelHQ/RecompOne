@@ -1,6 +1,5 @@
 using System.Numerics;
 using ImGuiNET;
-using NativeFileDialogNET;
 using RecompOne.Runtime.Config;
 
 namespace RecompOne.Runtime.Host.Window;
@@ -52,23 +51,21 @@ public sealed class DiscPickerPopup : Popup
 
     private void Browse()
     {
+        string? directory = null;
         try
         {
-            string? directory = null;
             if (_path.Length > 0 && File.Exists(_path)) directory = Path.GetDirectoryName(Path.GetFullPath(_path));
             else if (_path.Length > 0 && Directory.Exists(_path)) directory = Path.GetFullPath(_path);
-
-            using var dialog = new NativeFileDialog().SelectFile().AddFilter(Localization.T("disc.filter"), "cue,chd");
-            if (dialog.Open(out string? picked, directory) == DialogResult.Okay && !string.IsNullOrWhiteSpace(picked))
-            {
-                _path = picked;
-                _error = "";
-            }
         }
-        catch (Exception e)
+        catch
         {
-            _error = Localization.T("disc.error.dialog", e.Message);
         }
+
+        ToolUi.PickFile(Localization.T("disc.filter"), "cue,chd", picked =>
+        {
+            _path = picked;
+            _error = "";
+        }, directory);
     }
 
     private void Confirm()

@@ -345,21 +345,22 @@ internal sealed partial class AssetPackEditor
             : "Unpack the pack first.");
 
         if (ImGuiUtils.Wide("Choose image...", editable))
-            if (ToolUi.PickFile("Images", "png,jpg,jpeg,bmp,tga") is { } file)
-                Try("Replacing", () =>
-                {
-                    PackAuthoring.SetTexture(pack, t.IndexHash, t.ClutHash, _texPalette, file);
-                    Say("Replaced.");
-                });
+        {
+            var palette = _texPalette;
+            ToolUi.PickFile("Images", "png,jpg,jpeg,bmp,tga", file => Try("Replacing", () =>
+            {
+                PackAuthoring.SetTexture(pack, t.IndexHash, t.ClutHash, palette, file);
+                Say("Replaced.");
+            }));
+        }
         ImGuiUtils.Tooltip("PNG, JPG, BMP or TGA.");
 
         if (ImGuiUtils.Wide("Save original as..."))
-            if (ToolUi.SaveFile("PNG image", "png", $"{t.IndexHash:x16}.png") is { } target)
-                Try("Saving", () =>
-                {
-                    PackAuthoring.ExportOriginal(t, target);
-                    Say($"Saved to {target}");
-                });
+            ToolUi.SaveFile("PNG image", "png", $"{t.IndexHash:x16}.png", target => Try("Saving", () =>
+            {
+                PackAuthoring.ExportOriginal(t, target);
+                Say($"Saved to {target}");
+            }));
 
         if (mine != null)
         {
@@ -433,12 +434,11 @@ internal sealed partial class AssetPackEditor
             PackAuthoring.OpenExternal(PackAuthoring.FullPath(pack, f.File));
 
         if (ImGuiUtils.Wide("Replace with another image...", editable))
-            if (ToolUi.PickFile("Images", "png,jpg,jpeg,bmp,tga") is { } file) 
-                Try("Replacing", () =>
-                {
-                    PackAuthoring.SetTexture(pack, f.Index, f.Clut, f.Clut != 0, file);
-                    Say("Replaced.");
-                });
+            ToolUi.PickFile("Images", "png,jpg,jpeg,bmp,tga", file => Try("Replacing", () =>
+            {
+                PackAuthoring.SetTexture(pack, f.Index, f.Clut, f.Clut != 0, file);
+                Say("Replaced.");
+            }));
 
         if (ImGuiUtils.Danger("Remove", editable, wide: true))
             Try("Removing", () =>

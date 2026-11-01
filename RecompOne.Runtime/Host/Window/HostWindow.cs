@@ -641,6 +641,7 @@ public static class HostWindow
 
         Runtime.RamLog.Tick();
         Settings.SaveIfDue();
+        ToolUi.Pump(); //update thread state
         Assets.AssetReplacerManager.Instance.Pump();
         Memory.RamLogger.TrackReads =
             PanelManager.Get<RamMapPanel>()?.IsOpen == true ||

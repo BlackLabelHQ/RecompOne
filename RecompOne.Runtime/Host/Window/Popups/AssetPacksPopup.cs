@@ -131,15 +131,20 @@ public sealed class AssetPacksPopup : Popup
 
     private static void Import()
     {
-        var source = ToolUi.PickFile("Asset pack", "zip");
-        if (source == null) return;
-        if (PackAuthoring.Import(source, out var error) == null)
-            ToastNotifications.ShowText("Asset Packs", $"Couldn't import: {error}");
+        ToolUi.PickFile("Asset pack", "zip", source =>
+        {
+            if (PackAuthoring.Import(source, out var error) == null)
+                ToastNotifications.ShowText("Asset Packs", $"Couldn't import: {error}");
+        });
     }
 
     private static void Export(AssetPack pack)
     {
-        if (ToolUi.SaveFile("Zip archive", "zip", $"{pack.Id}.zip") is not { } zip) return;
+        ToolUi.SaveFile("Zip archive", "zip", $"{pack.Id}.zip", zip => ExportTo(pack, zip));
+    }
+
+    private static void ExportTo(AssetPack pack, string zip)
+    {
         try
         {
             PackAuthoring.ExportZip(pack, zip);

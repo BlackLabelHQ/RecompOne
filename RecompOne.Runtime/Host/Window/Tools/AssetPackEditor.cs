@@ -263,8 +263,8 @@ internal sealed partial class AssetPackEditor : IPanel
             ImGui.BeginGroup();
             DrawPackIcon(pack, 96f * scale);
             if (ImGui.Button("Change icon", new Vector2(96f * scale, 0f)))
-                if (ToolUi.PickFile("Images", "png,jpg,jpeg,bmp,tga") is { } icon)
-                    Try("Changing the icon", () => PackAuthoring.SetIcon(pack, icon));
+                ToolUi.PickFile("Images", "png,jpg,jpeg,bmp,tga",
+                    icon => Try("Changing the icon", () => PackAuthoring.SetIcon(pack, icon)));
             ImGui.EndGroup();
 
             ImGui.SameLine();
@@ -296,12 +296,11 @@ internal sealed partial class AssetPackEditor : IPanel
         ImGui.Spacing();
 
         if (ImGui.Button("Export as .zip"))
-            if (ToolUi.SaveFile("Zip archive", "zip", $"{pack.Id}.zip") is { } zip)
-                Try("Exporting", () =>
-                {
-                    PackAuthoring.ExportZip(pack, zip);
-                    Say($"Saved {Path.GetFileName(zip)}");
-                });
+            ToolUi.SaveFile("Zip archive", "zip", $"{pack.Id}.zip", zip => Try("Exporting", () =>
+            {
+                PackAuthoring.ExportZip(pack, zip);
+                Say($"Saved {Path.GetFileName(zip)}");
+            }));
 
         ImGui.SameLine();
         if (ImGuiUtils.Danger("Delete pack"))

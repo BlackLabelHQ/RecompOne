@@ -199,12 +199,14 @@ internal sealed partial class AssetPackEditor
         using (ImGuiUtils.Disabled(!editable))
         {
             if (ImGui.Button("Choose sound file...", new Vector2(buttonW, 0f)))
-                if (ToolUi.PickFile("Audio", "wav,ogg") is { } file)
-                    Try("Replacing", () =>
-                    {
-                        PackAuthoring.SetSound(pack, _sndHash, file);
-                        Say("Replaced.");
-                    });
+            {
+                var hash = _sndHash;
+                ToolUi.PickFile("Audio", "wav,ogg", file => Try("Replacing", () =>
+                {
+                    PackAuthoring.SetSound(pack, hash, file);
+                    Say("Replaced.");
+                }));
+            }
             ImGuiUtils.Tooltip("WAV or OGG. Stretched to the original length.");
         }
 
@@ -212,12 +214,11 @@ internal sealed partial class AssetPackEditor
         using (ImGuiUtils.Disabled(seen == null))
         {
             if (ImGui.Button("Save original as...", new Vector2(buttonW, 0f)) && seen != null)
-                if (ToolUi.SaveFile("WAV audio", "wav", $"{_sndHash:x16}.wav") is { } target)
-                    Try("Saving", () =>
-                    {
-                        PackAuthoring.ExportOriginal(seen, target);
-                        Say($"Saved to {target}");
-                    });
+                ToolUi.SaveFile("WAV audio", "wav", $"{_sndHash:x16}.wav", target => Try("Saving", () =>
+                {
+                    PackAuthoring.ExportOriginal(seen, target);
+                    Say($"Saved to {target}");
+                }));
         }
 
         ImGui.SameLine();
@@ -390,19 +391,18 @@ internal sealed partial class AssetPackEditor
         using (ImGuiUtils.Disabled(!editable))
         {
             if (ImGui.Button("Choose audio file...", new Vector2(buttonW, 0f)))
-                if (ToolUi.PickFile("Audio", "wav,ogg") is { } source)
-                    Try("Replacing", () =>
-                    {
-                        var stream = new SeenStream { File = (byte)file, Channel = (byte)channel, StartLba = lba };
-                        PackAuthoring.SetMusic(pack, stream, source);
-                        Say("Replaced.");
-                    });
+                ToolUi.PickFile("Audio", "wav,ogg", source => Try("Replacing", () =>
+                {
+                    var stream = new SeenStream { File = (byte)file, Channel = (byte)channel, StartLba = lba };
+                    PackAuthoring.SetMusic(pack, stream, source);
+                    Say("Replaced.");
+                }));
             ImGuiUtils.Tooltip("WAV or OGG.");
         }
 
         ImGui.SameLine();
         if (ImGui.Button("Save original as...", new Vector2(buttonW, 0f)))
-            if (ToolUi.SaveFile("WAV audio", "wav", $"track_f{file}_c{channel}_{lba}.wav") is { } target)
+            ToolUi.SaveFile("WAV audio", "wav", $"track_f{file}_c{channel}_{lba}.wav", target =>
             {
                 Say("Reading the track from the disc...");
                 Task.Run(() =>
@@ -424,7 +424,7 @@ internal sealed partial class AssetPackEditor
                         Say($"Saving failed: {e.Message}", true);
                     }
                 });
-            }
+            });
 
         ImGui.SameLine();
         using (ImGuiUtils.Disabled(mine == null || !editable))
