@@ -706,7 +706,7 @@ public static class LibCd
         {
             lock (_streamGate)
             {
-                if (!_xaActive || (_mode & 0x40) == 0 || _xaCredit < 1.0 ||
+                if (!_xaActive || _seekPending || (_mode & 0x40) == 0 || _xaCredit < 1.0 ||
                     XaAudio.BufferedSamples >= MinBuffer || scanned >= MaxScan) break;
                 if (!PumpXaSector((_mode & 0x08) != 0)) break;
                 scanned++;

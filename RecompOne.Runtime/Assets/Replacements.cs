@@ -51,6 +51,7 @@ public sealed class ReplacementStream : IDisposable
     public XaOptions Options => _opt;
     public long FramesProduced => _framesOut;
     public double PositionSeconds => _outRate > 0 ? _framesOut / (double)_outRate : 0;
+    public double DurationSeconds => _dec.SampleRate > 0 ? _dec.TotalFrames / (double)_dec.SampleRate : 0;
 
     public ReplacementStream(string name, IPcmDecoder decoder, XaOptions options)
     {

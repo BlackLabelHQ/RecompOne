@@ -13,6 +13,9 @@ public static class XaRouter
     private static ReplacementStream? _stream;
     private static byte _file, _channel;
     private static int _lastLba = int.MinValue;
+    private static int _runLba;
+    private static double _runSeconds;
+    private static bool _rebind;
     private static int _startLba;
     private static int _accepted;
     private static int _outRate = 37800;
@@ -58,14 +61,46 @@ public static class XaRouter
     {
         lock (_gate)
         {
-            _stream?.Dispose();
-            _stream = null;
-            _entry = null;
+            DropStream();
+            XaTrack.Clear();
             _lastLba = int.MinValue;
             _accepted = 0;
-            _exhausted = false;
-            _tailDeadline = 0;
+            _runSeconds = 0;
+            _rebind = false;
         }
+    }
+
+    public static void Rebind()
+    {
+        lock (_gate)
+        {
+            DropStream();
+            _rebind = _lastLba != int.MinValue;
+        }
+    }
+
+    private static void DropStream()
+    {
+        try
+        {
+            _stream?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[assets] xa: dispose failed: {ex.Message}");
+        }
+
+        _stream = null;
+        _entry = null;
+        _exhausted = false;
+        _tailDeadline = 0;
+    }
+
+    private static void Fail(Exception ex)
+    {
+        Console.Error.WriteLine($"[assets] xa: '{_stream?.Name}' failed, falling back to the original audio: {ex.Message}");
+        AssetReplacerManager.Instance.Stats.XaOpenFailures++;
+        DropStream();
     }
 
     public static void Sector(int lba, byte[] sec, bool fromStr)
@@ -79,8 +114,18 @@ public static class XaRouter
             var newRun = _lastLba == int.MinValue || file != _file || channel != _channel ||
                          lba < _lastLba || lba > _lastLba + MaxGap;
 
-            if (newRun) BeginRun(lba, file, channel, sec, fromStr);
-            XaRegistry.Note(lba, file, channel, coding, newRun);
+            if (newRun)
+            {
+                _rebind = false;
+                BeginRun(lba, file, channel, sec, fromStr);
+            }
+            else if (_rebind)
+            {
+                _rebind = false;
+                RebindRun(fromStr);
+            }
+
+            XaRegistry.Note(_runLba, lba, file, channel, coding, newRun);
 
             _lastLba = lba;
             _lastSectorTick = Environment.TickCount64;
@@ -94,17 +139,30 @@ public static class XaRouter
             var want = stereo ? 2016 : 4032;
             _outRate = rate;
             _outStereo = stereo;
+            _runSeconds += want / (double)rate;
 
             if (PumpDirect()) return;
 
-            if (_stream == null || _exhausted)
+            if (_stream == null || _exhausted || !Fill(want, rate))
             {
                 XaAudio.DecodeSector(sec, 8, coding);
                 AssetReplacerManager.Instance.Stats.XaPassthrough++;
                 return;
             }
 
-            var got = _stream.ReadPacked(_frames, want, rate);
+            XaAudio.PushFrames(_frames, want, rate);
+            AssetReplacerManager.Instance.Stats.XaReplaced++;
+
+            if (_stream.Options.TailMs > 0)
+                _tailDeadline = Environment.TickCount64 + _stream.Options.TailMs;
+        }
+    }
+
+    private static bool Fill(int want, int rate)
+    {
+        try
+        {
+            var got = _stream!.ReadPacked(_frames, want, rate);
             if (got < want)
                 switch (_stream.Options.OnShorter)
                 {
@@ -122,11 +180,12 @@ public static class XaRouter
                         break;
                 }
 
-            XaAudio.PushFrames(_frames, want, rate);
-            AssetReplacerManager.Instance.Stats.XaReplaced++;
-
-            if (_stream.Options.TailMs > 0)
-                _tailDeadline = Environment.TickCount64 + _stream.Options.TailMs;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Fail(ex);
+            return false;
         }
     }
 
@@ -135,12 +194,7 @@ public static class XaRouter
         var mgr = AssetReplacerManager.Instance;
         mgr.Stats.XaRuns++;
 
-        var entry = mgr.ResolveXa(file, channel, lba);
-        if (entry == null)
-        {
-            var probe = AssetHash.XaPayload(sec.AsSpan(8, Math.Min(2304, Math.Max(0, sec.Length - 8))));
-            entry = mgr.ResolveXaByPayload(probe);
-        }
+        var entry = Resolve(lba, file, channel, sec, out var exact);
 
         if (_stream != null && !_exhausted && ReferenceEquals(entry, _entry) && !_stream.Ended &&
             Environment.TickCount64 - _lastSectorTick <= ResumeWindowMs)
@@ -152,36 +206,94 @@ public static class XaRouter
             return;
         }
 
-        _stream?.Dispose();
-        _stream = null;
-        _entry = null;
-        _exhausted = false;
+        DropStream();
         _accepted = 0;
         _startLba = lba;
+        _runLba = lba;
+        _runSeconds = 0;
         _file = file;
         _channel = channel;
 
         if (entry == null) return;
+        Open(entry, fromStr, exact ? 0 : OffsetSeconds(entry, lba));
+    }
 
+    private static void RebindRun(bool fromStr)
+    {
+        var entry = Resolve(_runLba, _file, _channel, null, out var exact);
+        if (entry == null) return;
+        Open(entry, fromStr, (exact ? 0 : OffsetSeconds(entry, _runLba)) + _runSeconds);
+    }
+
+    private static XaEntry? Resolve(int runLba, byte file, byte channel, byte[]? first, out bool exact)
+    {
+        var mgr = AssetReplacerManager.Instance;
+        exact = false;
+        if (!mgr.Enabled) return null;
+
+        if (mgr.HasXaHashes)
+        {
+            var byTrack = mgr.ResolveXaByPayload(XaTrack.Hash(runLba, file, channel));
+            if (byTrack != null)
+            {
+                exact = true;
+                return byTrack;
+            }
+        }
+
+        var byLba = mgr.ResolveXa(file, channel, runLba);
+        if (byLba != null || first == null) return byLba;
+
+        var probe = AssetHash.XaPayload(first.AsSpan(8, Math.Min(2304, Math.Max(0, first.Length - 8))));
+        var bySector = mgr.ResolveXaByPayload(probe);
+        exact = bySector != null;
+        return bySector;
+    }
+
+    private static double OffsetSeconds(XaEntry entry, int lba)
+    {
+        var delta = lba - entry.StartLba;
+        if (delta <= NewRunLbaSlack) return 0;
+        var interleave = entry.Interleave <= 0 ? 1 : entry.Interleave;
+        return delta / interleave * 2016 / 37800.0;
+    }
+
+    private static void Open(XaEntry entry, bool fromStr, double seek)
+    {
         if (fromStr && !entry.Options.AllowStr)
         {
             Log.Sdk($"[assets] xa: '{entry.AudioName}' skip in STR context (allowStr is false)");
             return;
         }
 
-        var stream = mgr.OpenStream(entry);
+        var stream = AssetReplacerManager.Instance.OpenStream(entry);
         if (stream == null) return;
 
-        double seek = 0;
-        var delta = lba - entry.StartLba;
-        if (delta > NewRunLbaSlack)
+        try
         {
-            double framesPerSector = 2016;
-            var interleave = entry.Interleave <= 0 ? 1 : entry.Interleave;
-            seek = delta / interleave * framesPerSector / 37800.0;
-        }
+            var duration = stream.DurationSeconds;
+            if (duration > 0 && seek >= duration)
+            {
+                var loopStart = Math.Clamp(entry.Options.LoopStart, 0, duration);
+                var loopEnd = entry.Options.LoopEnd > loopStart ? Math.Min(entry.Options.LoopEnd, duration) : duration;
+                var span = loopEnd - loopStart;
+                if (!entry.Options.Loop || span <= 0)
+                {
+                    stream.Dispose();
+                    return;
+                }
 
-        if (seek > 0) stream.SeekSeconds(seek);
+                seek = loopStart + (seek - loopStart) % span;
+            }
+
+            if (seek > 0) stream.SeekSeconds(seek);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"[assets] xa: cannot seek '{entry.AudioName}' to {seek:0.00}s: {ex.Message}");
+            stream.Dispose();
+            return;
+        }
 
         _entry = entry;
         _stream = stream;
@@ -212,8 +324,17 @@ public static class XaRouter
             int buffered = XaAudio.BufferedSamples;
             if (buffered >= 4096) return true;
             int want = Math.Min(_frames.Length, 4096 - buffered);
-            int got = _stream.ReadPacked(_frames, want, _outRate);
-            if (got < want) Array.Clear(_frames, got, want - got);
+            try
+            {
+                int got = _stream.ReadPacked(_frames, want, _outRate);
+                if (got < want) Array.Clear(_frames, got, want - got);
+            }
+            catch (Exception ex)
+            {
+                Fail(ex);
+                return false;
+            }
+
             XaAudio.PushFrames(_frames, want, _outRate);
             return true;
         }
@@ -236,7 +357,17 @@ public static class XaRouter
             if (XaAudio.BufferedSamples > 4096) return true;
 
             var want = _outStereo ? 2016 : 4032;
-            var got = _stream.ReadPacked(_frames, want, _outRate);
+            int got;
+            try
+            {
+                got = _stream.ReadPacked(_frames, want, _outRate);
+            }
+            catch (Exception ex)
+            {
+                Fail(ex);
+                return false;
+            }
+
             if (got <= 0)
             {
                 _tailDeadline = 0;

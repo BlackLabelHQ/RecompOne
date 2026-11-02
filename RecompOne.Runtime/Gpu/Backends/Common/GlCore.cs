@@ -76,6 +76,7 @@ public sealed class GlCore : IGpuBackend
     private readonly GlVertex[] _verts = new GlVertex[MaxVerts];
     private int _count;
     private float _drawMinX, _drawMinY, _drawMaxX, _drawMaxY;
+    private bool _bboxEmpty = true; //redraw bound box so it doenst affect uploaded textures during vram
 
     private HleDrawEnv _env;
 
@@ -619,10 +620,11 @@ public sealed class GlCore : IGpuBackend
         if (dither && _pendingRepTex == 0) tpage |= 0x400;
         if (_pendingRepTex != 0) tpage |= 0x2000;
         else if (_pendingRepClut != 0) tpage |= 0x1000;
-        if (_count == 0)
+        if (_bboxEmpty)
         {
             _drawMinX = _drawMaxX = v.X;
             _drawMinY = _drawMaxY = v.Y;
+            _bboxEmpty = false;
         }
         else
         {
@@ -1255,6 +1257,7 @@ public sealed class GlCore : IGpuBackend
         }
 
         _count = 0;
+        _bboxEmpty = true;
         _kSamplesVram = false;
     }
 

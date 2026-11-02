@@ -124,7 +124,18 @@ public sealed class AssetReplacerManager
     private string _gameId = "UNKNOWN";
     private bool _gameIdResolved;
 
-    public bool Enabled { get; set; } = true;
+    private bool _enabled = true;
+
+    public bool Enabled
+    {
+        get => _enabled;
+        set
+        {
+            if (_enabled == value) return;
+            _enabled = value;
+            Xa.XaRouter.Rebind(); //so this shit dont crash
+        }
+    }
     public bool AutoReload { get; set; } = true;
     public string Root { get; private set; } = "";
     public AssetStats Stats { get; } = new();
@@ -290,7 +301,7 @@ public sealed class AssetReplacerManager
         LoadAll(string.IsNullOrEmpty(Root) ? null : Root);
         Textures.TextureResolver.Invalidate();
         Sfx.SfxCache.Clear();
-        if (XaSignature() != xa) Xa.XaRouter.Reset();
+        if (XaSignature() != xa) Xa.XaRouter.Rebind();
     }
 
     public void RequestReload(int delayMs = 0)
@@ -790,6 +801,17 @@ public sealed class AssetReplacerManager
                 if (e.Matches(file, channel, lba) && (best == null || e.StartLba > best.StartLba))
                     best = e;
             return best;
+        }
+    }
+
+    public bool HasXaHashes
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _runtimeXa.Any(e => e.PayloadHash != 0) || _xa.Any(e => e.PayloadHash != 0);
+            }
         }
     }
 

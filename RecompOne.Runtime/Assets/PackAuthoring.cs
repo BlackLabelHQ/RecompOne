@@ -193,6 +193,8 @@ public static class PackAuthoring
             throw new NotSupportedException("music must be .wav or .ogg");
 
         var entry = MusicEntry(pack, stream.File, stream.Channel, stream.StartLba);
+        var hash = Xa.XaTrack.Hash(stream.StartLba, stream.File, stream.Channel);
+        if (hash != 0) entry.Hash = $"{hash:x16}";
         if (!string.IsNullOrWhiteSpace(entry.Audio))
         {
             var old = Full(pack, entry.Audio!);

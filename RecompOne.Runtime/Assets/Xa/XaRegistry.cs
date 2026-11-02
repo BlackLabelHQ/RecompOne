@@ -32,7 +32,7 @@ public static class XaRegistry
 
     public static volatile bool Enabled;
 
-    public static void Note(int lba, byte file, byte channel, byte coding, bool newRun)
+    public static void Note(int runLba, int lba, byte file, byte channel, byte coding, bool newRun)
     {
         if (!Enabled) return;
 
@@ -40,12 +40,13 @@ public static class XaRegistry
         {
             if (newRun || _current == null)
             {
-                _current = _seen.FirstOrDefault(s => s.File == file && s.Channel == channel &&
-                                                     lba >= s.StartLba && lba <= s.LastLba + SameRunSlack);
+                _current = _seen.FirstOrDefault(s => s.File == file && s.Channel == channel && s.StartLba == runLba) ??
+                           _seen.FirstOrDefault(s => s.File == file && s.Channel == channel &&
+                                                     runLba >= s.StartLba && runLba <= s.LastLba + SameRunSlack);
                 if (_current == null)
                 {
                     if (_seen.Count >= MaxEntries) _seen.RemoveAt(0);
-                    _current = new SeenStream { File = file, Channel = channel, StartLba = lba, LastLba = lba };
+                    _current = new SeenStream { File = file, Channel = channel, StartLba = runLba, LastLba = lba };
                     _seen.Add(_current);
                 }
 
