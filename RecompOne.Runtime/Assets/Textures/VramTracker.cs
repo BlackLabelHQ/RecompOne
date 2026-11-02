@@ -19,6 +19,8 @@ public static class VramTracker
 
     public static int OwnerVersion { get; private set; }
 
+    public static int Clock => Volatile.Read(ref _clock); //stoopid threads
+
     public static void Reset()
     {
         Array.Clear(_gen);
@@ -147,6 +149,20 @@ public static class VramTracker
         for (var c = c0; c <= c1; c++)
         {
             var i = r * Cols + c;
+            _gen[i] = stamp;
+            _gpuDirty[i] = true;
+        }
+    }
+
+    public static void MarkGpuWrite(int x, int y, int w, int h, int since)
+    {
+        var stamp = ++_clock;
+        Bounds(x, y, w, h, out var c0, out var r0, out var c1, out var r1);
+        for (var r = r0; r <= r1; r++)
+        for (var c = c0; c <= c1; c++)
+        {
+            var i = r * Cols + c;
+            if (_gen[i] > since) continue;
             _gen[i] = stamp;
             _gpuDirty[i] = true;
         }

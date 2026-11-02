@@ -16,7 +16,7 @@ public static class MainMenuBar
             .Separator("menu.system.view_separator")
             .Check("menu.system.show_menu_bar", static () => !InterfaceOptions.HideMenuBar, static show => InterfaceOptions.HideMenuBar.Value = !show, "F1")
             .Check("menu.system.autohide_menu_bar", static () => InterfaceOptions.AutoHideMenuBar, static on => InterfaceOptions.AutoHideMenuBar.Value = on)
-            .Disabled()
+            .Tooltip("menu.system.autohide_menu_bar.tooltip")
             .Check("menu.system.fullscreen", static () => DisplayOptions.Fullscreen, Fullscreen, "F11")
             .Separator("menu.system.reset_separator")
             .Item("menu.system.hard_reset", Runtime.HardReset)

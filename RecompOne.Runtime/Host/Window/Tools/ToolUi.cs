@@ -51,22 +51,30 @@ internal static class ToolUi
     {
         if (_busy) return;
         _busy = true;
-        Start();
-        _requests.Add(() =>
+        if (!OperatingSystem.IsWindows())
         {
-            try
-            {
-                if (open() is { Length: > 0 } path) _results.Enqueue(() => picked(path));
-            }
-            catch (Exception e)
-            {
-                Console.Error.WriteLine($"[tools] {kind} dialog failed: {e.Message}");
-            }
-            finally
-            {
-                _busy = false;
-            }
-        });
+            Run(picked, kind, open);
+            return;
+        }
+
+        Start();
+        _requests.Add(() => Run(picked, kind, open));
+    }
+
+    private static void Run(Action<string> picked, string kind, Func<string?> open)
+    {
+        try
+        {
+            if (open() is { Length: > 0 } path) _results.Enqueue(() => picked(path));
+        }
+        catch (Exception e)
+        {
+            Console.Error.WriteLine($"[tools] {kind} dialog failed: {e.Message}");
+        }
+        finally
+        {
+            _busy = false;
+        }
     }
 
     public static void Pump()

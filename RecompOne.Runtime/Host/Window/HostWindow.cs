@@ -631,6 +631,7 @@ public static class HostWindow
     {
         var gl = _gl!;
         _imgui!.Update((float)dt);
+        Autohide.Update();
 
         gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         var fbDef = _window!.FramebufferSize;
@@ -690,22 +691,26 @@ public static class HostWindow
             if (_ramReady) FlushRamTexture(gl);
         }
 
-        if (!InterfaceOptions.HideMenuBar)
+        var overlay = Autohide.BarOverlay;
+        if (!overlay && Autohide.BarVisible)
             MainMenuBar.Draw();
 
-        DrawDockspace();
+        DrawDockspace(overlay);
         PanelManager.DrawPanels();
+        if (overlay && Autohide.BarVisible)
+            MainMenuBar.Draw();
         PopupManager.Draw();
         gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         gl.Viewport(0, 0, (uint)fbDef.X, (uint)fbDef.Y);
         _imgui.Render();
     }
 
-    private static void DrawDockspace()
+    private static void DrawDockspace(bool overlay)
     {
         var viewport = ImGui.GetMainViewport();
-        ImGui.SetNextWindowPos(viewport.WorkPos);
-        ImGui.SetNextWindowSize(viewport.WorkSize);
+        var area = overlay ? viewport.Size : viewport.WorkSize;
+        ImGui.SetNextWindowPos(overlay ? viewport.Pos : viewport.WorkPos);
+        ImGui.SetNextWindowSize(area);
         ImGui.SetNextWindowViewport(viewport.ID);
 
         const ImGuiWindowFlags hostFlags = ImGuiWindowFlags.NoDocking |
@@ -736,7 +741,7 @@ public static class HostWindow
             _layoutPending = false;
             _redockCooldown = RedockCooldownFrames;
             if (PanelManager.Get<OutputPanel>() is { } output)
-                DockBuilder.SetupCenterLayout(dockId, viewport.WorkSize, output.Title());
+                DockBuilder.SetupCenterLayout(dockId, area, output.Title());
         }
 
         ImGui.End();

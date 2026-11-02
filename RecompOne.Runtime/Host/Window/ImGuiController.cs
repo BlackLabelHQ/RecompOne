@@ -166,7 +166,7 @@ internal sealed class ImGuiController : IDisposable
     {
         if ((io.ConfigFlags & ImGuiConfigFlags.NoMouseCursorChange) != 0 || _input.Mice.Count == 0) return;
 
-        var wanted = io.MouseDrawCursor ? ImGuiMouseCursor.None : ImGui.GetMouseCursor();
+        var wanted = io.MouseDrawCursor || Autohide.CursorHidden ? ImGuiMouseCursor.None : ImGui.GetMouseCursor();
         if (wanted == _cursor) return;
         _cursor = wanted;
 

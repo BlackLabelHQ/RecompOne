@@ -40,6 +40,11 @@
       "zh-CN": "自动隐藏菜单栏",
       "fr-FR": "Cacher automatiquement la barre de menu"
     },
+    "menu.system.autohide_menu_bar.tooltip": {
+      "en": "Hides the menu bar when the mouse isn't over it. Move the mouse to the top of the screen to show it",
+      "pt-BR": "Esconde a barra de menu quando o mouse não está em cima dela. Leve o mouse ao topo da tela para mostrá-la.",
+      "es-419": "Oculta la barra de menú cuando el mouse no está sobre ella. Lleva el mouse a la parte superior de la pantalla para mostrarle"
+    },
     "menu.system.fullscreen": {
       "en": "Fullscreen",
       "pt-BR": "Tela Cheia",

@@ -373,7 +373,7 @@ public sealed class GlCore : IGpuBackend
             ClearBufferMask.ColorBufferBit, BlitFramebufferFilter.Nearest);
         _gl.BindFramebuffer(FramebufferTarget.Framebuffer, 0);
         rt.Dirty = false;
-        Assets.Textures.VramTracker.MarkGpuWrite(rt.X, rt.Y, rt.W, rt.H);
+        Assets.Textures.VramTracker.MarkGpuWrite(rt.X, rt.Y, rt.W, rt.H, rt.DrawClock);
     }
 
     private void SyncRtFromVram(GlDisplayRt rt, int rx, int ry, int rw, int rh)
@@ -1224,6 +1224,7 @@ public sealed class GlCore : IGpuBackend
         {
             rt.Dirty = true;
             rt.LastDrawFrame = _frame;
+            rt.DrawClock = Assets.Textures.VramTracker.Clock;
             rt.LastScene = _depthScene;
         }
         else

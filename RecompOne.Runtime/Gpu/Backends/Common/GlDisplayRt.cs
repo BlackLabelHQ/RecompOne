@@ -22,6 +22,7 @@ public sealed class GlDisplayRt
     public bool Dirty;
     public long Stamp;
     public long LastDrawFrame;
+    public int DrawClock;
     public long LastMarginFrame = -1;
 
     public int Wide1x => W + Margin * 2;
