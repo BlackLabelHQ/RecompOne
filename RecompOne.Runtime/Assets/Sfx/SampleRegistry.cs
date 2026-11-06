@@ -24,7 +24,7 @@ public static class SampleRegistry
     private static readonly object _gate = new();
     private static long _clock;
 
-    public static volatile bool Enabled;
+    public static bool Enabled { get; set; }
 
     public static int Count
     {

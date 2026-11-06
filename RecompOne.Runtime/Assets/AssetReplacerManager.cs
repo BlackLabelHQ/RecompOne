@@ -40,6 +40,9 @@ public sealed class TextureAsset
     public Func<byte[]?> Open = () => null;
     public ReplacementTexture? Loaded;
     public bool AspectChecked;
+    public TextureFilter Filter;
+    public TextureExpand Expand;
+    public float Scale = 1f;
 }
 
 public sealed class TextureRule
@@ -526,7 +529,7 @@ public sealed class AssetReplacerManager
                     AssetHash.TryParseHex(dto.Clut, out clutHash);
 
                 var mode = dto.Mode?.ToLowerInvariant() == "indexed" ? TextureMode.Indexed : TextureMode.Rgba;
-                AddTexture(pack, dto.File!, index, clutHash, mode);
+                AddTexture(pack, dto.File!, index, clutHash, mode, dto);
             }
 
         if (pack.Manifest.TextureRules != null)
@@ -549,6 +552,7 @@ public sealed class AssetReplacerManager
                         Mode = TextureMode.Rgba,
                         FileName = file,
                         PackId = pack.Id,
+                        Filter = Textures.TextureStretch.ParseFilter(dto.Filter),
                         Open = () => pack.ReadAsset(file)
                     }
                 });
@@ -607,7 +611,8 @@ public sealed class AssetReplacerManager
         return Enabled && _sfxView.TryGetValue(hash, out var asset) ? asset : null;
     }
 
-    private void AddTexture(AssetPack pack, string file, ulong index, ulong clutHash, TextureMode mode)
+    private void AddTexture(AssetPack pack, string file, ulong index, ulong clutHash, TextureMode mode,
+        TextureEntryDto? dto = null)
     {
         var asset = new TextureAsset
         {
@@ -616,6 +621,9 @@ public sealed class AssetReplacerManager
             Mode = mode,
             FileName = file,
             PackId = pack.Id,
+            Filter = Textures.TextureStretch.ParseFilter(dto?.Filter),
+            Expand = Textures.TextureStretch.ParseExpand(dto?.Expand),
+            Scale = dto?.Scale is > 0f and var scale ? scale : 1f,
             Open = () => pack.ReadAsset(file)
         };
 
@@ -706,7 +714,7 @@ public sealed class AssetReplacerManager
     {
         if (asset.Loaded != null) return asset.Loaded.Failed ? null : asset.Loaded;
 
-        var loaded = new ReplacementTexture { Mode = asset.Mode };
+        var loaded = new ReplacementTexture { Mode = asset.Mode, Filter = asset.Filter };
         asset.Loaded = loaded;
         try
         {

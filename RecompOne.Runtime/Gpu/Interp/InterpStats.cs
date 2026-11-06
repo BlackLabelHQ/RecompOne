@@ -1,6 +1,6 @@
 namespace RecompOne.Runtime.Interp;
 
-internal enum InterpSkip
+public enum InterpSkip
 {
     None,
     NotInterpolatable,
@@ -8,7 +8,7 @@ internal enum InterpSkip
     EmptyPrevious
 }
 
-internal sealed class InterpRing(int capacity)
+public sealed class InterpRing(int capacity)
 {
     public readonly float[] Data = new float[capacity];
     public int Head;
@@ -32,7 +32,7 @@ internal sealed class InterpRing(int capacity)
     }
 }
 
-internal sealed class InterpStats
+public sealed class InterpStats
 {
     public const int Samples = 600;
     public const int Seconds = 120;

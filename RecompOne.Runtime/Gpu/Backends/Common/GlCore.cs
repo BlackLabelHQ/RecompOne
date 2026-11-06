@@ -519,6 +519,7 @@ public sealed class GlCore : IGpuBackend
     private uint _pendingRepTex, _pendingRepClut;
     private int _pendingRepClutCount = 16;
     private float _pendingRepX, _pendingRepY, _pendingRepW = 1, _pendingRepH = 1;
+    private Assets.ReplacementTexture? _pendingGrow;
 
     private readonly Dictionary<Assets.ReplacementTexture, uint> _repTextures = [];
     private readonly Dictionary<Assets.ReplacementClut, uint> _repCluts = [];
@@ -540,6 +541,7 @@ public sealed class GlCore : IGpuBackend
     {
         _pendingRepTex = 0;
         _pendingRepClut = 0;
+        _pendingGrow = null;
 
         if (!f.Textured || f.UseImage) return;
         ReleaseStaleReplacements();
@@ -558,6 +560,7 @@ public sealed class GlCore : IGpuBackend
             _pendingRepY = res.Rect.V0;
             _pendingRepW = res.Rect.W;
             _pendingRepH = res.Rect.H;
+            if (res.Expand && tex.Grows) _pendingGrow = tex;
         }
 
         if (_pendingRepTex == 0 && res.Clut is { } clut && res.Rect.ClutCount > 0 && clut.Count == res.Rect.ClutCount)
@@ -567,6 +570,38 @@ public sealed class GlCore : IGpuBackend
         }
     }
 
+    private const float SharpScaleLimit = 2f;
+    
+    private void Grow(ref HleVertex v, float m00, float m01, float m10, float m11)
+    {
+        var tex = _pendingGrow!;
+        var p = Math.Clamp((v.U - _pendingRepX) / Math.Max(1f, _pendingRepW - 1f), 0f, 1f);
+        var q = Math.Clamp((v.V - _pendingRepY) / Math.Max(1f, _pendingRepH - 1f), 0f, 1f);
+        var du = tex.GrowRight * p - tex.GrowLeft * (1f - p);
+        var dv = tex.GrowBottom * q - tex.GrowTop * (1f - q);
+        v.X += m00 * du + m01 * dv;
+        v.Y += m10 * du + m11 * dv;
+    }
+    
+    private bool GrowTri(ref HleVertex a, ref HleVertex b, ref HleVertex c)
+    {
+        if (a.HasGteZ || b.HasGteZ || c.HasGteZ) return false;
+        
+        float du1 = b.U - a.U, dv1 = b.V - a.V, du2 = c.U - a.U, dv2 = c.V - a.V;
+        var det = du1 * dv2 - du2 * dv1;
+        if (MathF.Abs(det) < 0.001f) return false;
+        
+        float dx1 = b.X - a.X, dy1 = b.Y - a.Y, dx2 = c.X - a.X, dy2 = c.Y - a.Y;
+        var m00 = (dx1 * dv2 - dx2 * dv1) / det;
+        var m01 = (du1 * dx2 - du2 * dx1) / det;
+        var m10 = (dy1 * dv2 - dy2 * dv1) / det;
+        var m11 = (du1 * dy2 - du2 * dy1) / det;
+        Grow(ref a, m00, m01, m10, m11);
+        Grow(ref b, m00, m01, m10, m11);
+        Grow(ref c, m00, m01, m10, m11);
+        return true;
+    }
+    
     private unsafe uint EnsureRepTexture(Assets.ReplacementTexture tex)
     {
         if (_repTextures.TryGetValue(tex, out var handle)) return handle;
@@ -574,9 +609,14 @@ public sealed class GlCore : IGpuBackend
         _gl.ActiveTexture(TextureUnit.Texture7);
         handle = _gl.GenTexture();
         _gl.BindTexture(TextureTarget.Texture2D, handle);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter,
-            (int)(_legacy ? GLEnum.Linear : GLEnum.LinearMipmapLinear));
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)GLEnum.Linear);
+        var sharp = tex.Filter == Assets.TextureFilter.Nearest ||
+                    (tex.Filter == Assets.TextureFilter.Auto && Math.Max(tex.ScaleX, tex.ScaleY) < SharpScaleLimit);
+        var minFilter = _legacy
+            ? sharp ? GLEnum.Nearest : GLEnum.Linear
+            : sharp ? GLEnum.NearestMipmapNearest : GLEnum.LinearMipmapLinear;
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)minFilter);
+        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter,
+            (int)(sharp ? GLEnum.Nearest : GLEnum.Linear));
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)GLEnum.ClampToEdge);
         _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)GLEnum.ClampToEdge);
         _gl.TexImage2D<byte>(TextureTarget.Texture2D, 0, InternalFormat.Rgba8, (uint)tex.Width, (uint)tex.Height, 0,
@@ -654,6 +694,22 @@ public sealed class GlCore : IGpuBackend
             (int)Math.Min(a.U, Math.Min(b.U, c.U)), (int)Math.Min(a.V, Math.Min(b.V, c.V)),
             (int)Math.Max(a.U, Math.Max(b.U, c.U)), (int)Math.Max(a.V, Math.Max(b.V, c.V)),
             EdgeOf(a.X, a.U, b.X, b.U, c.X, c.U), EdgeOf(a.Y, a.V, b.Y, b.V, c.Y, c.V));
+        
+        if (_pendingGrow != null)
+        {
+            HleVertex ga = a, gb = b, gc = c;
+            if (GrowTri(ref ga, ref gb, ref gc))
+            {
+                EmitTri(ga, gb, gc, f);
+                return;
+            }
+        }
+        
+        EmitTri(a, b, c, f);
+    }
+    
+    private void EmitTri(in HleVertex a, in HleVertex b, in HleVertex c, in PrimFlags f)
+    {
         var depth = NativeGeometry.Enabled && NativeGeometry.DepthBuffer &&
             DepthVertex(a) && DepthVertex(b) && DepthVertex(c);
         var material = depth && f.Textured && ShaderMaterials.Any
@@ -713,6 +769,14 @@ public sealed class GlCore : IGpuBackend
         var c = new HleVertex { X = r.X, Y = r.Y + r.H, R = r.R, G = r.G, B = r.B, U = r.U, V = (short)(r.V + r.H) };
         var d = new HleVertex
             { X = r.X + r.W, Y = r.Y + r.H, R = r.R, G = r.G, B = r.B, U = (short)(r.U + r.W), V = (short)(r.V + r.H) };
+        if (_pendingGrow != null)
+        {
+            Grow(ref a, 1f, 0f, 0f, 1f);
+            Grow(ref b, 1f, 0f, 0f, 1f);
+            Grow(ref c, 1f, 0f, 0f, 1f);
+            Grow(ref d, 1f, 0f, 0f, 1f);
+        }
+        
         _verts[_count++] = V(a, f, false);
         _verts[_count++] = V(b, f, false);
         _verts[_count++] = V(c, f, false);

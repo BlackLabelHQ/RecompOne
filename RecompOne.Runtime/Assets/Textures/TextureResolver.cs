@@ -6,6 +6,7 @@ public struct ResolvedTexture
     public ReplacementClut? Clut;
     public TileRect Rect;
     public bool Hit;
+    public bool Expand;
 }
 
 public static class TextureResolver
@@ -54,10 +55,11 @@ public static class TextureResolver
 
         tex.ScaleX = tex.Width / (float)rect.W;
         tex.ScaleY = tex.Height / (float)rect.H;
+        if (kind == "tile") TextureStretch.Apply(asset, tex, rect);
 
         var original = rect.W / (double)rect.H;
         var replacement = tex.Width / (double)tex.Height;
-        var distorted = Math.Abs(replacement - original) / original > 0.02;
+        var distorted = asset.Expand == TextureExpand.None && Math.Abs(replacement - original) / original > 0.02;
 
         Console.WriteLine($"[assets] {kind} {asset.IndexHash:x16}: {rect.W}x{rect.H} -> {tex.Width}x{tex.Height} " +
                           $"({tex.ScaleX:0.##}x, {tex.ScaleY:0.##}x)" +
@@ -266,6 +268,7 @@ public static class TextureResolver
 
         if (!entry.Valid) return false;
         result.Rect = rect;
+        result.Expand = true;
         result.Texture = entry.Texture != null ? mgr.LoadTexture(entry.Texture) : null;
         if (result.Texture != null) CheckAspect(entry.Texture!, result.Texture, rect, "tile");
         result.Clut = entry.Clut != null ? mgr.LoadClut(entry.Clut) : null;
@@ -337,6 +340,7 @@ public static class TextureResolver
             var ruledTex = mgr.LoadTexture(ruled);
             if (ruledTex != null)
             {
+                CheckAspect(ruled, ruledTex, rect, "rule");
                 result.Rect = rect;
                 result.Texture = ruledTex;
                 result.Clut = null;
@@ -428,6 +432,7 @@ public static class TextureResolver
         }
 
         result.Rect = entry.Rect;
+        result.Expand = plain;
         result.Texture = entry.Texture != null ? mgr.LoadTexture(entry.Texture) : null;
         if (result.Texture != null) CheckAspect(entry.Texture!, result.Texture, entry.Rect, "tile");
         result.Clut = entry.Clut != null ? mgr.LoadClut(entry.Clut) : null;

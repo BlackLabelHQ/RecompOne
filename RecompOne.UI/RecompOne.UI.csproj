@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <DebugType>none</DebugType>
+        <DebugSymbols>false</DebugSymbols>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <EmbeddedResource Include="Assets\fa-solid-900.ttf"/>
+        <EmbeddedResource Include="Assets\NotoSans-Regular.ttf"/>
+        <EmbeddedResource Include="Assets\NotoSansCJK-Regular.otf"/>
+        <EmbeddedResource Include="Assets\languages.json"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\RecompOne.Runtime\RecompOne.Runtime.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="NativeFileDialogNET" Version="2.0.2"/>
+        <PackageReference Include="Twizzle.ImGui-Bundle.NET" Version="1.91.5.2"/>
+    </ItemGroup>
+
+</Project>

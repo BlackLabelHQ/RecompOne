@@ -18,11 +18,11 @@ public static class Runtime
 {
     public static CpuContext? Cpu { get; private set; }
     public static IMemory? Mem { get; private set; }
-    public static Gpu? Gpu;
-    public static Spu? Spu;
-    public static Mdec? Mdec;
-    public static Hardware.Timers? Timers;
-    public static Cdrom.CdController? Cd;
+    public static Gpu? Gpu { get; set; }
+    public static Spu? Spu { get; set; }
+    public static Mdec? Mdec { get; set; }
+    public static Hardware.Timers? Timers { get; set; }
+    public static Cdrom.CdController? Cd { get; set; }
 
     public static RunMode Mode { get; private set; } = RunMode.Retail;
 
@@ -37,7 +37,7 @@ public static class Runtime
     public static uint RamWordMask => (RamSize - 1) & ~3u;
     public static string CdPath => Config.Settings.System.DiscPath;
 
-    public static Func<string, string?>? DiscValidator;
+    public static Func<string, string?>? DiscValidator { get; set; }
 
     public static string? ValidateDisc(string path)
     {
@@ -51,8 +51,8 @@ public static class Runtime
         }
     }
 
-    public static Hardware.MemoryCard CardA = new("carda.sav") { Enabled = true };
-    public static Hardware.MemoryCard CardB = new("cardb.sav") { Enabled = true };
+    public static Hardware.MemoryCard CardA { get; set; } = new("carda.sav") { Enabled = true };
+    public static Hardware.MemoryCard CardB { get; set; } = new("cardb.sav") { Enabled = true };
 
     private static void LoadMemoryCards()
     {
@@ -64,6 +64,8 @@ public static class Runtime
     public static readonly RamLogger RamLog = new();
     public static readonly Dispatch.OverlayEventLog OverlayLog = new();
 
+    public static IUserInterface? UserInterface { get; set; }
+
     private static bool _hostReady;
 
     public static void Initialize(string title)
@@ -74,6 +76,7 @@ public static class Runtime
             Diagnostics.ConsoleMirror.Install();
             Host.GpuJobs.Run(() => HostWindow.Initialize(title));
             Audio.Initialize();
+            Shaders.ShaderManager.Load();
         }
 
         LoadMemoryCards();
@@ -114,23 +117,7 @@ public static class Runtime
 
     public static void ShowNotice(string message)
     {
-        Host.Window.NoticePopup.Show(message);
-    }
-
-    public static void SetStartupNotice(string message, string title = "common.notice",
-        string ackKey = "StartupNoticeAck")
-    {
-        Host.Window.StartupNoticePopup.Set(message, title, ackKey);
-    }
-
-    public static void AddLanguages(string json)
-    {
-        Host.Window.Localization.Merge(json);
-    }
-
-    public static bool AddLanguages(System.Reflection.Assembly assembly, string resourceName)
-    {
-        return Host.Window.Localization.MergeEmbedded(assembly, resourceName);
+        UserInterface?.ShowNotice(message);
     }
 
     public static void SetContext(CpuContext c, IMemory m)
@@ -189,8 +176,7 @@ public static class Runtime
         
         thread.Start();
         
-        while (!_gameDone || HostWindow.Ready && (Host.Window.CrashPopup.IsPending ||
-                                                   Host.Window.PopupManager.Get<Host.Window.CrashPopup>()?.IsOpen == true))
+        while (!_gameDone || HostWindow.Ready && UserInterface?.BlocksExit == true)
             PresentLoop();
     }
     
@@ -210,7 +196,7 @@ public static class Runtime
             catch (Exception e)
             {
                 Console.Error.WriteLine($"[Runtime] runtime has crashed: {e}");
-                Host.GpuJobs.Run(() => Host.Window.CrashPopup.Report(e));
+                Host.GpuJobs.Run(() => UserInterface?.ReportCrash(e));
                 break;
             }
         

@@ -19,7 +19,7 @@ public static class Interp
 
     private static bool _loaded;
 
-    internal static InterpBackend? Backend { get; set; }
+    public static InterpBackend? Backend { get; internal set; }
 
     public static double PresentAt { get; set; } = double.NaN;
 

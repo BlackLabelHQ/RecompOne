@@ -12,7 +12,7 @@ using EvMouseButton = RecompOne.Runtime.Events.MouseButton;
 
 namespace RecompOne.Runtime.Host;
 
-internal static unsafe class InputManager
+public static unsafe class InputManager
 {
     private static IKeyboard? _keyboard;
     private static IMouse? _mouse;

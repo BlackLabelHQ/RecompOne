@@ -30,7 +30,7 @@ public static class XaRegistry
     private static SeenStream? _current;
     private static long _clock;
 
-    public static volatile bool Enabled;
+    public static bool Enabled { get; set; }
 
     public static void Note(int runLba, int lba, byte file, byte channel, byte coding, bool newRun)
     {

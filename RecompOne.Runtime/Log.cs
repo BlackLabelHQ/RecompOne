@@ -2,15 +2,15 @@ namespace RecompOne.Runtime;
 
 public static class Log
 {
-    public static bool BiosOn = false;
-    public static bool SpuOn = false;
-    public static bool GpuOn = false;
-    public static bool DmaOn = false;
-    public static bool CdOn = false;
-    public static bool SdkOn = false;
-    public static bool VSyncOn = false;
-    public static bool MdecOn = false;
-    public static bool IrqOn = false;
+    public static bool BiosOn { get; set; }
+    public static bool SpuOn { get; set; }
+    public static bool GpuOn { get; set; }
+    public static bool DmaOn { get; set; }
+    public static bool CdOn { get; set; }
+    public static bool SdkOn { get; set; }
+    public static bool VSyncOn { get; set; }
+    public static bool MdecOn { get; set; }
+    public static bool IrqOn { get; set; }
 
     public static void Mdec(string m)
     {

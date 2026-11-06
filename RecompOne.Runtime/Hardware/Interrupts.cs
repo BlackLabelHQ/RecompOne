@@ -130,7 +130,7 @@ public static class Interrupts
         cpu.FP = ExceptionStackTop;
     }
 
-    public static bool Turbo;
+    public static bool Turbo { get; set; }
 
     public static int VBlankCount => (int)Host.FrameClock.Count;
 

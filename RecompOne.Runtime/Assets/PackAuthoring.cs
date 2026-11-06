@@ -144,6 +144,39 @@ public static class PackAuthoring
         Save(pack);
     }
 
+    public static TextureEntryDto? TextureOptions(AssetPack pack, string file)
+    {
+        return pack.Manifest.Textures?.FirstOrDefault(t => t.File == file);
+    }
+    
+    public static TextureEntryDto EditTextureOptions(AssetPack pack, PackContents.Texture texture)
+    {
+        if (TextureOptions(pack, texture.File) is { } entry) return entry;
+        
+        entry = new TextureEntryDto
+        {
+            Index = $"{texture.Index:x16}",
+            Clut = texture.Clut != 0 ? $"{texture.Clut:x16}" : null,
+            File = texture.File
+        };
+        pack.Manifest.Textures ??= [];
+        pack.Manifest.Textures.Add(entry);
+        return entry;
+    }
+    
+    public static void SaveTextureOptions(AssetPack pack, TextureEntryDto entry)
+    {
+        var plain = entry is { Filter: null, Expand: null, Scale: null, Note: null, File: not null };
+        if (plain && entry.File!.StartsWith("textures/", StringComparison.Ordinal) &&
+            PackContents.TryParseTexture(entry.File, out _, out _, out _))
+        {
+            pack.Manifest.Textures?.Remove(entry);
+            if (pack.Manifest.Textures is { Count: 0 }) pack.Manifest.Textures = null;
+        }
+        
+        Save(pack);
+    }
+    
     public static string SetSound(AssetPack pack, ulong hash, string source)
     {
         var extension = Path.GetExtension(source).ToLowerInvariant();

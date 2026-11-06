@@ -43,7 +43,7 @@ public sealed class InterpBackend : IGpuBackend
     
     public int SourceRate => _source;
     
-    internal InterpStats Stats { get; } = new();
+    public InterpStats Stats { get; } = new();
     
     private int _swaps;
     

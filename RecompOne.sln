@@ -4,6 +4,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RecompOne.Recompiler", "Rec
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RecompOne.Runtime", "RecompOne.Runtime\RecompOne.Runtime.csproj", "{743FBD4C-5D19-4EF4-9DE8-3A10146D5BC6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RecompOne.UI", "RecompOne.UI\RecompOne.UI.csproj", "{A7E74385-850E-426A-AE3A-81B865069626}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -38,6 +40,18 @@ Global
 		{743FBD4C-5D19-4EF4-9DE8-3A10146D5BC6}.Release|x64.Build.0 = Release|Any CPU
 		{743FBD4C-5D19-4EF4-9DE8-3A10146D5BC6}.Release|x86.ActiveCfg = Release|Any CPU
 		{743FBD4C-5D19-4EF4-9DE8-3A10146D5BC6}.Release|x86.Build.0 = Release|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Debug|x64.Build.0 = Debug|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Debug|x86.Build.0 = Debug|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Release|x64.ActiveCfg = Release|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Release|x64.Build.0 = Release|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Release|x86.ActiveCfg = Release|Any CPU
+		{A7E74385-850E-426A-AE3A-81B865069626}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

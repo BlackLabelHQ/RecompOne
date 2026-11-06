@@ -4,7 +4,7 @@ using ALCtx = Silk.NET.OpenAL.Context;
 
 namespace RecompOne.Runtime.Host;
 
-internal static unsafe class Audio
+public static unsafe class Audio
 {
     private static ALContext? _alc;
     private static AL? _al;

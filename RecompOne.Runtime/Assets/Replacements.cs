@@ -197,14 +197,35 @@ public enum TextureMode : byte
     Indexed = 1
 }
 
+public enum TextureFilter : byte
+{
+    Auto = 0,
+    Nearest = 1,
+    Linear = 2
+}
+
+[Flags]
+public enum TextureExpand : byte
+{
+    None = 0,
+    Left = 1,
+    Right = 2,
+    Top = 4,
+    Bottom = 8
+}
+
 public sealed class ReplacementTexture
 {
     public int Width, Height;
     public float ScaleX = 1f, ScaleY = 1f;
+    public float GrowLeft, GrowRight, GrowTop, GrowBottom;
     public byte[] Rgba = [];
     public TextureMode Mode = TextureMode.Rgba;
+    public TextureFilter Filter;
     public uint GpuHandle;
     public bool Failed;
+    
+    public bool Grows => GrowLeft != 0f || GrowRight != 0f || GrowTop != 0f || GrowBottom != 0f;
 }
 
 public sealed class ReplacementClut

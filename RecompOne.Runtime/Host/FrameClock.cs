@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace RecompOne.Runtime.Host;
 
-internal static class FrameClock
+public static class FrameClock
 {
     private const int SlipFrames = 8;
 

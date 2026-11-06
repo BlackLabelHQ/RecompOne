@@ -39,6 +39,7 @@ public sealed class TextureRuleDto
     public int? MaxWidth { get; set; }
     public int? MaxHeight { get; set; }
     public string? File { get; set; }
+    public string? Filter { get; set; }
     public string? Note { get; set; }
 }
 
@@ -49,6 +50,9 @@ public sealed class TextureEntryDto
     public string? Clut { get; set; }
     public string? Mode { get; set; }
     public string? File { get; set; }
+    public string? Filter { get; set; }
+    public List<string>? Expand { get; set; }
+    public float? Scale { get; set; }
     public string? Note { get; set; }
 }
 

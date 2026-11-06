@@ -5,7 +5,6 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using RecompOne.Runtime.Host;
-using RecompOne.Runtime.Host.Window;
 
 namespace RecompOne.Runtime.Modding;
 
@@ -159,17 +158,17 @@ public static class ModLoader
         var toLoad = discovered.Where(e => e.Enabled).ToList();
         if (toLoad.Count == 0) return;
 
-        ModLoadingPopup.Begin(toLoad.Count);
+        Runtime.UserInterface?.BeginModLoading(toLoad.Count);
 
         var work = Task.Run(() =>
         {
             for (var i = 0; i < toLoad.Count; i++)
             {
-                ModLoadingPopup.Update(i, toLoad[i].Info.Name);
+                Runtime.UserInterface?.UpdateModLoading(i, toLoad[i].Info.Name);
                 LoadEntry(toLoad[i]);
             }
 
-            ModLoadingPopup.Update(toLoad.Count, "");
+            Runtime.UserInterface?.UpdateModLoading(toLoad.Count, "");
             try
             {
                 HookManager.Commit();
@@ -186,7 +185,7 @@ public static class ModLoader
             Thread.Sleep(16);
         }
 
-        ModLoadingPopup.End();
+        Runtime.UserInterface?.EndModLoading();
 
         Console.WriteLine(
             $"[Mods] loaded {toLoad.Count(e => e.Loaded)}/{toLoad.Count} mod(s), {HookManager.HookedFunctionCount} function(s) hooked");
