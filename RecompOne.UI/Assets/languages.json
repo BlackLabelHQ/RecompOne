@@ -449,18 +449,24 @@
       "en": "OOPS Something gone wrong!",
       "pt-BR": "OOPS! Algo deu errado!",
       "es-419": "¡OOPS! ¡Algo salió mal!",
+      "ja-JP": "OOPS Something gone wrong!",
+      "zh-CN": "嗯？好像有什么不对劲！",
       "fr-FR": "OOPS! Quelque chose s'est mal passé!"
     },
     "crash.body": {
       "en": "The recomp crashed! but dont worry! the crash log is available at {0}, send this for the responsable team for this recomp",
       "pt-BR": "A recomp crashou, mas não se preocupe! O log do crash está disponível em {0}. Envie-o para a equipe responsável por este recomp.",
       "es-419": "¡El recomp se cerró inesperadamente! No te preocupes: el registro del fallo está disponible en {0}. Envíalo al equipo responsable de este recomp.",
+      "ja-JP": "The recomp crashed! but dont worry! the crash log is available at {0}, send this for the responsable team for this recomp",
+      "zh-CN": "重编译前端崩溃了！不过不要紧，请查找最近一次在这里 {0}的崩溃日志并发给重编译开发组",
       "fr-FR": "La recomp a crashé, mais pas de panique! Le log de crash est disponible dans {0}. Envoyez le à l'équipe responsable de cette recomp."
     },
     "crash.error": {
       "en": "Error: {0}",
       "pt-BR": "Erro: {0}",
       "es-419": "Error: {0}",
+      "ja-JP": "Error: {0}",
+      "zh-CN": "错误: {0}",
       "fr-FR": "Erreur: {0}"
     },
     "settings.title": {
@@ -705,19 +711,35 @@
     },
     "settings.display.true_color": {
       "en": "True color (24-bit)",
-      "pt-BR": "Cor real (24 bits)"
+      "pt-BR": "Cor real (24 bits)",
+      "es-419": "True color (24-bit)",
+      "ja-JP": "True color (24-bit)",
+      "zh-CN": "真彩色 (24-bit)",
+      "fr-FR": "True color (24-bit)"
     },
     "settings.display.true_color_hint": {
       "en": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart.",
-      "pt-BR": "Renderiza com 8 bits por canal em vez da cor de 15 bits do PSX, removendo o banding. Vale após reiniciar."
+      "pt-BR": "Renderiza com 8 bits por canal em vez da cor de 15 bits do PSX, removendo o banding. Vale após reiniciar.",
+      "es-419": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart.",
+      "ja-JP": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart.",
+      "zh-CN": "以每个通道完整的 8-bit 颜色进行渲染（取代原作PSX的 15-bit 色彩），以消除色彩断层现象. 此设定更改后只在重新启动时生效.",
+      "fr-FR": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart."
     },
     "settings.display.dithering": {
       "en": "Apply dithering",
-      "pt-BR": "Aplicar dithering"
+      "pt-BR": "Aplicar dithering",
+      "es-419": "Apply dithering",
+      "ja-JP": "Apply dithering",
+      "zh-CN": "应用抖动",
+      "fr-FR": "Apply dithering"
     },
     "settings.display.dithering_hint": {
       "en": "Uses the PSX dither pattern to smooth gradients. Not needed with true color.",
-      "pt-BR": "Usa o padrão de dithering do PSX para suavizar gradientes. Não é necessário com cor real."
+      "pt-BR": "Usa o padrão de dithering do PSX para suavizar gradientes. Não é necessário com cor real.",
+      "es-419": "Uses the PSX dither pattern to smooth gradients. Not needed with true color.",
+      "ja-JP": "Uses the PSX dither pattern to smooth gradients. Not needed with true color.",
+      "zh-CN": "使用 PSX 抖动方式来平滑渐变。在真彩色模式下无需此操作。",
+      "fr-FR": "Uses the PSX dither pattern to smooth gradients. Not needed with true color."
     },
     "settings.display.render_scale_lines": {
       "en": "{1} lines in the current context, {3} after scale ({4}x)",
@@ -1145,135 +1167,267 @@
     },
     "modhub.title": {
       "en": "Mod Hub",
-      "pt-BR": "Mod Hub"
+      "pt-BR": "Mod Hub",
+      "es-419": "Mod Hub",
+      "ja-JP": "Mod Hub",
+      "zh-CN": "模组中心",
+      "fr-FR": "Mod Hub"
     },
     "modhub.count": {
       "en": "{0} in the hub",
-      "pt-BR": "{0} no hub"
+      "pt-BR": "{0} no hub",
+      "es-419": "{0} in the hub",
+      "ja-JP": "{0} in the hub",
+      "zh-CN": "{0} 个在模组中心内",
+      "fr-FR": "{0} in the hub"
     },
     "modhub.installed_count": {
       "en": "{0} installed",
-      "pt-BR": "{0} instalados"
+      "pt-BR": "{0} instalados",
+      "es-419": "{0} installed",
+      "ja-JP": "{0} installed",
+      "zh-CN": "{0} 个模组已安装",
+      "fr-FR": "{0} installed"
     },
     "modhub.refresh": {
       "en": "Refresh",
-      "pt-BR": "Atualizar"
+      "pt-BR": "Atualizar",
+      "es-419": "Refresh",
+      "ja-JP": "Refresh",
+      "zh-CN": "刷新",
+      "fr-FR": "Refresh"
     },
     "modhub.open_hub": {
       "en": "Open the hub repository",
-      "pt-BR": "Abrir o repositório do hub"
+      "pt-BR": "Abrir o repositório do hub",
+      "es-419": "Open the hub repository",
+      "ja-JP": "Open the hub repository",
+      "zh-CN": "打开模组中心",
+      "fr-FR": "Open the hub repository"
     },
     "modhub.open_repository": {
       "en": "Open repository",
-      "pt-BR": "Abrir repositório"
+      "pt-BR": "Abrir repositório",
+      "es-419": "Open repository",
+      "ja-JP": "Open repository",
+      "zh-CN": "打开存储库",
+      "fr-FR": "Open repository"
     },
     "modhub.search": {
       "en": "Search",
-      "pt-BR": "Pesquisar"
+      "pt-BR": "Pesquisar",
+      "es-419": "Search",
+      "ja-JP": "Search",
+      "zh-CN": "搜索",
+      "fr-FR": "Search"
     },
     "modhub.all_types": {
       "en": "All types",
-      "pt-BR": "Todos os tipos"
+      "pt-BR": "Todos os tipos",
+      "es-419": "All types",
+      "ja-JP": "All types",
+      "zh-CN": "所有类别",
+      "fr-FR": "All types"
     },
     "modhub.sort_stars": {
       "en": "Most stars",
-      "pt-BR": "Mais estrelas"
+      "pt-BR": "Mais estrelas",
+      "es-419": "Most stars",
+      "ja-JP": "Most stars",
+      "zh-CN": "按星标数量排序",
+      "fr-FR": "Most stars"
     },
     "modhub.sort_name": {
       "en": "Name",
-      "pt-BR": "Nome"
+      "pt-BR": "Nome",
+      "es-419": "Name",
+      "ja-JP": "Name",
+      "zh-CN": "按模组名字排序",
+      "fr-FR": "Name"
     },
     "modhub.sort_installed": {
       "en": "Installed first",
-      "pt-BR": "Instalados primeiro"
+      "pt-BR": "Instalados primeiro",
+      "es-419": "Installed first",
+      "ja-JP": "Installed first",
+      "zh-CN": "按安装次数排序",
+      "fr-FR": "Installed first"
     },
     "modhub.loading": {
       "en": "Loading the hub...",
-      "pt-BR": "Carregando o hub..."
+      "pt-BR": "Carregando o hub...",
+      "es-419": "Loading the hub...",
+      "ja-JP": "Loading the hub...",
+      "zh-CN": "读取模组中心中...",
+      "fr-FR": "Loading the hub..."
     },
     "modhub.empty": {
       "en": "The hub is empty.",
-      "pt-BR": "O hub está vazio."
+      "pt-BR": "O hub está vazio.",
+      "es-419": "The hub is empty.",
+      "ja-JP": "The hub is empty.",
+      "zh-CN": "模组中心目前内容为空.",
+      "fr-FR": "The hub is empty."
     },
     "modhub.empty_hint": {
       "en": "Submit yours with a pull request to the hub repository.",
-      "pt-BR": "Envie o seu com um pull request no repositório do hub."
+      "pt-BR": "Envie o seu com um pull request no repositório do hub.",
+      "es-419": "Submit yours with a pull request to the hub repository.",
+      "ja-JP": "Submit yours with a pull request to the hub repository.",
+      "zh-CN": "将你的模组投稿到模组中心.",
+      "fr-FR": "Submit yours with a pull request to the hub repository."
     },
     "modhub.failed": {
       "en": "Could not load the hub.",
-      "pt-BR": "Não foi possível carregar o hub."
+      "pt-BR": "Não foi possível carregar o hub.",
+      "es-419": "Could not load the hub.",
+      "ja-JP": "Could not load the hub.",
+      "zh-CN": "无法读取模组中心.",
+      "fr-FR": "Could not load the hub."
     },
     "modhub.no_results": {
       "en": "Nothing matches.",
-      "pt-BR": "Nada encontrado."
+      "pt-BR": "Nada encontrado.",
+      "es-419": "Nothing matches.",
+      "ja-JP": "Nothing matches.",
+      "zh-CN": "无法读取到你要搜寻的结果.",
+      "fr-FR": "Nothing matches."
     },
     "modhub.install": {
       "en": "Install",
-      "pt-BR": "Instalar"
+      "pt-BR": "Instalar",
+      "es-419": "Install",
+      "ja-JP": "Install",
+      "zh-CN": "安装",
+      "fr-FR": "Install"
     },
     "modhub.update": {
       "en": "Update",
-      "pt-BR": "Atualizar"
+      "pt-BR": "Atualizar",
+      "es-419": "Update",
+      "ja-JP": "Update",
+      "zh-CN": "更新",
+      "fr-FR": "Update"
     },
     "modhub.remove": {
       "en": "Remove",
-      "pt-BR": "Remover"
+      "pt-BR": "Remover",
+      "es-419": "Remove",
+      "ja-JP": "Remove",
+      "zh-CN": "移除",
+      "fr-FR": "Remove"
     },
     "modhub.remove_title": {
       "en": "Remove {0}?",
-      "pt-BR": "Remover {0}?"
+      "pt-BR": "Remover {0}?",
+      "es-419": "Remove {0}?",
+      "ja-JP": "Remove {0}?",
+      "zh-CN": "确定移除 {0} 吗?",
+      "fr-FR": "Remove {0}?"
     },
     "modhub.remove_message": {
       "en": "Its files are deleted. You can install it again later.",
-      "pt-BR": "Os arquivos dele são apagados. Você pode instalar de novo depois."
+      "pt-BR": "Os arquivos dele são apagados. Você pode instalar de novo depois.",
+      "es-419": "Its files are deleted. You can install it again later.",
+      "ja-JP": "Its files are deleted. You can install it again later.",
+      "zh-CN": "该模组的内容已被移除. 不过你如果反悔的话可以稍后重新安装.",
+      "fr-FR": "Its files are deleted. You can install it again later."
     },
     "modhub.warning_title": {
       "en": "{0} - warning",
-      "pt-BR": "{0} - aviso"
+      "pt-BR": "{0} - aviso",
+      "es-419": "{0} - warning",
+      "ja-JP": "{0} - warning",
+      "zh-CN": "{0} - 警告",
+      "fr-FR": "{0} - warning"
     },
     "modhub.installing": {
       "en": "Installing...",
-      "pt-BR": "Instalando..."
+      "pt-BR": "Instalando...",
+      "es-419": "Installing...",
+      "ja-JP": "Installing...",
+      "zh-CN": "模组安装中...",
+      "fr-FR": "Installing..."
     },
     "modhub.removing": {
       "en": "Removing...",
-      "pt-BR": "Removendo..."
+      "pt-BR": "Removendo...",
+      "es-419": "Removing...",
+      "ja-JP": "Removing...",
+      "zh-CN": "模组移除中...",
+      "fr-FR": "Removing..."
     },
     "modhub.dismiss": {
       "en": "Dismiss",
-      "pt-BR": "Dispensar"
+      "pt-BR": "Dispensar",
+      "es-419": "Dismiss",
+      "ja-JP": "Dismiss",
+      "zh-CN": "忽略",
+      "fr-FR": "Dismiss"
     },
     "modhub.state_installed": {
       "en": "Installed",
-      "pt-BR": "Instalado"
+      "pt-BR": "Instalado",
+      "es-419": "Installed",
+      "ja-JP": "Installed",
+      "zh-CN": "模组已安装",
+      "fr-FR": "Installed"
     },
     "modhub.state_outdated": {
       "en": "Update available",
-      "pt-BR": "Atualização disponível"
+      "pt-BR": "Atualização disponível",
+      "es-419": "Update available",
+      "ja-JP": "Update available",
+      "zh-CN": "更新完成",
+      "fr-FR": "Update available"
     },
     "modhub.state_conflict": {
       "en": "A folder with this name already exists and was not installed by the hub",
-      "pt-BR": "Já existe uma pasta com esse nome que não foi instalada pelo hub"
+      "pt-BR": "Já existe uma pasta com esse nome que não foi instalada pelo hub",
+      "es-419": "A folder with this name already exists and was not installed by the hub",
+      "ja-JP": "A folder with this name already exists and was not installed by the hub",
+      "zh-CN": "有相同名字的模组已存在，但是未在模组中心安装",
+      "fr-FR": "A folder with this name already exists and was not installed by the hub"
     },
     "modhub.state_missing": {
       "en": "Not installed",
-      "pt-BR": "Não instalado"
+      "pt-BR": "Não instalado",
+      "es-419": "Not installed",
+      "ja-JP": "Not installed",
+      "zh-CN": "模组未安装",
+      "fr-FR": "Not installed"
     },
     "modhub.no_stars": {
       "en": "(can't retrieve)",
-      "pt-BR": "(indisponível)"
+      "pt-BR": "(indisponível)",
+      "es-419": "(can't retrieve)",
+      "ja-JP": "(can't retrieve)",
+      "zh-CN": "(无法取得信息)",
+      "fr-FR": "(can't retrieve)"
     },
     "modhub.type.mod": {
       "en": "Mod",
-      "pt-BR": "Mod"
+      "pt-BR": "Mod",
+      "es-419": "Mod",
+      "ja-JP": "Mod",
+      "zh-CN": "模组",
+      "fr-FR": "Mod"
     },
     "modhub.type.assetpack": {
       "en": "Asset pack",
-      "pt-BR": "Pacote de assets"
+      "pt-BR": "Pacote de assets",
+      "es-419": "Asset pack",
+      "ja-JP": "Asset pack",
+      "zh-CN": "素材包",
+      "fr-FR": "Asset pack"
     },
     "modhub.type.shader": {
       "en": "Shader",
-      "pt-BR": "Shader"
+      "pt-BR": "Shader",
+      "es-419": "Shader",
+      "ja-JP": "Shader",
+      "zh-CN": "滤镜",
+      "fr-FR": "Shader"
     },
     "disc.title": {
       "en": "Disc image not found",
@@ -1325,23 +1479,43 @@
     },
     "common.open_folder": {
       "en": "Open folder",
-      "pt-BR": "Abrir pasta"
+      "pt-BR": "Abrir pasta",
+      "es-419": "Open folder",
+      "ja-jp": "Open folder",
+      "zh-CN": "打开目录",
+      "fr-FR": "Open folder"
     },
     "menu.mods.asset_packs": {
       "en": "Asset Packs",
-      "pt-BR": "Pacotes de Assets"
+      "pt-BR": "Pacotes de Assets",
+      "es-419": "Asset Packs",
+      "ja-jp": "Asset Packs",
+      "zh-CN": "素材包",
+      "fr-FR": "Asset Packs"
     },
     "assetpacks.title": {
       "en": "Asset Packs",
-      "pt-BR": "Pacotes de Assets"
+      "pt-BR": "Pacotes de Assets",
+      "es-419": "Asset Packs",
+      "ja-jp": "Asset Packs",
+      "zh-CN": "素材包",
+      "fr-FR": "Asset Packs"
     },
     "assetpacks.new_title": {
       "en": "New Asset Pack",
-      "pt-BR": "Novo Pacote de Assets"
+      "pt-BR": "Novo Pacote de Assets",
+      "es-419": "New Asset Pack",
+      "ja-jp": "New Asset Pack",
+      "zh-CN": "新素材包",
+      "fr-FR": "New Asset Pack"
     },
     "panel.asset_pack_editor": {
       "en": "Asset Pack Editor",
-      "pt-BR": "Editor de Pacotes de Assets"
+      "pt-BR": "Editor de Pacotes de Assets",
+      "es-419": "Asset Pack Editor",
+      "ja-jp": "Asset Pack Editor",
+      "zh-CN": "素材包编辑器",
+      "fr-FR": "Asset Pack Editor"
     },
     "menu.updates": {
       "en": "Updates",
