@@ -12,6 +12,13 @@ using EvMouseButton = RecompOne.Runtime.Events.MouseButton;
 
 namespace RecompOne.Runtime.Host;
 
+public readonly record struct MenuPadState(
+    bool Up, bool Down, bool Left, bool Right,
+    bool Accept, bool Back, bool Alternate, bool Extra,
+    bool LeftShoulder, bool RightShoulder,
+    bool Start, bool Select, bool Guide,
+    float LeftX, float LeftY);
+
 public static unsafe class InputManager
 {
     private static IKeyboard? _keyboard;
@@ -83,6 +90,10 @@ public static unsafe class InputManager
     }
 
     public static bool IsConnected => _pad0 != null;
+    
+    public static bool GameInputEnabled { get; set; } = true;
+    
+    public static MenuPadState MenuPad { get; private set; }
 
     public static bool IsPadConnected(int pad)
     {
@@ -104,6 +115,39 @@ public static unsafe class InputManager
         PollKeyboard();
         PollGamepads();
         Controller.Connected2 = _pad1 != null || Settings.System.Input[1].Keys.Any;
+        MenuPad = ReadMenuPad();
+        if (!GameInputEnabled) ReleaseGameInput();
+    }
+    
+    private static void ReleaseGameInput()
+    {
+        Controller.State = 0xFFFF;
+        Controller.State2 = 0xFFFF;
+        Controller.LeftX = Controller.LeftY = Controller.RightX = Controller.RightY = 0x80;
+        Controller.LeftX2 = Controller.LeftY2 = Controller.RightX2 = Controller.RightY2 = 0x80;
+    }
+    
+    private static bool AnyButton(GameControllerButton button)
+    {
+        if (_sdl == null) return false;
+        return (_pad0 != null && _sdl.GameControllerGetButton(_pad0, button) != 0) ||
+               (_pad1 != null && _sdl.GameControllerGetButton(_pad1, button) != 0);
+    }
+    
+    private static MenuPadState ReadMenuPad()
+    {
+        var pad = _pad0 != null ? _pad0 : _pad1;
+        var x = pad != null ? Axis(pad, (int)GameControllerAxis.Leftx) : 0f;
+        var y = pad != null ? Axis(pad, (int)GameControllerAxis.Lefty) : 0f;
+        return new MenuPadState(
+            AnyButton(GameControllerButton.DpadUp), AnyButton(GameControllerButton.DpadDown),
+            AnyButton(GameControllerButton.DpadLeft), AnyButton(GameControllerButton.DpadRight),
+            AnyButton(GameControllerButton.A), AnyButton(GameControllerButton.B),
+            AnyButton(GameControllerButton.X), AnyButton(GameControllerButton.Y),
+            AnyButton(GameControllerButton.Leftshoulder), AnyButton(GameControllerButton.Rightshoulder),
+            AnyButton(GameControllerButton.Start), AnyButton(GameControllerButton.Back),
+            AnyButton(GameControllerButton.Guide),
+            x, y);
     }
 
     public static int? GetFirstPressedPadButton(int pad = 0)

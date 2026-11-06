@@ -36,7 +36,18 @@ public static class PopupManager
 
     public static bool AnyOpen => _stack.Count > 0;
 
+    public static bool Fullscreen { get; set; }
+
+    public static bool CloseTop()
+    {
+        if (_stack.Count == 0 || !_stack[^1].CanClose) return false;
+        _stack[^1].Close();
+        return true;
+    }
+
     public static int TopIndex => _stack.Count - 1;
+
+    public static bool TopChildWasOpen => _stack.Count > 0 && _stack[^1].ChildWasOpen;
 
     public static void Push(Popup popup)
     {

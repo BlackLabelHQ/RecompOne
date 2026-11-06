@@ -26,6 +26,10 @@ public abstract class Popup
 
     public bool IsOpen { get; private set; }
 
+    public bool CanClose => Closable;
+
+    public bool ChildWasOpen => _childWasOpen;
+
     public void Open()
     {
         if (IsOpen) return;
@@ -45,6 +49,18 @@ public abstract class Popup
         OnClosed();
     }
 
+    /// <summary>Same as opening, for a screen that shows this content without the window.</summary>
+    public void EnterEmbedded()
+    {
+        OnOpened();
+    }
+
+    /// <summary>Draws the content without the window.</summary>
+    public void DrawEmbedded()
+    {
+        DrawContent();
+    }
+
     public void Toggle()
     {
         if (IsOpen) Close();
@@ -56,6 +72,7 @@ public abstract class Popup
 
     private bool _pendingOpen;
     private bool _pendingClose;
+    private bool _childWasOpen;
 
     public bool Finished => !IsOpen && !_pendingClose;
 
@@ -71,7 +88,7 @@ public abstract class Popup
         var style = ImGui.GetStyle();
 
         ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
-        ImGui.SetNextWindowSize(Size * Theme.Scale, ImGuiCond.Always);
+        ImGui.SetNextWindowSize(PopupManager.Fullscreen && Size.Y > 0f ? viewport.WorkSize : Vector2.Min(Size * Theme.Scale, viewport.WorkSize), ImGuiCond.Always);
 
         const ImGuiWindowFlags flags =
             ImGuiWindowFlags.NoTitleBar | ImGuiWindowFlags.NoResize | ImGuiWindowFlags.NoMove |
@@ -94,7 +111,7 @@ public abstract class Popup
 
         var padding = style.WindowPadding;
         var body = new Vector2(0f, Size.Y > 0f ? -padding.Y : 0f);
-        var childFlags = ImGuiChildFlags.AlwaysUseWindowPadding |
+        var childFlags = ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.NavFlattened |
                          (Size.Y > 0f ? ImGuiChildFlags.None : ImGuiChildFlags.AutoResizeY);
 
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, padding);
@@ -107,8 +124,10 @@ public abstract class Popup
         if (bodyVisible) DrawContent();
         ImGui.EndChild();
 
-        if (Closable && stackIndex == PopupManager.TopIndex && ImGui.IsKeyPressed(ImGuiKey.Escape))
+        if (Closable && !_childWasOpen && stackIndex == PopupManager.TopIndex && ImGui.IsKeyPressed(ImGuiKey.Escape))
             Close();
+
+        _childWasOpen = ImGui.IsPopupOpen("", ImGuiPopupFlags.AnyPopupId);
 
         PopupManager.DrawNested(stackIndex + 1);
 

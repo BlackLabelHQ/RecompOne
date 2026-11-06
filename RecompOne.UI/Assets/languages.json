@@ -1725,6 +1725,35 @@
       "en": "Open shaders folder",
       "pt-BR": "Abrir pasta de shaders",
       "es-419": "Abrir carpeta de shaders"
+    },
+    "quit.title": {
+      "en": "Quit the game?",
+      "pt-BR": "Sair do jogo?",
+      "es-419": "¿Salir del juego?",
+      "ja-JP": "ゲームを終了しますか?"
+    },
+    "quit.message": {
+      "en": "Any unsaved progress will be lost.",
+      "pt-BR": "Todo o progresso não salvo será perdido.",
+      "es-419": "Se perderá todo el progreso sin guardar.",
+      "ja-JP": "保存していない進行状況は失われます。"
+    },
+    "quit.confirm": {
+      "en": "Quit",
+      "pt-BR": "Sair",
+      "es-419": "Salir",
+      "ja-JP": "終了"
+    },
+    "shell.resume": {
+      "en": "Resume",
+      "pt-BR": "Continuar",
+      "es-419": "Continuar",
+      "ja-JP": "再開"
+    },
+    "settings.interface.big_picture": {
+      "en": "Use BigPicture UI",
+      "pt-BR": "Usar interface BigPicture",
+      "es-419": "Usar interfaz BigPicture"
     }
   }
 }

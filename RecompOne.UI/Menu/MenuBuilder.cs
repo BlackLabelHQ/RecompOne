@@ -38,17 +38,21 @@ public sealed class MenuBuilder
 
     public MenuBuilder Panel<T>(string labelKey) where T : class, IPanel
     {
-        return Check(labelKey,
+        Check(labelKey,
             () => PanelManager.Get<T>()?.IsOpen == true,
             open =>
             {
                 if (PanelManager.Get<T>() is { } panel) panel.IsOpen = open;
             });
+        _lastItem!.Panel = static () => PanelManager.Get<T>();
+        return this;
     }
 
     public MenuBuilder Popup<T>(string labelKey) where T : Popup
     {
-        return Item(labelKey, PopupManager.Open<T>);
+        Item(labelKey, PopupManager.Open<T>);
+        _lastItem!.Screen = static () => PopupManager.Get<T>();
+        return this;
     }
 
     public MenuBuilder Label(string labelKey)

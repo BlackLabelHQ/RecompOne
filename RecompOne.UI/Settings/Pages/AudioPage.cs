@@ -7,7 +7,7 @@ public static class AudioPage
 {
     public static void Register()
     {
-        SettingsPages.Page(SettingsPages.Audio, "settings.audio", 10)
+        SettingsPages.Page(SettingsPages.Audio, "settings.audio", 10).WithIcon(FontSet.Volume)
             .Add("volume", DrawVolume, 0)
             .Add("mute", DrawMute, 100);
     }
@@ -34,7 +34,7 @@ public static class AudioPage
     {
         var audio = Settings.System.Audio;
         var muted = audio.Muted;
-        if (!ImGui.Checkbox(Localization.T("settings.audio.mute"), ref muted)) return;
+        if (!Ui.Toggle(Localization.T("settings.audio.mute"), ref muted)) return;
         audio.Muted = muted;
         Changed();
     }
@@ -42,13 +42,11 @@ public static class AudioPage
     private static void Volume(string labelKey, string? hintKey, float current, Action<float> set)
     {
         var value = current;
-        if (ImGui.SliderFloat(Localization.T(labelKey), ref value, 0f, 1f, "%.2f"))
+        if (Ui.Slider(Localization.T(labelKey), ref value, 0f, 1f, "%.2f", hintKey == null ? null : Localization.T(hintKey)))
         {
             set(Math.Clamp(value, 0f, 1f));
             Changed();
         }
-
-        SettingsWidgets.Hint(hintKey);
     }
 
     private static void Changed()

@@ -56,6 +56,20 @@ public static class MenuRegistry
 
     public static Action? RightAligned;
 
+    public static IReadOnlyList<MenuNode> Roots
+    {
+        get
+        {
+            if (_dirty)
+            {
+                _draw = MenuOrder.Arrange(_roots);
+                _dirty = false;
+            }
+
+            return _draw;
+        }
+    }
+
     public static void Draw()
     {
         if (!ImGui.BeginMainMenuBar()) return;

@@ -154,13 +154,9 @@ public sealed partial class AssetPackEditor : IPanel
         ImGui.SameLine();
         ImGui.BeginGroup();
         ImGui.SetNextItemWidth(260f * scale);
-        if (ImGui.BeginCombo("##pack", pack.DisplayName))
-        {
-            foreach (var p in packs)
-                if (ImGui.Selectable(p.DisplayName, p.Id == pack.Id))
-                    _packId = p.Id;
-            ImGui.EndCombo();
-        }
+        var selected = packs.ToList().FindIndex(p => p.Id == pack.Id);
+        if (Ui.CompactCombo("##pack", pack.DisplayName, packs.Select(static p => p.DisplayName).ToArray(), ref selected))
+            _packId = packs[selected].Id;
 
         var contents = Contents(pack);
         ImGui.TextDisabled($"{Count(contents.Textures.Count, "texture")}  -  {Count(contents.Sounds.Count, "sound")}  -  " +

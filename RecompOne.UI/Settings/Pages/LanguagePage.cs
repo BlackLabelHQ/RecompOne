@@ -5,29 +5,23 @@ public static class LanguagePage
 {
     public static void Register()
     {
-        SettingsPages.Page(SettingsPages.Language, "settings.language", -5)
+        SettingsPages.Page(SettingsPages.Language, "settings.language", -5).WithIcon(FontSet.Language)
             .Add("interface", DrawInterface, 0, "settings.language.interface");
     }
 
     private static void DrawInterface()
     {
+        var languages = Localization.Languages;
+        var names = languages.Select(static language => language.Name).ToArray();
         var current = Localization.CurrentCode;
-        var label = current;
-        foreach (var language in Localization.Languages)
-            if (language.Code == current)
-                label = language.Name;
+        var index = languages.ToList().FindIndex(language => language.Code == current);
+        var label = index >= 0 ? names[index] : current;
 
         ImGui.SetNextItemWidth(-1f);
-        if (ImGui.BeginCombo("##interface-language", label))
+        if (Ui.Combo("##interface-language", label, names, ref index))
         {
-            foreach (var language in Localization.Languages)
-                if (ImGui.Selectable(language.Name, language.Code == current))
-                {
-                    Localization.SetLanguage(language.Code);
-                    InterfaceOptions.Language.Value = language.Code;
-                }
-
-            ImGui.EndCombo();
+            Localization.SetLanguage(languages[index].Code);
+            InterfaceOptions.Language.Value = languages[index].Code;
         }
 
         SettingsWidgets.Note("settings.interface.language_hint");

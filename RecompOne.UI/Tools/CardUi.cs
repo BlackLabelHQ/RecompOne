@@ -2,7 +2,7 @@ using System.Numerics;
 
 namespace RecompOne.UI;
 
-//generic card UI for some windows
+//todo: version for bigpicture
 public sealed class Card
 {
     public string Title = "";
@@ -52,12 +52,12 @@ public static class CardUi
 
     public static float IconSize => 24f * Scale;
 
-    public static bool IconButton(string id, string glyph, string tip, bool active = false)
+    public static bool IconButton(string id, string glyph, string tip, bool active = false, bool nav = true)
     {
         var size = IconSize;
         var pos = ImGui.GetCursorScreenPos();
-        var clicked = ImGui.InvisibleButton(id, new Vector2(size, size));
-        var hovered = ImGui.IsItemHovered();
+        var clicked = ImGui.InvisibleButton(id, new Vector2(size, size), nav ? ImGuiButtonFlags.EnableNav : ImGuiButtonFlags.None);
+        var hovered = ImGui.IsItemHovered() || ImGui.IsItemFocused();
 
         var style = ImGui.GetStyle();
         var dl = ImGui.GetWindowDrawList();
@@ -103,13 +103,14 @@ public static class CardUi
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, style.FrameRounding + 2f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12f, 10f) * scale);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, wasHovered ? hoverColor : baseColor);
-        ImGui.BeginChild(id, Vector2.Zero, ImGuiChildFlags.Borders | ImGuiChildFlags.AutoResizeY,
+        ImGui.BeginChild(id, Vector2.Zero, ImGuiChildFlags.Borders | ImGuiChildFlags.AutoResizeY | ImGuiChildFlags.NavFlattened,
             ImGuiWindowFlags.NoScrollbar);
 
         var toggled = false;
         var action = -1;
         var dragStarted = false;
         var dropped = false;
+        var focused = false;
 
         var iconSize = 52f * scale;
         var avail = ImGui.GetContentRegionAvail().X;
@@ -120,7 +121,7 @@ public static class CardUi
         if (card.Draggable)
         {
             ImGui.SetCursorPos(new Vector2(x, origin.Y + (iconSize - IconSize) * 0.5f));
-            IconButton("##grip", FontSet.Or(FontSet.Grip, "::"), "Drag to reorder");
+            IconButton("##grip", FontSet.Or(FontSet.Grip, "::"), "Drag to reorder", nav: false);
             if (ImGui.BeginDragDropSource())
             {
                 ImGui.SetDragDropPayload(DragType, IntPtr.Zero, 0);
@@ -170,6 +171,7 @@ public static class CardUi
             ImGui.SetCursorPos(new Vector2(cx, origin.Y + 2f * scale));
             var enabled = card.Enabled;
             if (ImGuiUtils.Toggle("##toggle", ref enabled)) toggled = true;
+            focused |= ImGui.IsItemFocused();
             if (card.ToggleTip != null) ImGuiUtils.Tooltip(card.ToggleTip);
         }
 
@@ -179,6 +181,7 @@ public static class CardUi
             ImGui.SetCursorPos(new Vector2(cx, origin.Y));
             var (glyph, tip, active) = card.Actions[i];
             if (IconButton($"##act{i}", glyph, tip, active)) action = i;
+            focused |= ImGui.IsItemFocused();
         }
 
         for (var i = card.Tags.Length - 1; i >= 0; i--)
@@ -203,7 +206,7 @@ public static class CardUi
             card.Footer();
         }
 
-        _hovered[gid] = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows | ImGuiHoveredFlags.AllowWhenBlockedByActiveItem);
+        _hovered[gid] = focused || ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows | ImGuiHoveredFlags.AllowWhenBlockedByActiveItem);
         ImGui.EndChild();
         ImGui.PopStyleColor();
         ImGui.PopStyleVar(2);

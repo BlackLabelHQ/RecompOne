@@ -8,13 +8,18 @@ public class ImGuiInterface : IUserInterface
 {
     private ImGuiController? _imgui;
     
+    protected virtual bool KeepsLayout => true;
+    
+    protected virtual UiComponents CreateComponents() => new ClassicComponents();
+    
     public virtual bool BlocksStartup => StartupNoticePopup.NeedsAck;
     
     public virtual bool BlocksExit => CrashPopup.IsPending || PopupManager.Get<CrashPopup>()?.IsOpen == true;
     
     public virtual void Load(HostContext host)
     {
-        InterfaceLayout.Load();
+        Ui.Components = CreateComponents();
+        if (KeepsLayout) InterfaceLayout.Load();
         _imgui = new ImGuiController(host.Gl, host.Window, host.Input, Configure);
         
         RegisterPanels();
@@ -22,7 +27,7 @@ public class ImGuiInterface : IUserInterface
         RegisterMenus();
         RegisterSettings();
         
-        InterfaceLayout.ApplyPanels(PanelManager.Panels);
+        if (KeepsLayout) InterfaceLayout.ApplyPanels(PanelManager.Panels);
         
         var cdPath = Settings.System.DiscPath;
         if (string.IsNullOrWhiteSpace(cdPath) || !File.Exists(cdPath) || Runtime.ValidateDisc(cdPath) != null)
@@ -40,11 +45,16 @@ public class ImGuiInterface : IUserInterface
             io.NativePtr->IniFilename = null;
         }
         
-        FontSet.Load(16f * HostWindow.DpiScale);
+        LoadFonts();
         Localization.Load();
         Theme.Load();
         
-        if (InterfaceLayout.ApplyImGui()) MainDock.CancelLayout();
+        if (KeepsLayout && InterfaceLayout.ApplyImGui()) MainDock.CancelLayout();
+    }
+    
+    protected virtual void LoadFonts()
+    {
+        FontSet.Load(16f * HostWindow.DpiScale);
     }
     
     protected virtual void RegisterPanels()
@@ -129,7 +139,7 @@ public class ImGuiInterface : IUserInterface
     
     public virtual void Close()
     {
-        InterfaceLayout.Save(PanelManager.Panels);
+        if (KeepsLayout) InterfaceLayout.Save(PanelManager.Panels);
         PanelManager.Shutdown();
         PopupManager.Shutdown();
         _imgui?.Dispose();

@@ -92,6 +92,8 @@ public sealed class AssetPacksPopup : Popup
 
         if (ImGui.BeginPopup("opts"))
         {
+            if (index > 0 && ImGui.MenuItem("Move up")) Manager.MovePack(pack.Id, index - 1);
+            if (index < total - 1 && ImGui.MenuItem("Move down")) Manager.MovePack(pack.Id, index + 1);
             if (pack.Editable && ImGui.MenuItem(Localization.T("common.open_folder"))) PackAuthoring.OpenExternal(pack.Path);
             if (ImGui.MenuItem("Export as .zip...")) Export(pack);
             if (pack.IsZip && ImGui.MenuItem("Unpack to edit"))

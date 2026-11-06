@@ -19,8 +19,15 @@ public sealed class SettingsPage
     public string TitleKey { get; internal set; }
     public int Order { get; internal set; }
     public Func<bool>? Visible { get; set; }
+    public string Icon { get; set; } = FontSet.Gear;
 
     public bool IsVisible => (Visible?.Invoke() ?? true) && _groups.Exists(g => g.Visible?.Invoke() ?? true);
+
+    public SettingsPage WithIcon(string icon) //so it can informe an icon to be used in gui that supports it (bigpicture addition)
+    {
+        Icon = icon;
+        return this;
+    }
 
     public SettingsPage Add(string id, Action draw, int order = 0, string? titleKey = null,
         Func<bool>? visible = null)
@@ -54,8 +61,8 @@ public sealed class SettingsPage
             if (!(group.Visible?.Invoke() ?? true)) continue;
 
             if (!first) ImGui.Spacing();
-            if (group.TitleKey != null) ImGui.SeparatorText(Localization.T(group.TitleKey));
-            else if (!first) ImGui.Separator();
+            if (group.TitleKey != null) Ui.Section(Localization.T(group.TitleKey));
+            else if (!first) Ui.Separator();
             first = false;
 
             ImGui.PushID(group.Id);

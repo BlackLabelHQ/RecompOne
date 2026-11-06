@@ -108,6 +108,15 @@ public static class Theme
         style.ScrollbarSize = 12f;
         style.GrabMinSize = 10f;
         style.SeparatorTextPadding = new Vector2(18f, 4f);
+        style.WindowMinSize = new Vector2(32f, 32f);
+        style.TouchExtraPadding = Vector2.Zero;
+        style.ColumnsMinSpacing = 6f;
+        style.LogSliderDeadzone = 4f;
+        style.TabBarOverlineSize = 2f;
+        style.DockingSeparatorSize = 2f;
+        style.DisplayWindowPadding = new Vector2(19f, 19f);
+        style.DisplaySafeAreaPadding = new Vector2(3f, 3f);
+        style.MouseCursorScale = 1f;
         style.WindowTitleAlign = new Vector2(0f, 0.5f);
         style.WindowMenuButtonPosition = ImGuiDir.Left;
 
@@ -188,7 +197,9 @@ public static class Theme
         style.ScaleAllSizes(Scale);
     }
 
-    public static float Scale => HostWindow.DpiScale * InterfaceOptions.Scale.Value;
+    public static float ScaleMultiplier { get; set; } = 1f;
+
+    public static float Scale => HostWindow.DpiScale * InterfaceOptions.Scale.Value * ScaleMultiplier;
 
     public static float TitleBarHeight
     {

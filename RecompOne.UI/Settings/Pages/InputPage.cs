@@ -8,7 +8,7 @@ public sealed class InputPage
     public static void Register()
     {
         var page = new InputPage();
-        SettingsPages.Page(SettingsPages.Input, "settings.input", 0)
+        SettingsPages.Page(SettingsPages.Input, "settings.input", 0).WithIcon(FontSet.Gamepad)
             .Add("bindings", page.Draw, 0);
     }
 
@@ -102,16 +102,10 @@ public sealed class InputPage
             var name = cur >= 0 && cur < AxisNames.Length ? AxisNames[cur] : $"axis {cur}";
 
             ImGui.SetNextItemWidth(160f);
-            if (ImGui.BeginCombo(label, name))
+            if (Ui.Combo(label, name, AxisNames, ref cur))
             {
-                for (var i = 0; i < AxisNames.Length; i++)
-                    if (ImGui.Selectable(AxisNames[i], i == cur))
-                    {
-                        set(pad, i);
-                        Settings.MarkDirty();
-                    }
-
-                ImGui.EndCombo();
+                set(pad, cur);
+                Settings.MarkDirty();
             }
         }
     }
@@ -123,21 +117,14 @@ public sealed class InputPage
         var index = (int)Port.Kind;
 
         ImGui.SetNextItemWidth(220f);
-        if (ImGui.BeginCombo(Localization.T("settings.input.kind"), Localization.T(PadKindKeys[index])))
+        var kinds = PadKindKeys.Select(Localization.T).ToArray();
+        if (Ui.Combo(Localization.T("settings.input.kind"), kinds[index], kinds, ref index))
         {
-            for (var i = 0; i < PadKindKeys.Length; i++)
-                if (ImGui.Selectable(Localization.T(PadKindKeys[i]), i == index))
-                {
-                    Port.Kind = (PadKind)i;
-                    Settings.MarkDirty();
-                }
-
-            ImGui.EndCombo();
+            Port.Kind = (PadKind)index;
+            Settings.MarkDirty();
         }
 
-        ImGui.SameLine();
-        ImGuiUtils.TextColored(new Vector4(0.6f, 0.6f, 0.65f, 1f),
-            Localization.T(index == 1 ? "settings.input.kind.analog.hint" : "settings.input.kind.digital.hint"));
+        Ui.Note(Localization.T(index == 1 ? "settings.input.kind.analog.hint" : "settings.input.kind.digital.hint"));
     }
 
     private void DrawDeviceSelector()
@@ -204,17 +191,12 @@ public sealed class InputPage
         ImGui.SameLine();
         ImGui.SetNextItemWidth(-70);
 
-        if (ImGui.BeginCombo("##input-device-pick", preview))
-        {
-            if (ImGui.Selectable(Localization.T("settings.input.device.auto"), string.IsNullOrEmpty(current)))
-                SetDevice("");
+        var names = devices.Select(static d => d.Name).Prepend(Localization.T("settings.input.device.auto")).ToArray();
+        var index = string.IsNullOrEmpty(current) ? 0 : devices.ToList().FindIndex(d => d.Id == current) + 1;
+        if (index == 0 && !string.IsNullOrEmpty(current)) index = -1;
 
-            foreach (var d in devices)
-                if (ImGui.Selectable(d.Name, d.Id == current))
-                    SetDevice(d.Id);
-
-            ImGui.EndCombo();
-        }
+        if (Ui.CompactCombo("##input-device-pick", preview, names, ref index))
+            SetDevice(index == 0 ? "" : devices[index - 1].Id);
 
         ImGui.SameLine();
         if (ImGui.Button(Localization.T("settings.input.device.refresh")))

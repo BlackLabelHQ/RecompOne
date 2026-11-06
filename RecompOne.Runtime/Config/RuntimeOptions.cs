@@ -2,6 +2,7 @@ namespace RecompOne.Runtime.Config;
 
 public static class InterfaceOptions
 {
+    public static readonly Option<bool> BigPicture = Options.Bool("interface.big_picture");
     public static readonly Option<string> Language = Options.String("interface.language");
     public static readonly Option<string> Accent = Options.String("interface.accent");
     public static readonly Option<string> Background = Options.String("interface.background");

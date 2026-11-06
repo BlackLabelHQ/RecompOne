@@ -9,6 +9,8 @@ public sealed class ShadersPopup : Popup
     private const float ActionWidth = 110f;
     private const float ComboWidth = 200f;
     private const string SearchIcon = "";
+    private const ImGuiTabItemFlags KeepTab = (ImGuiTabItemFlags)(1 << 20);
+    private const ImGuiTabItemFlags SelectTab = KeepTab | ImGuiTabItemFlags.SetSelected;
 
     private static readonly Vector4 ErrorColor = new(1f, 0.4f, 0.4f, 1f);
 
@@ -22,6 +24,7 @@ public sealed class ShadersPopup : Popup
     private string? labelsFor;
     private Dictionary<string, string> labels = [];
     private float listTop;
+    private bool browsing;
 
     protected override string TitleKey => "shaders.title";
     protected override Vector2 Size => new(820f, 560f);
@@ -36,16 +39,22 @@ public sealed class ShadersPopup : Popup
     {
         if (!ImGui.BeginTabBar("##shader-tabs")) return;
 
-        if (ImGui.BeginTabItem(Localization.T("shaders.installed")))
+        var swap = !ImGui.IsPopupOpen("", ImGuiPopupFlags.AnyPopupId) &&
+                   (ImGui.IsKeyPressed(ImGuiKey.GamepadL1, false) || ImGui.IsKeyPressed(ImGuiKey.GamepadR1, false));
+
+        var open = true;
+        if (ImGui.BeginTabItem(Localization.T("shaders.installed"), ref open, swap && browsing ? SelectTab : KeepTab))
         {
+            browsing = false;
             DrawInstalledList();
             ImGui.SameLine();
             DrawDetail();
             ImGui.EndTabItem();
         }
 
-        if (ImGui.BeginTabItem(Localization.T("shaders.browse")))
+        if (ImGui.BeginTabItem(Localization.T("shaders.browse"), ref open, swap && !browsing ? SelectTab : KeepTab))
         {
+            browsing = true;
             DrawBrowse();
             ImGui.EndTabItem();
         }
@@ -55,7 +64,7 @@ public sealed class ShadersPopup : Popup
 
     private void DrawInstalledList()
     {
-        ImGui.BeginChild("##installed-list", new Vector2(ListWidth * Theme.Scale, 0f), ImGuiChildFlags.Borders);
+        ImGui.BeginChild("##installed-list", new Vector2(ListWidth * Theme.Scale, 0f), ImGuiChildFlags.Borders | ImGuiChildFlags.NavFlattened);
         SearchBox("##installed-filter", ref installedFilter, -1f);
         ImGui.Spacing();
 
@@ -65,7 +74,7 @@ public sealed class ShadersPopup : Popup
             installed = ShaderManager.Library.Presets.Where(p => Matches(installedFilter, p.Name, p.Folder)).ToList();
         }
 
-        if (ImGui.Selectable(Localization.T("shaders.none"), ShaderManager.Selected.Length == 0)) ShaderManager.Apply("");
+        if (Ui.Selectable(Localization.T("shaders.none"), ShaderManager.Selected.Length == 0)) ShaderManager.Apply("");
 
         if (ShaderManager.Library.Presets.Count == 0)
         {
@@ -74,12 +83,12 @@ public sealed class ShadersPopup : Popup
         }
 
         string? remove = null;
-        var rowHeight = ImGui.GetTextLineHeightWithSpacing();
+        var rowHeight = Ui.SelectableHeight;
         var (first, last) = BeginRows(installed.Count, rowHeight);
         for (var i = first; i < last; i++)
         {
             var preset = installed[i];
-            if (ImGui.Selectable($"{preset.Name}##{preset.Relative}", preset.Relative == ShaderManager.Selected))
+            if (Ui.Selectable($"{preset.Name}##{preset.Relative}", preset.Relative == ShaderManager.Selected))
                 ShaderManager.Apply(preset.Relative);
             Tooltip(preset.Relative);
 
@@ -97,7 +106,7 @@ public sealed class ShadersPopup : Popup
 
     private void DrawDetail()
     {
-        ImGui.BeginChild("##installed-detail", Vector2.Zero, ImGuiChildFlags.Borders);
+        ImGui.BeginChild("##installed-detail", Vector2.Zero, ImGuiChildFlags.Borders | ImGuiChildFlags.NavFlattened);
 
         if (ShaderManager.Selected.Length == 0)
         {
@@ -109,14 +118,15 @@ public sealed class ShadersPopup : Popup
             ImGui.Spacing();
 
             var native = PostFx.NativeInput;
-            if (ImGui.Checkbox(Localization.T("shaders.native"), ref native)) ShaderManager.NativeInput = native;
+            if (Ui.Toggle(Localization.T("shaders.native"), ref native)) ShaderManager.NativeInput = native;
             SettingsWidgets.Hint("shaders.native_hint");
 
             if (PostFx.Error == null && PostFx.Parameters.Count > 0)
             {
                 var reset = Localization.T("shaders.reset");
-                ImGui.SameLine((ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X) - ImGui.CalcTextSize(reset).X - ImGui.GetStyle().FramePadding.X * 2f);
-                if (ImGui.Button(reset)) ShaderManager.ResetParams();
+                if (!Ui.UsesRows)
+                    ImGui.SameLine((ImGui.GetCursorPosX() + ImGui.GetContentRegionAvail().X) - ImGui.CalcTextSize(reset).X - ImGui.GetStyle().FramePadding.X * 2f);
+                if (Ui.Button(reset)) ShaderManager.ResetParams();
             }
 
             if (PostFx.Error is { } error)
@@ -177,8 +187,12 @@ public sealed class ShadersPopup : Popup
 
         ImGui.SeparatorText(Localization.T("shaders.parameters"));
 
-        ImGui.BeginChild("##parameters", Vector2.Zero);
-        if (ImGui.BeginTable("##parameter-table", 2, ImGuiTableFlags.SizingStretchProp))
+        ImGui.BeginChild("##parameters", Vector2.Zero, ImGuiChildFlags.NavFlattened);
+        if (Ui.UsesRows)
+        {
+            foreach (var parameter in parameters) DrawParameterRow(parameter);
+        }
+        else if (ImGui.BeginTable("##parameter-table", 2, ImGuiTableFlags.SizingStretchProp))
         {
             ImGui.TableSetupColumn("name", ImGuiTableColumnFlags.WidthStretch, 0.55f);
             ImGui.TableSetupColumn("value", ImGuiTableColumnFlags.WidthStretch, 0.45f);
@@ -187,6 +201,29 @@ public sealed class ShadersPopup : Popup
         }
 
         ImGui.EndChild();
+    }
+
+    private void DrawParameterRow(SlangParameter parameter)
+    {
+        var label = labels.GetValueOrDefault(parameter.Name, parameter.Name);
+
+        if (parameter.Max <= parameter.Min)
+        {
+            if (label.Length > 0) Ui.Section(label);
+            return;
+        }
+
+        var row = $"{(label.Length == 0 ? parameter.Name : label)}##{parameter.Name}";
+        var value = parameter.Value;
+        if (parameter.Min == 0f && parameter.Max == 1f && parameter.Step == 1f)
+        {
+            var on = value >= 0.5f;
+            if (Ui.Toggle(row, ref on)) ShaderManager.SetParam(parameter, on ? 1f : 0f);
+        }
+        else if (Ui.Slider(row, ref value, parameter.Min, parameter.Max, Format(parameter.Step)))
+        {
+            ShaderManager.SetParam(parameter, Snap(parameter, value));
+        }
     }
 
     private void DrawParameter(SlangParameter parameter) //get better text
@@ -241,14 +278,10 @@ public sealed class ShadersPopup : Popup
         ImGui.SameLine();
         ImGui.SetNextItemWidth(combo);
         var all = Localization.T("shaders.all_categories");
-        if (ImGui.BeginCombo("##category", category.Length == 0 ? all : category))
-        {
-            if (ImGui.Selectable(all, category.Length == 0)) category = "";
-            foreach (var option in repository.Categories)
-                if (ImGui.Selectable(option, option == category))
-                    category = option;
-            ImGui.EndCombo();
-        }
+        var options = repository.Categories.Prepend(all).ToList();
+        var selected = category.Length == 0 ? 0 : options.IndexOf(category);
+        if (Ui.CompactCombo("##category", category.Length == 0 ? all : category, options, ref selected))
+            category = selected == 0 ? "" : options[selected];
 
         ImGui.SameLine();
         ImGui.BeginDisabled(repository.Busy || !repository.Valid);
@@ -269,7 +302,7 @@ public sealed class ShadersPopup : Popup
         var status = InstallStatus(repository);
         var footer = status != null ? ImGui.GetTextLineHeightWithSpacing() + style.ItemSpacing.Y : 0f;
 
-        ImGui.BeginChild("##catalog", new Vector2(0f, -footer), ImGuiChildFlags.Borders);
+        ImGui.BeginChild("##catalog", new Vector2(0f, -footer), ImGuiChildFlags.Borders | ImGuiChildFlags.NavFlattened);
         DrawCatalog(repository);
         ImGui.EndChild();
 

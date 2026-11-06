@@ -26,6 +26,17 @@ public static class FontSet
     public const string Puzzle = "";
     public const string Download = "";
     public const string Pen = "\uf304";
+    public const string Palette = "\uf53f";
+    public const string Language = "\uf1ab";
+    public const string Gamepad = "\uf11b";
+    public const string Desktop = "\uf108";
+    public const string Volume = "\uf028";
+    public const string Wand = "\uf0d0";
+    public const string Bug = "\uf188";
+    public const string Sliders = "\uf1de";
+    public const string Power = "\uf011";
+    public const string Microchip = "\uf2db";
+    public const string ChevronDown = "\uf078"; //
     public const string Plus = "\uf067";
     public const string FileImport = "\uf56f";
     public const string Grip = "\uf58e";
@@ -92,6 +103,23 @@ public static class FontSet
         {
             Console.Error.WriteLine($"[fonts] failed to load fonts: {e.Message}");
         }
+    }
+
+    public static unsafe ImFontPtr LoadIcons(float sizePixels)
+    {
+        var io = ImGui.GetIO();
+        var data = LoadResource(IconResource);
+        if (data == null) return io.Fonts.Fonts[0];
+        
+        var config = ImGuiNative.ImFontConfig_ImFontConfig();
+        config->PixelSnapH = 1;
+        config->OversampleH = 1;
+        config->OversampleV = 1;
+        config->FontDataOwnedByAtlas = 0;
+        
+        var range = GCHandle.Alloc(new ushort[] { RangeMin, RangeMax, 0 }, GCHandleType.Pinned);
+        _pinned.Add(range);
+        return io.Fonts.AddFontFromMemoryTTF(Pin(data), data.Length, sizePixels, config, range.AddrOfPinnedObject());
     }
 
     private static byte[]? LoadResource(string name)

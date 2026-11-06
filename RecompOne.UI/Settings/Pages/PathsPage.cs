@@ -12,7 +12,7 @@ public static class PathsPage
 
     public static void Register()
     {
-        SettingsPages.Page(SettingsPages.Paths, "settings.paths", 20)
+        SettingsPages.Page(SettingsPages.Paths, "settings.paths", 20).WithIcon(FontSet.Folder)
             .Add("disc", DrawDisc, 0, "settings.paths.disc")
             .Add("memory_cards", DrawMemoryCards, 100, "settings.paths.memory_cards");
     }

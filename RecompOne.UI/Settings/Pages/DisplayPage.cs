@@ -8,7 +8,7 @@ public static class DisplayPage
     public static void Register()
     {
         //some games may not need these so make it toglable by the game
-        SettingsPages.Page(SettingsPages.Display, "settings.display", 5)
+        SettingsPages.Page(SettingsPages.Display, "settings.display", 5).WithIcon(FontSet.Desktop)
             .Add("window", DrawWindow, 0)
             .Add("renderer", DrawRenderer, 100)
             .Add("frame_rate", DrawFrameRate, 200, "settings.display.frame_rate",
@@ -34,11 +34,11 @@ public static class DisplayPage
         var lines = GpuHle.LastDisplayH;
         var width = GpuHle.LastDisplayW;
         if (lines > 0)
-            ImGui.TextDisabled(Localization.T("settings.display.render_scale_lines",
+            Ui.Note(Localization.T("settings.display.render_scale_lines",
                 width, lines, width * scale, lines * scale, scale));
 
         if (scale != GlVram.Scale)
-            ImGui.TextDisabled(Localization.T("settings.display.restart_pending"));
+            Ui.Note(Localization.T("settings.display.restart_pending"));
 
         ImGui.Spacing();
 
@@ -46,7 +46,7 @@ public static class DisplayPage
         if (SettingsWidgets.Combo(DisplayOptions.Backend, "settings.display.backend", backends))
             NoticePopup.Show(Localization.T("common.restart_required"));
 
-        ImGui.TextDisabled(Localization.T("settings.display.backend_running", GpuBackendFactory.Selected));
+        Ui.Note(Localization.T("settings.display.backend_running", GpuBackendFactory.Selected));
 
         ImGui.Spacing();
 
@@ -54,7 +54,7 @@ public static class DisplayPage
             NoticePopup.Show(Localization.T("common.restart_required"));
 
         var trueColor = GlVram.TrueColor;
-        using (ImGuiUtils.Disabled(trueColor))
+        using (Ui.Disabled(trueColor))
         {
             SettingsWidgets.Toggle(DisplayOptions.Dithering, "settings.display.dithering", "settings.display.dithering_hint");
         }
@@ -63,24 +63,23 @@ public static class DisplayPage
     private static void DrawFrameRate()
     {
         var available = Interp.Available;
-        using (ImGuiUtils.Disabled(!available))
+        using (Ui.Disabled(!available))
         {
 
             var steps = Interp.Steps;
             var index = Math.Max(Array.IndexOf(steps, InterpOptions.TargetFps.Value), 0);
 
-            if (ImGui.SliderInt("##frame-rate", ref index, 0, steps.Length - 1, StepLabel(steps[index])))
+            if (Ui.Slider("##frame-rate", ref index, 0, steps.Length - 1, StepLabel(steps[index]),
+                    Localization.T("settings.display.frame_rate_hint")))
             {
                 InterpOptions.TargetFps.Value = steps[Math.Clamp(index, 0, steps.Length - 1)];
                 HostWindow.RefreshVSync();
             }
 
-            SettingsWidgets.Hint("settings.display.frame_rate_hint");
-
         }
 
         if (!available)
-            ImGui.TextDisabled(Localization.T("settings.display.frame_rate_needs_native"));
+            Ui.Note(Localization.T("settings.display.frame_rate_needs_native"));
     }
 
     private static string StepLabel(int fps)

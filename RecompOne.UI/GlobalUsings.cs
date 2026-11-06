@@ -1,3 +1,4 @@
+//how did i not know you could do that before?? :>
 global using RecompOne.Runtime;
 global using RecompOne.Runtime.Assets;
 global using RecompOne.Runtime.Assets.Decoders;
@@ -23,3 +24,4 @@ global using RecompOne.Runtime.Sdk;
 global using RecompOne.Runtime.Shaders;
 global using RecompOne.Runtime.Updates;
 global using ImGuiNET;
+global using RecompOne.UI.Animation;

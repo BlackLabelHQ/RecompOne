@@ -22,7 +22,7 @@ public static class MainMenuBar
             .Separator("menu.system.reset_separator")
             .Item("menu.system.hard_reset", Runtime.HardReset)
             .Separator("menu.system.quit_separator")
-            .Item("menu.system.quit", static () => Environment.Exit(0));
+            .Item("menu.system.quit", QuitPrompt.Ask);
 
         MenuRegistry.Menu("menu.mods").After("menu.system")
             .Popup<ModsPopup>("menu.mods.manage")

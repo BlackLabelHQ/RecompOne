@@ -9,8 +9,6 @@ public static class ImGuiUtils
     public static readonly Vector4 Red = new(0.95f, 0.38f, 0.38f, 1f);
     public static readonly Vector4 Gray = new(0.55f, 0.55f, 0.55f, 1f);
 
-    private static readonly Dictionary<uint, float> _anim = new();
-
     public static string Title(string titleKey, string id)
     {
         return $"{Localization.T(titleKey)}###{id}";
@@ -195,18 +193,8 @@ public static class ImGuiUtils
 
     public static bool Combo(string id, ref int index, IReadOnlyList<string> items, float width = 130f)
     {
-        var changed = false;
         Width(width);
-        if (!ImGui.BeginCombo(id, index >= 0 && index < items.Count ? items[index] : "")) return false;
-        for (var i = 0; i < items.Count; i++)
-            if (ImGui.Selectable(items[i], i == index) && i != index)
-            {
-                index = i;
-                changed = true;
-            }
-
-        ImGui.EndCombo();
-        return changed;
+        return Ui.CompactCombo(id, index >= 0 && index < items.Count ? items[index] : "", items, ref index);
     }
 
     public static bool Filter(string id, ref string? value, IReadOnlyCollection<string> options, string any = "All",
@@ -214,20 +202,16 @@ public static class ImGuiUtils
     {
         if (value is { Length: > 0 } && !options.Contains(value)) value = null;
         var current = value == null ? any : value.Length == 0 ? none ?? any : value;
-        var picked = value;
+        var items = new List<string> { any };
+        if (none != null) items.Add(none);
+        var first = items.Count;
+        items.AddRange(options);
+
+        var index = value == null ? 0 : value.Length == 0 ? first - 1 : items.IndexOf(value, first);
 
         Width(width);
-        if (!ImGui.BeginCombo(id, current)) return false;
-        if (ImGui.Selectable(any, value == null)) picked = null;
-        if (none != null && ImGui.Selectable(none, value == "")) picked = "";
-        if (options.Count > 0) ImGui.Separator();
-        foreach (var option in options)
-            if (ImGui.Selectable(option, value == option))
-                picked = option;
-        ImGui.EndCombo();
-
-        if (picked == value) return false;
-        value = picked;
+        if (!Ui.CompactCombo(id, current, items, ref index)) return false;
+        value = index == 0 ? null : index < first ? "" : items[index];
         return true;
     }
 
@@ -265,14 +249,11 @@ public static class ImGuiUtils
         var h = 20f * scale;
         var gid = ImGui.GetID(id);
         var pos = ImGui.GetCursorScreenPos();
-        var clicked = ImGui.InvisibleButton(id, new Vector2(w, h));
+        var clicked = ImGui.InvisibleButton(id, new Vector2(w, h), ImGuiButtonFlags.EnableNav);
         if (clicked) value = !value;
-        var hovered = ImGui.IsItemHovered();
+        var hovered = ImGui.IsItemHovered() || ImGui.IsItemFocused();
 
-        _anim.TryGetValue(gid, out var t);
-        var target = value ? 1f : 0f;
-        t = MathF.Abs(t - target) < 0.01f ? target : t + (target - t) * MathF.Min(1f, ImGui.GetIO().DeltaTime * 16f);
-        _anim[gid] = t;
+        var t = AnimationStore.Update(gid, value ? 1f : 0f);
 
         var style = ImGui.GetStyle();
         var off = style.Colors[(int)(hovered ? ImGuiCol.FrameBgHovered : ImGuiCol.FrameBg)];

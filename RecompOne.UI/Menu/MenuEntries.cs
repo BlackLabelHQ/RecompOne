@@ -15,6 +15,9 @@ public sealed class MenuItemEntry : MenuEntry
     private readonly string _labelKey;
     private readonly Action _onClick;
 
+    public string LabelKey => _labelKey;
+    public Func<IPanel?>? Panel;
+    public Func<Popup?>? Screen;
     public string? Shortcut;
     public Func<bool>? Selected;
     public Func<bool>? Enabled;
@@ -32,7 +35,7 @@ public sealed class MenuItemEntry : MenuEntry
         var selected = Selected?.Invoke() ?? false;
         var enabled = Enabled?.Invoke() ?? true;
 
-        if (ImGui.MenuItem(Localization.T(_labelKey), Shortcut, selected, enabled)) _onClick();
+        if (Ui.MenuItem(Localization.T(_labelKey), Shortcut, selected, enabled)) _onClick();
         MenuTooltip.Draw(TooltipKey);
     }
 }
@@ -41,7 +44,7 @@ public sealed class MenuTextEntry(Func<string> text) : MenuEntry
 {
     public override void Draw()
     {
-        ImGui.TextDisabled(text());
+        Ui.Note(text());
     }
 }
 
@@ -49,7 +52,7 @@ public sealed class MenuSeparatorEntry : MenuEntry
 {
     public override void Draw()
     {
-        ImGui.Separator();
+        Ui.Separator();
     }
 }
 
@@ -77,6 +80,20 @@ public sealed class MenuNode : MenuEntry
     {
         LabelKey = labelKey;
         Key = labelKey;
+    }
+
+    public IReadOnlyList<MenuEntry> Entries
+    {
+        get
+        {
+            if (_dirty)
+            {
+                _draw = MenuOrder.Arrange(_entries);
+                _dirty = false;
+            }
+
+            return _draw;
+        }
     }
 
     public void Add(MenuEntry entry)
