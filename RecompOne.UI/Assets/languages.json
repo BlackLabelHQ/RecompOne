@@ -1728,206 +1728,322 @@
     "menu.shaders": {
       "en": "Shaders",
       "pt-BR": "Shaders",
-      "es-419": "Shaders"
+      "es-419": "Shaders",
+      "ja-JP": "Shaders",
+      "zh-CN": "滤镜",
+      "fr-FR": "Shaders"
     },
     "shaders.title": {
       "en": "Shaders",
       "pt-BR": "Shaders",
-      "es-419": "Shaders"
+      "es-419": "Shaders",
+      "ja-JP": "Shaders",
+      "zh-CN": "滤镜",
+      "fr-FR": "Shaders"
     },
     "shaders.installed": {
       "en": "Installed",
       "pt-BR": "Instalados",
-      "es-419": "Instalados"
+      "es-419": "Instalados",
+      "ja-JP": "Installed",
+      "zh-CN": "已安装",
+      "fr-FR": "Installed"
     },
     "shaders.browse": {
       "en": "Browse",
       "pt-BR": "Procurar",
-      "es-419": "Explorar"
+      "es-419": "Explorar",
+      "ja-JP": "Browse",
+      "zh-CN": "浏览",
+      "fr-FR": "Browse"
     },
     "shaders.search": {
       "en": "Search",
       "pt-BR": "Pesquisar",
-      "es-419": "Buscar"
+      "es-419": "Buscar",
+      "ja-JP": "Search",
+      "zh-CN": "查找",
+      "fr-FR": "Search"
     },
     "shaders.none": {
       "en": "None",
       "pt-BR": "Nenhum",
-      "es-419": "Ninguno"
+      "es-419": "Ninguno",
+      "ja-JP": "None",
+      "zh-CN": "没有",
+      "fr-FR": "None"
     },
     "shaders.no_installed": {
       "en": "No shaders installed. Get some in the Browse tab.",
       "pt-BR": "Nenhum shader instalado. Pegue alguns na aba Procurar.",
-      "es-419": "No hay shaders instalados. Consigue algunos en la pestaña Explorar."
+      "es-419": "No hay shaders instalados. Consigue algunos en la pestaña Explorar.",
+      "ja-JP": "No shaders installed. Get some in the Browse tab.",
+      "zh-CN": "目前没有已安装的滤镜. 请在浏览选项中重新查找.",
+      "fr-FR": "No shaders installed. Get some in the Browse tab."
     },
     "shaders.inactive": {
       "en": "No shader active",
       "pt-BR": "Nenhum shader ativo",
-      "es-419": "Ningún shader activo"
+      "es-419": "Ningún shader activo",
+      "ja-JP": "No shader active",
+      "zh-CN": "滤镜没有启用",
+      "fr-FR": "No shader active"
     },
     "shaders.parameters": {
       "en": "Parameters",
       "pt-BR": "Parâmetros",
-      "es-419": "Parámetros"
+      "es-419": "Parámetros",
+      "ja-JP": "Parameters",
+      "zh-CN": "数值设定",
+      "fr-FR": "Parameters"
     },
     "shaders.no_parameters": {
       "en": "This shader has no parameters",
       "pt-BR": "Este shader não tem parâmetros",
-      "es-419": "Este shader no tiene parámetros"
+      "es-419": "Este shader no tiene parámetros",
+      "ja-JP": "This shader has no parameters",
+      "zh-CN": "此滤镜没有可调整的数值设定",
+      "fr-FR": "This shader has no parameters"
     },
     "shaders.reset": {
       "en": "Reset",
       "pt-BR": "Restaurar",
-      "es-419": "Restablecer"
+      "es-419": "Restablecer",
+      "ja-JP": "Reset",
+      "zh-CN": "重置",
+      "fr-FR": "Reset"
     },
     "shaders.reload": {
       "en": "Reload",
       "pt-BR": "Recarregar",
-      "es-419": "Recargar"
+      "es-419": "Recargar",
+      "ja-JP": "Reload",
+      "zh-CN": "重新载入",
+      "fr-FR": "Reload"
     },
     "shaders.remove": {
       "en": "Remove",
       "pt-BR": "Remover",
-      "es-419": "Quitar"
+      "es-419": "Quitar",
+      "ja-JP": "Remove",
+      "zh-CN": "停用滤镜",
+      "fr-FR": "Remove"
     },
     "shaders.failed": {
       "en": "The shader failed to load:",
       "pt-BR": "O shader falhou ao carregar:",
-      "es-419": "El shader no se pudo cargar:"
+      "es-419": "El shader no se pudo cargar:",
+      "ja-JP": "The shader failed to load:",
+      "zh-CN": "读取此滤镜失败:",
+      "fr-FR": "The shader failed to load:"
     },
     "shaders.all_categories": {
       "en": "All categories",
       "pt-BR": "Todas as categorias",
-      "es-419": "Todas las categorías"
+      "es-419": "Todas las categorías",
+      "ja-JP": "All categories",
+      "zh-CN": "全部类别",
+      "fr-FR": "All categories"
     },
     "shaders.refresh": {
       "en": "Refresh catalog",
       "pt-BR": "Atualizar catálogo",
-      "es-419": "Actualizar catálogo"
+      "es-419": "Actualizar catálogo",
+      "ja-JP": "Refresh catalog",
+      "zh-CN": "刷新目录",
+      "fr-FR": "Refresh catalog"
     },
     "shaders.loading": {
       "en": "Loading catalog...",
       "pt-BR": "Carregando catálogo...",
-      "es-419": "Cargando catálogo..."
+      "es-419": "Cargando catálogo...",
+      "ja-JP": "Loading catalog...",
+      "zh-CN": "读取滤镜目录中...",
+      "fr-FR": "Loading catalog..."
     },
     "shaders.catalog_info": {
       "en": "{0} presets in {1}",
       "pt-BR": "{0} presets em {1}",
-      "es-419": "{0} presets en {1}"
+      "es-419": "{0} presets en {1}",
+      "ja-JP": "{0} presets en {1}",
+      "zh-CN": "{0} 个预设在 {1} 中",
+      "fr-FR": "{0} presets en {1}"
     },
     "shaders.no_results": {
       "en": "Nothing found",
       "pt-BR": "Nada encontrado",
-      "es-419": "No se encontró nada"
+      "es-419": "No se encontró nada",
+      "ja-JP": "Nothing found",
+      "zh-CN": "无法查找到结果",
+      "fr-FR": "Nothing found"
     },
     "shaders.truncated": {
       "en": "The repository is too big, some presets are missing",
       "pt-BR": "O repositório é grande demais, alguns presets ficaram de fora",
-      "es-419": "El repositorio es demasiado grande, faltan algunos presets"
+      "es-419": "El repositorio es demasiado grande, faltan algunos presets",
+      "ja-JP": "The repository is too big, some presets are missing",
+      "zh-CN": "此目录太大了, 一部分预设可能丢失",
+      "fr-FR": "The repository is too big, some presets are missing"
     },
     "shaders.install": {
       "en": "Install",
       "pt-BR": "Instalar",
-      "es-419": "Instalar"
+      "es-419": "Instalar",
+      "ja-JP": "Install",
+      "zh-CN": "安装滤镜",
+      "fr-FR": "Install"
     },
     "shaders.use": {
       "en": "Use",
       "pt-BR": "Usar",
-      "es-419": "Usar"
+      "es-419": "Usar",
+      "ja-JP": "Use",
+      "zh-CN": "使用滤镜",
+      "fr-FR": "Use"
     },
     "shaders.active": {
       "en": "Active",
       "pt-BR": "Ativo",
-      "es-419": "Activo"
+      "es-419": "Activo",
+      "ja-JP": "Active",
+      "zh-CN": "滤镜生效中",
+      "fr-FR": "Active"
     },
     "shaders.installing": {
       "en": "{0} files...",
       "pt-BR": "{0} arquivos...",
-      "es-419": "{0} archivos..."
+      "es-419": "{0} archivos...",
+      "ja-JP": "{0} files...",
+      "zh-CN": "{0} 个文件安装中...",
+      "fr-FR": "{0} files..."
     },
     "shaders.installed_ok": {
       "en": "Installed {0}",
       "pt-BR": "{0} instalado",
-      "es-419": "{0} instalado"
+      "es-419": "{0} instalado",
+      "ja-JP": "Installed {0}",
+      "zh-CN": "{0} 个文件安装完成",
+      "fr-FR": "Installed {0}"
     },
     "shaders.install_failed": {
       "en": "Could not install {0}: {1}",
       "pt-BR": "Não foi possível instalar {0}: {1}",
-      "es-419": "No se pudo instalar {0}: {1}"
+      "es-419": "No se pudo instalar {0}: {1}",
+      "ja-JP": "Could not install {0}: {1}",
+      "zh-CN": "目前无法安装 {0}: {1}",
+      "fr-FR": "Could not install {0}: {1}"
     },
     "shaders.repository": {
       "en": "Repository",
       "pt-BR": "Repositório",
-      "es-419": "Repositorio"
+      "es-419": "Repositorio",
+      "ja-JP": "Repository",
+      "zh-CN": "滤镜目录",
+      "fr-FR": "Repository"
     },
     "shaders.repository_hint": {
       "en": "GitHub repository listed in the Browse tab",
       "pt-BR": "Repositório do GitHub listado na aba Procurar",
-      "es-419": "Repositorio de GitHub que se lista en Explorar"
+      "es-419": "Repositorio de GitHub que se lista en Explorar",
+      "ja-JP": "GitHub 上可被重编译前端支持的滤镜会在浏览列表中列出",
+      "zh-CN": "滤镜目录",
+      "fr-FR": "GitHub repository listed in the Browse tab"
     },
     "shaders.branch": {
       "en": "Branch",
       "pt-BR": "Branch",
-      "es-419": "Rama"
+      "es-419": "Rama",
+      "ja-JP": "Branch",
+      "zh-CN": "滤镜分支",
+      "fr-FR": "Branch"
     },
     "shaders.branch_hint": {
       "en": "Empty uses the default branch",
       "pt-BR": "Vazio usa a branch padrão",
-      "es-419": "Vacío usa la rama predeterminada"
+      "es-419": "Vacío usa la rama predeterminada",
+      "ja-JP": "Empty uses the default branch",
+      "zh-CN": "如果滤镜分支为空则使用原始分支",
+      "fr-FR": "Empty uses the default branch"
     },
     "shaders.default_repository": {
       "en": "Use default repository",
       "pt-BR": "Usar repositório padrão",
-      "es-419": "Usar repositorio predeterminado"
+      "es-419": "Usar repositorio predeterminado",
+      "ja-JP": "Use default repository",
+      "zh-CN": "使用原始滤镜分支",
+      "fr-FR": "Use default repository"
     },
     "shaders.bad_repository": {
       "en": "Not a GitHub repository",
       "pt-BR": "Não é um repositório do GitHub",
-      "es-419": "No es un repositorio de GitHub"
+      "es-419": "No es un repositorio de GitHub",
+      "ja-JP": "Not a GitHub repository",
+      "zh-CN": "此分支不是 GitHub 上被重编译前端支持的滤镜分支",
+      "fr-FR": "Not a GitHub repository"
     },
     "shaders.native": {
       "en": "Native resolution input",
       "pt-BR": "Entrada em resolução nativa",
-      "es-419": "Entrada en resolución nativa"
+      "es-419": "Entrada en resolución nativa",
+      "ja-JP": "Native resolution input",
+      "zh-CN": "原始分辨率输入",
+      "fr-FR": "Native resolution input"
     },
     "shaders.native_hint": {
       "en": "Feeds the shader the original resolution instead of the upscaled image. Best for CRT shaders",
       "pt-BR": "Manda a resolução original para o shader em vez da imagem ampliada. Melhor para shaders CRT",
-      "es-419": "Envía al shader la resolución original en vez de la imagen escalada. Mejor para shaders CRT"
+      "es-419": "Envía al shader la resolución original en vez de la imagen escalada. Mejor para shaders CRT",
+      "ja-JP": "Feeds the shader the original resolution instead of the upscaled image. Best for CRT shaders",
+      "zh-CN": "为滤镜指定原作PSX版的原始分辨率而非扩大后的分辨率. 对CRT滤镜而言效果最好.",
+      "fr-FR": "Feeds the shader the original resolution instead of the upscaled image. Best for CRT shaders"
     },
     "shaders.open_folder": {
       "en": "Open shaders folder",
       "pt-BR": "Abrir pasta de shaders",
-      "es-419": "Abrir carpeta de shaders"
+      "es-419": "Abrir carpeta de shaders",
+      "ja-JP": "Open shaders folder",
+      "zh-CN": "打开滤镜所在目录",
+      "fr-FR": "Open shaders folder"
     },
     "quit.title": {
       "en": "Quit the game?",
       "pt-BR": "Sair do jogo?",
       "es-419": "¿Salir del juego?",
-      "ja-JP": "ゲームを終了しますか?"
+      "ja-JP": "ゲームを終了しますか?",
+      "zh-CN": "确认退出游戏吗?",
+      "fr-FR": "Quit the game?"
     },
     "quit.message": {
       "en": "Any unsaved progress will be lost.",
       "pt-BR": "Todo o progresso não salvo será perdido.",
       "es-419": "Se perderá todo el progreso sin guardar.",
-      "ja-JP": "保存していない進行状況は失われます。"
+      "ja-JP": "保存していない進行状況は失われます。",
+      "zh-CN": "在重编译前端中退出游戏之前未保存的进度会被舍弃。",
+      "fr-FR": "Any unsaved progress will be lost."
     },
     "quit.confirm": {
       "en": "Quit",
       "pt-BR": "Sair",
       "es-419": "Salir",
-      "ja-JP": "終了"
+      "ja-JP": "終了",
+      "zh-CN": "退出游戏",
+      "fr-FR": "Quit"
     },
     "shell.resume": {
       "en": "Resume",
       "pt-BR": "Continuar",
       "es-419": "Continuar",
-      "ja-JP": "再開"
+      "ja-JP": "再開",
+      "zh-CN": "返回",
+      "fr-FR": "Resume"
     },
     "settings.interface.big_picture": {
       "en": "Use BigPicture UI",
       "pt-BR": "Usar interface BigPicture",
-      "es-419": "Usar interfaz BigPicture"
+      "es-419": "Usar interfaz BigPicture",
+      "ja-JP": "Use BigPicture UI",
+      "zh-CN": "使用大屏幕模式界面",
+      "fr-FR": "Use BigPicture UI"
     }
   }
 }
