@@ -1,3 +1,4 @@
+using RecompOne.Recompiler.Variants;
 using System.Text;
 using System.Text.RegularExpressions;
 using RecompOne.Recompiler.Analysis;
@@ -13,6 +14,8 @@ namespace RecompOne.Recompiler.CodeGen;
 
 public static class OverlayWriter
 {
+    private static readonly VariantBinder Variants = new();
+
     private record OverlayResult(
         string Name,
         List<MipsFunction> Functions,
@@ -52,6 +55,7 @@ public static class OverlayWriter
         var allFuncs = overlayResults.SelectMany(o => o.Functions).ToList();
         ResolveCollisions(allFuncs);
         ApplyPatches(allFuncs, config.Patches);
+        Variants.Apply(allFuncs, config.Variants);
         SdkPatches.Apply(allFuncs, config.DisableHle);
         WriteAll(config, outDir, className, mainExe, sysCfg, overlayResults, allFuncs);
     }
@@ -282,6 +286,7 @@ public static class OverlayWriter
         var overlayNames = overlayResults.Select(o => o.Name).ToList();
         EntryWriter.Write(mainExe, sysCfg, sysCfg.BootExe, className, mainCall, overlayNames, outDir);
 
+        Variants.Verify();
         Console.WriteLine("[Recompiler] finished "); //maybe add time it took
     }
 
@@ -497,8 +502,8 @@ public static class OverlayWriter
                 switch (patch.Mode.ToLowerInvariant())
                 {
                     case "pre":
-                        if (!func.PreHookTargets.Contains(patch.Target))
-                            func.PreHookTargets.Add(patch.Target);
+                        var hooks = patch.AfterVariant ? func.LatePreHookTargets : func.PreHookTargets;
+                        if (!hooks.Contains(patch.Target)) hooks.Add(patch.Target);
                         break;
                     case "post":
                         if (!func.PostHookTargets.Contains(patch.Target))

@@ -1,3 +1,4 @@
+using RecompOne.Recompiler.Variants;
 using RecompOne.Recompiler.Disasm;
 
 namespace RecompOne.Recompiler.Analysis;
@@ -15,6 +16,8 @@ public sealed class MipsFunction
     public bool Precise;
     public string PatchTarget = "";
     public List<string> PreHookTargets = [];
+    public List<string> LatePreHookTargets = [];
+    public FunctionVariant? Variant;
     public List<string> PostHookTargets = [];
     public List<JumpTable> JumpTables = [];
 }

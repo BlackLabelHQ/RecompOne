@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using RecompOne.Recompiler.Variants;
 
 namespace RecompOne.Recompiler.Config;
 
@@ -38,6 +39,8 @@ public sealed class RecompOneConfig
     [JsonPropertyName("stubs")] public string[] Stubs { get; set; } = [];
     [JsonPropertyName("ignored")] public string[] Ignored { get; set; } = [];
     [JsonPropertyName("patches")] public PatchEntry[] Patches { get; set; } = [];
+    [JsonPropertyName("variants")] public VariantGroupConfig[] Variants { get; set; } = [];
+    [JsonPropertyName("include")] public string[] Include { get; set; } = [];
     [JsonPropertyName("relocations")] public RelocationEntry[] Relocations { get; set; } = [];
 }
 
@@ -86,6 +89,7 @@ public sealed class PatchEntry
     [JsonPropertyName("address")] public string Address { get; set; } = "";
     [JsonPropertyName("target")] public string Target { get; set; } = "";
     [JsonPropertyName("mode")] public string Mode { get; set; } = "replace";
+    [JsonPropertyName("afterVariant")] public bool AfterVariant { get; set; }
 
     public bool MatchesOverlay(string overlayName)
     {
@@ -188,8 +192,41 @@ public static class ConfigLoader
 
     public static RecompOneConfig Load(string path)
     {
+        var config = Read(path);
+        var folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        foreach (var pattern in config.Include)
+        foreach (var file in Expand(folder, pattern))
+            Merge(config, Read(file));
+        return config;
+    }
+    
+    private static RecompOneConfig Read(string path)
+    {
         using var stream = File.OpenRead(path);
         return JsonSerializer.Deserialize<RecompOneConfig>(stream, Options) ??
                throw new InvalidDataException($"failed to parse config {path}");
+    }
+    
+    private static IEnumerable<string> Expand(string folder, string pattern)
+    {
+        var path = Path.Combine(folder, pattern);
+        var directory = Path.GetDirectoryName(path)!;
+        var name = Path.GetFileName(path);
+        if (!name.Contains('*')) return [path];
+        
+        var files = Directory.GetFiles(directory, name);
+        Array.Sort(files, StringComparer.Ordinal);
+        return files;
+    }
+    
+    private static void Merge(RecompOneConfig config, RecompOneConfig part)
+    {
+        config.Functions = [.. config.Functions, .. part.Functions];
+        config.Overlays = [.. config.Overlays, .. part.Overlays];
+        config.Stubs = [.. config.Stubs, .. part.Stubs];
+        config.Ignored = [.. config.Ignored, .. part.Ignored];
+        config.Patches = [.. config.Patches, .. part.Patches];
+        config.Relocations = [.. config.Relocations, .. part.Relocations];
+        config.Variants = [.. config.Variants, .. part.Variants];
     }
 }

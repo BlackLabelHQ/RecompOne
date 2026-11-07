@@ -1,4 +1,5 @@
 using System.Text;
+using RecompOne.Recompiler.Variants;
 using RecompOne.Recompiler.Analysis;
 using RecompOne.Recompiler.Disasm;
 
@@ -32,7 +33,10 @@ public static class FunctionEmitter
             return sb.ToString();
         }
 
-        var hooked = func.PreHookTargets.Count > 0 || func.PostHookTargets.Count > 0;
+        if (func.Variant != null && (func.IsStub || func.IsPatch))
+            throw new InvalidOperationException($"{func.Name} has a variant but is stubbed or replaced, it has no code to generate one from");
+
+        var hooked = func.Variant != null || func.PreHookTargets.Count > 0 || func.LatePreHookTargets.Count > 0 || func.PostHookTargets.Count > 0;
 
         if (func.IsPatch)
         {
@@ -62,6 +66,33 @@ public static class FunctionEmitter
 
         sb.AppendLine(noInline);
 
+        var text = EmitBody(func, ctx, dsIdx, ind, null);
+
+        sb.AppendLine($"    public static void {name}(CpuContext c, IMemory m)");
+        sb.AppendLine("    {");
+        if (text.Contains("mem."))
+            sb.AppendLine(
+                "        var mem = (PSMemory)m;"); //turns out the interface causes lag acess bruh, im too lazy to fix a bunc
+        sb.Append(text);
+        sb.AppendLine("    }");
+        
+        if (func.Variant != null)
+        {
+            sb.AppendLine(noInline);
+            sb.AppendLine($"    private static void {func.EmittedName}_Variant(CpuContext c, IMemory m)");
+            sb.AppendLine("    {");
+            sb.AppendLine($"{ind}var mem = {func.Variant.View};");
+            foreach (var code in func.Variant.OnEnter) sb.AppendLine($"{ind}{code}");
+            sb.Append(EmitBody(func, ctx, dsIdx, ind, func.Variant));
+            sb.AppendLine("    }");
+        }
+        
+        return sb.ToString();
+    }
+    
+    private static string EmitBody(MipsFunction func, FunctionContext ctx, HashSet<int> dsIdx, string ind, FunctionVariant? variant)
+    {
+        var instrs = func.Instructions;
         var body = new StringBuilder();
         if (ctx.Debug)
             body.AppendLine(
@@ -80,17 +111,21 @@ public static class FunctionEmitter
                     body.AppendLine("        RecompOne.Runtime.Interrupts.Poll(c, m);");
             }
 
+            var code = new StringBuilder();
+            MipsInstruction? delaySlot = null;
             if (instr.HasDelaySlot)
             {
-                var delaySlot = i + 1 < instrs.Length ? instrs[i + 1] : null;
-                InstructionEmitter.EmitWithDelaySlot(body, instr, delaySlot, ctx, ind);
+                delaySlot = i + 1 < instrs.Length ? instrs[i + 1] : null;
+                InstructionEmitter.EmitWithDelaySlot(code, instr, delaySlot, ctx, ind);
             }
             else
             {
                 var line = InstructionEmitter.EmitSingle(instr, ctx.Relocations, ctx.Precise);
                 if (!string.IsNullOrEmpty(line))
-                    body.AppendLine(ctx.Trail(instr, $"{ind}{line}"));
+                    code.AppendLine(ctx.Trail(instr, $"{ind}{line}"));
             }
+            
+            body.Append(variant == null ? code.ToString() : variant.Rewrite(instr, delaySlot, code.ToString(), ctx, ind));
         }
 
         if (FallsThrough(instrs))
@@ -102,21 +137,16 @@ public static class FunctionEmitter
                 body.AppendLine($"{ind}Dispatcher.Call(c, m, 0x{target:X8}u);");
         }
 
-        var text = body.ToString();
-
-        sb.AppendLine($"    public static void {name}(CpuContext c, IMemory m)");
-        sb.AppendLine("    {");
-        if (text.Contains("mem."))
-            sb.AppendLine(
-                "        var mem = (PSMemory)m;"); //turns out the interface causes lag acess bruh, im too lazy to fix a bunch of patches on symphony so doing this way will be enough, this is not a good principiality please never do what i did here xD
-        sb.Append(text);
-        sb.AppendLine("    }");
-        return sb.ToString();
+        return body.ToString();
     }
 
     private static void EmitHooks(StringBuilder sb, MipsFunction func, string body)
     {
         foreach (var pre in func.PreHookTargets)
+            sb.AppendLine($"        if (!RecompOne.Runtime.Context.PreHook.Run({pre}, c, m)) return;");
+        if (func.Variant != null)
+            sb.AppendLine($"        if ({func.Variant.Condition}) {{ {func.EmittedName}_Variant(c, m); return; }}");
+        foreach (var pre in func.LatePreHookTargets)
             sb.AppendLine($"        if (!RecompOne.Runtime.Context.PreHook.Run({pre}, c, m)) return;");
         sb.AppendLine(body);
         foreach (var post in func.PostHookTargets)
