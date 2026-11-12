@@ -150,7 +150,9 @@ public static class ToastNotifications
         if (textWidth < 1f) textWidth = 1f;
 
         var titleHeight = toast.Title.Length > 0 ? ImGui.CalcTextSize(toast.Title, false, textWidth).Y : 0f;
-        var messageHeight = toast.Message.Length > 0 ? ImGui.CalcTextSize(toast.Message, false, textWidth).Y : 0f;
+        var messageHeight = toast.Message.Length == 0 ? 0f
+            : InlineIcons.Has(toast.Message) ? InlineIcons.Measure(ImGui.GetFont(), ImGui.GetFontSize(), toast.Message, textWidth).Y
+            : ImGui.CalcTextSize(toast.Message, false, textWidth).Y;
 
         textHeight = titleHeight + messageHeight;
         if (titleHeight > 0f && messageHeight > 0f) textHeight += style.ItemSpacing.Y;
@@ -190,9 +192,10 @@ public static class ToastNotifications
             y += ImGui.CalcTextSize(toast.Title, false, textWidth).Y + style.ItemSpacing.Y;
         }
 
-        if (toast.Message.Length > 0)
-            ImGuiUtils.AddText(draw, font, fontSize, new Vector2(x, y), Fade(style.Colors[(int)ImGuiCol.Text], alpha),
-                toast.Message, textWidth);
+        if (toast.Message.Length == 0) return;
+        var ink = Fade(style.Colors[(int)ImGuiCol.Text], alpha);
+        if (InlineIcons.Has(toast.Message)) InlineIcons.Draw(draw, font, fontSize, new Vector2(x, y), ink, toast.Message, textWidth);
+        else ImGuiUtils.AddText(draw, font, fontSize, new Vector2(x, y), ink, toast.Message, textWidth);
     }
 
     private static uint Fade(Vector4 color, float alpha)

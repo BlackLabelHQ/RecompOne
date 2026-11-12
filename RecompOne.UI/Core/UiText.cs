@@ -6,6 +6,12 @@ public static class UiText
 {
     public static void CenteredWrapped(string text)
     {
+        if (InlineIcons.Has(text))
+        {
+            InlineIcons.Text(text, true);
+            return;
+        }
+
         var avail = ImGui.GetContentRegionAvail().X;
         foreach (var para in text.Split('\n'))
         {
