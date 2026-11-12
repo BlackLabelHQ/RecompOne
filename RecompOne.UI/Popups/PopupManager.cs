@@ -45,6 +45,8 @@ public static class PopupManager
         return true;
     }
 
+    public static IPopupStyle? Style { get; set; }
+
     public static int TopIndex => _stack.Count - 1;
 
     public static bool TopChildWasOpen => _stack.Count > 0 && _stack[^1].ChildWasOpen;
@@ -61,6 +63,13 @@ public static class PopupManager
 
         for (var i = _stack.Count - 1; i > index; i--)
             _stack[i].Close();
+    }
+
+    public static void CloseAll()
+    {
+        for (var i = _stack.Count - 1; i >= 0; i--)
+            if (_stack[i].CanClose)
+                _stack[i].Close();
     }
 
     public static void Draw()

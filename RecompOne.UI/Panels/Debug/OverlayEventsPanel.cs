@@ -46,7 +46,7 @@ public sealed class OverlayEventsPanel : IPanel
         if (!ImGui.BeginMenuBar()) return;
 
         if (ImGui.MenuItem("Clear")) Runtime.OverlayLog.Clear();
-        ImGui.MenuItem("Auto-scroll", null, ref _autoScroll);
+        ImGui.MenuItem("Auto-scroll", (string?)null, ref _autoScroll);
 
         ImGui.EndMenuBar();
     }

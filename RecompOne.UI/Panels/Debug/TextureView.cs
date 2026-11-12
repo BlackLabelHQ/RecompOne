@@ -62,7 +62,7 @@ public sealed class TextureView
 
         var dl = ImGui.GetWindowDrawList();
         dl.PushClipRect(origin, origin + avail, true);
-        dl.AddImage((nint)texId, imgPos, imgPos + drawn);
+        dl.AddImage(ImGuiUtils.Tex((nint)texId), imgPos, imgPos + drawn);
         dl.PopClipRect();
 
         return new Result(hovered, imgPos, scale);

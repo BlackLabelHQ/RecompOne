@@ -1,5 +1,5 @@
 using System.Numerics;
-using ImPlotNET;
+using Hexa.NET.ImPlot;
 
 namespace RecompOne.UI;
 

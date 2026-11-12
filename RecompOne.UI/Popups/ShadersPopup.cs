@@ -9,8 +9,6 @@ public sealed class ShadersPopup : Popup
     private const float ActionWidth = 110f;
     private const float ComboWidth = 200f;
     private const string SearchIcon = "";
-    private const ImGuiTabItemFlags KeepTab = (ImGuiTabItemFlags)(1 << 20);
-    private const ImGuiTabItemFlags SelectTab = KeepTab | ImGuiTabItemFlags.SetSelected;
 
     private static readonly Vector4 ErrorColor = new(1f, 0.4f, 0.4f, 1f);
 
@@ -24,7 +22,8 @@ public sealed class ShadersPopup : Popup
     private string? labelsFor;
     private Dictionary<string, string> labels = [];
     private float listTop;
-    private bool browsing;
+
+    private static ImGuiChildFlags Section => ImGuiChildFlags.NavFlattened | (Ui.UsesRows ? ImGuiChildFlags.None : ImGuiChildFlags.Borders);
 
     protected override string TitleKey => "shaders.title";
     protected override Vector2 Size => new(820f, 560f);
@@ -39,22 +38,14 @@ public sealed class ShadersPopup : Popup
     {
         if (!ImGui.BeginTabBar("##shader-tabs")) return;
 
-        var swap = !ImGui.IsPopupOpen("", ImGuiPopupFlags.AnyPopupId) &&
-                   (ImGui.IsKeyPressed(ImGuiKey.GamepadL1, false) || ImGui.IsKeyPressed(ImGuiKey.GamepadR1, false));
-
-        var open = true;
-        if (ImGui.BeginTabItem(Localization.T("shaders.installed"), ref open, swap && browsing ? SelectTab : KeepTab))
+        if (ImGui.BeginTabItem(Localization.T("shaders.installed")))
         {
-            browsing = false;
-            DrawInstalledList();
-            ImGui.SameLine();
-            DrawDetail();
+            DrawInstalled();
             ImGui.EndTabItem();
         }
 
-        if (ImGui.BeginTabItem(Localization.T("shaders.browse"), ref open, swap && !browsing ? SelectTab : KeepTab))
+        if (ImGui.BeginTabItem(Localization.T("shaders.browse")))
         {
-            browsing = true;
             DrawBrowse();
             ImGui.EndTabItem();
         }
@@ -62,9 +53,16 @@ public sealed class ShadersPopup : Popup
         ImGui.EndTabBar();
     }
 
+    public void DrawInstalled()
+    {
+        DrawInstalledList();
+        ImGui.SameLine();
+        DrawDetail();
+    }
+
     private void DrawInstalledList()
     {
-        ImGui.BeginChild("##installed-list", new Vector2(ListWidth * Theme.Scale, 0f), ImGuiChildFlags.Borders | ImGuiChildFlags.NavFlattened);
+        ImGui.BeginChild("##installed-list", new Vector2(ListWidth * Theme.Scale, 0f), Section);
         SearchBox("##installed-filter", ref installedFilter, -1f);
         ImGui.Spacing();
 
@@ -92,10 +90,11 @@ public sealed class ShadersPopup : Popup
                 ShaderManager.Apply(preset.Relative);
             Tooltip(preset.Relative);
 
-            if (ImGui.BeginPopupContextItem($"##context-{preset.Relative}"))
+            ImGui.OpenPopupOnItemClick($"##context-{preset.Relative}");
+            if (Ui.BeginContextMenu($"##context-{preset.Relative}"))
             {
-                if (ImGui.MenuItem(FontSet.With(FontSet.Trash, Localization.T("shaders.remove")))) remove = preset.Relative;
-                ImGui.EndPopup();
+                if (Ui.MenuItem(FontSet.With(FontSet.Trash, Localization.T("shaders.remove")), null, false, true)) remove = preset.Relative;
+                Ui.EndContextMenu();
             }
         }
 
@@ -106,7 +105,7 @@ public sealed class ShadersPopup : Popup
 
     private void DrawDetail()
     {
-        ImGui.BeginChild("##installed-detail", Vector2.Zero, ImGuiChildFlags.Borders | ImGuiChildFlags.NavFlattened);
+        ImGui.BeginChild("##installed-detail", Vector2.Zero, Section);
 
         if (ShaderManager.Selected.Length == 0)
         {
@@ -147,7 +146,7 @@ public sealed class ShadersPopup : Popup
     private void DrawHeader()
     {
         var style = ImGui.GetStyle();
-        var button = ImGui.GetFrameHeight();
+        var button = CardUi.IconSize;
         var buttons = button * 2f + style.ItemSpacing.X;
         var start = ImGui.GetCursorPos();
         var right = start.X + ImGui.GetContentRegionAvail().X;
@@ -160,9 +159,9 @@ public sealed class ShadersPopup : Popup
 
         var height = end.Y - start.Y - style.ItemSpacing.Y;
         ImGui.SetCursorPos(new Vector2(right - buttons, start.Y + MathF.Max(0f, (height - button) * 0.5f)));
-        if (IconButton(FontSet.Rotate, "shaders.reload", button)) ShaderManager.Reload();
+        if (IconButton(FontSet.Rotate, "shaders.reload")) ShaderManager.Reload();
         ImGui.SameLine();
-        if (IconButton(FontSet.Trash, "shaders.remove", button)) ShaderManager.Remove(ShaderManager.Selected);
+        if (IconButton(FontSet.Trash, "shaders.remove")) ShaderManager.Remove(ShaderManager.Selected);
 
         ImGui.SetCursorPos(end);
     }
@@ -266,27 +265,41 @@ public sealed class ShadersPopup : Popup
         ImGui.PopID();
     }
 
-    private void DrawBrowse()
+    public void DrawBrowse()
     {
         var repository = ShaderManager.Repository;
         var style = ImGui.GetStyle();
-        var combo = ComboWidth * Theme.Scale;
-        var refresh = ImGui.GetFrameHeight();
-
-        SearchBox("##browse-filter", ref browseFilter, ImGui.GetContentRegionAvail().X - combo - refresh - style.ItemSpacing.X * 2f);
-
-        ImGui.SameLine();
-        ImGui.SetNextItemWidth(combo);
         var all = Localization.T("shaders.all_categories");
         var options = repository.Categories.Prepend(all).ToList();
         var selected = category.Length == 0 ? 0 : options.IndexOf(category);
-        if (Ui.CompactCombo("##category", category.Length == 0 ? all : category, options, ref selected))
-            category = selected == 0 ? "" : options[selected];
+        var preview = category.Length == 0 ? all : category;
+        bool picked;
 
-        ImGui.SameLine();
-        ImGui.BeginDisabled(repository.Busy || !repository.Valid);
-        if (IconButton(FontSet.Rotate, "shaders.refresh", refresh)) repository.Refresh();
-        ImGui.EndDisabled();
+        if (Ui.UsesRows)
+        {
+            SearchBox("##browse-filter", ref browseFilter, -1f);
+            picked = Ui.Combo("##category", preview, options, ref selected);
+            ImGui.BeginDisabled(repository.Busy || !repository.Valid);
+            if (Ui.Button(Localization.T("shaders.refresh"))) repository.Refresh();
+            ImGui.EndDisabled();
+        }
+        else
+        {
+            var combo = ComboWidth * Theme.Scale;
+            var refresh = CardUi.IconSize;
+            SearchBox("##browse-filter", ref browseFilter, ImGui.GetContentRegionAvail().X - combo - refresh - style.ItemSpacing.X * 2f);
+
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(combo);
+            picked = Ui.CompactCombo("##category", preview, options, ref selected);
+
+            ImGui.SameLine();
+            ImGui.BeginDisabled(repository.Busy || !repository.Valid);
+            if (IconButton(FontSet.Rotate, "shaders.refresh")) repository.Refresh();
+            ImGui.EndDisabled();
+        }
+
+        if (picked) category = selected == 0 ? "" : options[selected];
 
         if (repository.Valid)
         {
@@ -302,7 +315,7 @@ public sealed class ShadersPopup : Popup
         var status = InstallStatus(repository);
         var footer = status != null ? ImGui.GetTextLineHeightWithSpacing() + style.ItemSpacing.Y : 0f;
 
-        ImGui.BeginChild("##catalog", new Vector2(0f, -footer), ImGuiChildFlags.Borders | ImGuiChildFlags.NavFlattened);
+        ImGui.BeginChild("##catalog", new Vector2(0f, -footer), Section);
         DrawCatalog(repository);
         ImGui.EndChild();
 
@@ -330,10 +343,28 @@ public sealed class ShadersPopup : Popup
             return;
         }
 
-        var rowHeight = ImGui.GetFrameHeightWithSpacing();
+        var rowHeight = Ui.UsesRows ? Ui.SelectableHeight : ImGui.GetFrameHeightWithSpacing();
         var (first, last) = BeginRows(results.Count, rowHeight);
-        for (var i = first; i < last; i++) DrawEntry(repository, results[i]);
+        for (var i = first; i < last; i++)
+        {
+            if (Ui.UsesRows) DrawEntryRow(repository, results[i]);
+            else DrawEntry(repository, results[i]);
+        }
+
         EndRows(results.Count, rowHeight);
+    }
+
+    private static void DrawEntryRow(ShaderRepository repository, CatalogEntry entry)
+    {
+        var progress = repository.Progress(entry);
+        var installed = repository.IsInstalled(entry);
+        var active = installed && repository.LocalRelative(entry) == ShaderManager.Selected;
+        var name = progress is { } value ? $"{entry.Name}  -  {Localization.T("shaders.installing", value)}"
+            : installed ? entry.Name : FontSet.With(FontSet.Download, entry.Name);
+
+        if (!Ui.Selectable($"{name}  -  {entry.Folder}##{entry.Path}", active) || progress != null) return;
+        if (!installed) repository.Install(entry);
+        else if (!active) ShaderManager.Apply(repository.LocalRelative(entry));
     }
 
     private void DrawEntry(ShaderRepository repository, CatalogEntry entry)
@@ -396,15 +427,19 @@ public sealed class ShadersPopup : Popup
 
     private static void SearchBox(string id, ref string filter, float width)
     {
+        if (Ui.UsesRows)
+        {
+            Ui.Input(id, ref filter, 128, $"{SearchIcon}  {Localization.T("shaders.search")}");
+            return;
+        }
+
         ImGui.SetNextItemWidth(width);
         ImGui.InputTextWithHint(id, $"{SearchIcon}  {Localization.T("shaders.search")}", ref filter, 128);
     }
 
-    private static bool IconButton(string icon, string tooltipKey, float size)
+    private static bool IconButton(string icon, string tooltipKey)
     {
-        var clicked = ImGui.Button(icon, new Vector2(size, size));
-        if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled)) ImGui.SetTooltip(Localization.T(tooltipKey));
-        return clicked;
+        return CardUi.IconButton($"##{tooltipKey}", icon, Localization.T(tooltipKey));
     }
 
     private static void Tooltip(string text)

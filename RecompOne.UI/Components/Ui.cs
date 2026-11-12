@@ -8,6 +8,16 @@ public static class Ui
     
     public static bool UsesRows => Components.UsesRows;
     
+    public static bool InputInt(string label, ref int value, string? hint = null) => Components.InputInt(label, ref value, hint);
+    
+    public static bool BeginContextMenu(string id) => Components.BeginContextMenu(id);
+    
+    public static void EndContextMenu() => Components.EndContextMenu();
+    
+    public static void MenuNote(string text) => Components.MenuNote(text);
+    
+    public static DialogChoice Dialog(string confirm, string? cancel = null, bool danger = false, bool enabled = true) => Components.Dialog(confirm, cancel, danger, enabled);
+    
     public static float SelectableHeight => Components.SelectableHeight;
     
     public static bool Selectable(string label, bool selected) => Components.Selectable(label, selected);

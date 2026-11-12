@@ -15,13 +15,19 @@ public sealed class OutputPanel : IPanel
 
     public static bool IsDocked { get; private set; }
 
+    public static bool Fullbleed { get; set; }
+
+    public static bool ShowToasts { get; set; } = true;
+
     //idea: in the future make this be able to draw images so you can have ornamented backgrounds
     public void Draw()
     {
         ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
         ImGui.PushStyleColor(ImGuiCol.WindowBg, new Vector4(0f, 0f, 0f, 1f));
+        if (Fullbleed) ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
 
         var visible = ImGui.Begin(this.Title());
+        if (Fullbleed) ImGui.PopStyleVar();
         IsDocked = ImGui.IsWindowDocked();
 
         if (!visible)
@@ -41,10 +47,10 @@ public sealed class OutputPanel : IPanel
             HostOutput.ViewHeight = (int)MathF.Round(imageSize.Y * scale.Y);
             var offset = (avail - imageSize) * 0.5f;
             ImGui.SetCursorPos(ImGui.GetCursorPos() + offset);
-            ImGui.Image((nint)output.Id, imageSize);
+            ImGui.Image(ImGuiUtils.Tex((nint)output.Id), imageSize);
         }
 
-        ToastNotifications.Draw();
+        if (ShowToasts) ToastNotifications.Draw();
 
         ImGui.End();
         ImGui.PopStyleColor();

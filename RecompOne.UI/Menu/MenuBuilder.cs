@@ -112,6 +112,12 @@ public sealed class MenuBuilder
         return _parent ?? this;
     }
 
+    public MenuBuilder Icon(string icon)
+    {
+        _node.Icon = icon;
+        return this;
+    }
+
     public MenuBuilder Enabled(Func<bool> predicate)
     {
         if (_lastItem != null) _lastItem.Enabled = predicate;

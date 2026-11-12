@@ -88,7 +88,6 @@ public static class Runtime
     {
         HostWindow.WaitForValidDisc();
     }
-
     public static string Title
     {
         get => HostWindow.Title;

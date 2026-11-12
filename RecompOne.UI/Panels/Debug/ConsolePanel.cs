@@ -40,14 +40,14 @@ public sealed class ConsolePanel : IPanel
 
         if (ImGui.BeginMenu("Categories"))
         {
-            if (ImGui.MenuItem("BIOS", null, Log.BiosOn)) Log.BiosOn = !Log.BiosOn;
-            if (ImGui.MenuItem("SPU", null, Log.SpuOn)) Log.SpuOn = !Log.SpuOn;
-            if (ImGui.MenuItem("GPU", null, Log.GpuOn)) Log.GpuOn = !Log.GpuOn;
-            if (ImGui.MenuItem("DMA", null, Log.DmaOn)) Log.DmaOn = !Log.DmaOn;
-            if (ImGui.MenuItem("CD", null, Log.CdOn)) Log.CdOn = !Log.CdOn;
-            if (ImGui.MenuItem("SDK", null, Log.SdkOn)) Log.SdkOn = !Log.SdkOn;
-            if (ImGui.MenuItem("MDEC", null, Log.MdecOn)) Log.MdecOn = !Log.MdecOn;
-            if (ImGui.MenuItem("IRQ", null, Log.IrqOn)) Log.IrqOn = !Log.IrqOn;
+            if (ImGui.MenuItem("BIOS", (string?)null, Log.BiosOn)) Log.BiosOn = !Log.BiosOn;
+            if (ImGui.MenuItem("SPU", (string?)null, Log.SpuOn)) Log.SpuOn = !Log.SpuOn;
+            if (ImGui.MenuItem("GPU", (string?)null, Log.GpuOn)) Log.GpuOn = !Log.GpuOn;
+            if (ImGui.MenuItem("DMA", (string?)null, Log.DmaOn)) Log.DmaOn = !Log.DmaOn;
+            if (ImGui.MenuItem("CD", (string?)null, Log.CdOn)) Log.CdOn = !Log.CdOn;
+            if (ImGui.MenuItem("SDK", (string?)null, Log.SdkOn)) Log.SdkOn = !Log.SdkOn;
+            if (ImGui.MenuItem("MDEC", (string?)null, Log.MdecOn)) Log.MdecOn = !Log.MdecOn;
+            if (ImGui.MenuItem("IRQ", (string?)null, Log.IrqOn)) Log.IrqOn = !Log.IrqOn;
             ImGui.EndMenu();
         }
 

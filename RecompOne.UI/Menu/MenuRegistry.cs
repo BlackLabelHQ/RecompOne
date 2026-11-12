@@ -34,6 +34,16 @@ public static class MenuRegistry
         return new MenuBuilder(node, null);
     }
 
+    public static MenuBuilder BarPanel<T>(string labelKey) where T : class, IPanel
+    {
+        var builder = BarItem(labelKey, static () =>
+        {
+            if (PanelManager.Get<T>() is { } panel) panel.IsOpen = !panel.IsOpen;
+        });
+        Find(labelKey)!.Panel = static () => PanelManager.Get<T>();
+        return builder;
+    }
+
     public static bool Remove(string labelKey)
     {
         if (_roots.RemoveAll(m => m.LabelKey == labelKey) > 0)

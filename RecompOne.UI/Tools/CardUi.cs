@@ -57,7 +57,7 @@ public static class CardUi
         var size = IconSize;
         var pos = ImGui.GetCursorScreenPos();
         var clicked = ImGui.InvisibleButton(id, new Vector2(size, size), nav ? ImGuiButtonFlags.EnableNav : ImGuiButtonFlags.None);
-        var hovered = ImGui.IsItemHovered() || ImGui.IsItemFocused();
+        var hovered = ImGui.IsItemHovered() || ImGuiUtils.NavFocused;
 
         var style = ImGui.GetStyle();
         var dl = ImGui.GetWindowDrawList();
@@ -90,7 +90,9 @@ public static class CardUi
         else ImGui.TextUnformatted(text);
     }
 
-    public static CardResult Draw(string id, Card card)
+    public static CardResult Draw(string id, Card card) => Ui.Components.DrawCard(id, card);
+
+    public static CardResult DrawClassic(string id, Card card)
     {
         var scale = Scale;
         var style = ImGui.GetStyle();
@@ -124,7 +126,7 @@ public static class CardUi
             IconButton("##grip", FontSet.Or(FontSet.Grip, "::"), "Drag to reorder", nav: false);
             if (ImGui.BeginDragDropSource())
             {
-                ImGui.SetDragDropPayload(DragType, IntPtr.Zero, 0);
+                unsafe { ImGui.SetDragDropPayload(DragType, null, 0); }
                 ImGui.TextUnformatted(card.Title);
                 ImGui.EndDragDropSource();
                 dragStarted = true;
@@ -171,7 +173,7 @@ public static class CardUi
             ImGui.SetCursorPos(new Vector2(cx, origin.Y + 2f * scale));
             var enabled = card.Enabled;
             if (ImGuiUtils.Toggle("##toggle", ref enabled)) toggled = true;
-            focused |= ImGui.IsItemFocused();
+            focused |= ImGuiUtils.NavFocused;
             if (card.ToggleTip != null) ImGuiUtils.Tooltip(card.ToggleTip);
         }
 
@@ -181,7 +183,7 @@ public static class CardUi
             ImGui.SetCursorPos(new Vector2(cx, origin.Y));
             var (glyph, tip, active) = card.Actions[i];
             if (IconButton($"##act{i}", glyph, tip, active)) action = i;
-            focused |= ImGui.IsItemFocused();
+            focused |= ImGuiUtils.NavFocused;
         }
 
         for (var i = card.Tags.Length - 1; i >= 0; i--)
@@ -215,7 +217,7 @@ public static class CardUi
         {
             unsafe
             {
-                if (ImGui.AcceptDragDropPayload(DragType).NativePtr != null) dropped = true;
+                if (ImGui.AcceptDragDropPayload(DragType).Handle != null) dropped = true;
             }
 
             ImGui.EndDragDropTarget();

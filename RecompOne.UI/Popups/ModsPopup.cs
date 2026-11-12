@@ -73,16 +73,13 @@ public sealed class ModsPopup : Popup
             else ImGui.OpenPopup("opts");
         }
 
-        if (ImGui.BeginPopup("opts"))
+        if (Ui.BeginContextMenu("opts"))
         {
-            using (ImGuiUtils.Disabled(!mod.Enabled))
-            {
-                if (ImGui.MenuItem(Localization.T("mods.reload"))) ModLoader.Reload(mod.Info.Id);
-            }
-            ImGui.Separator();
-            ImGui.TextDisabled(mod.Info.Id);
-            ImGui.TextDisabled(Localization.T("mods.hooks", mod.HookCount));
-            ImGui.EndPopup();
+            if (Ui.MenuItem(Localization.T("mods.reload"), null, false, mod.Enabled)) ModLoader.Reload(mod.Info.Id);
+            Ui.Separator();
+            Ui.MenuNote(mod.Info.Id);
+            Ui.MenuNote(Localization.T("mods.hooks", mod.HookCount));
+            Ui.EndContextMenu();
         }
 
         ImGui.PopID();

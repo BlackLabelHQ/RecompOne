@@ -1,7 +1,7 @@
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using ImPlotNET;
+using Hexa.NET.ImPlot;
 using Silk.NET.Input;
 using Silk.NET.OpenGL;
 using Silk.NET.Windowing;
@@ -43,8 +43,8 @@ public sealed class ImGuiController : IDisposable
     private readonly IInputContext _input;
     private readonly IKeyboard? _keyboard;
     private readonly List<char> _typed = [];
-    private readonly IntPtr _context;
-    private readonly IntPtr _plotContext;
+    private readonly ImGuiContextPtr _context;
+    private readonly ImPlotContextPtr _plotContext;
 
     private uint _program;
     private int _projection;
@@ -52,12 +52,11 @@ public sealed class ImGuiController : IDisposable
     private uint _vao;
     private uint _vbo;
     private uint _ebo;
-    private uint _fontTexture;
     private float _wheel;
     private float _wheelH;
     private bool _frameBegun;
     private bool _disposed;
-    private ImGuiMouseCursor _cursor = ImGuiMouseCursor.COUNT;
+    private ImGuiMouseCursor _cursor = ImGuiMouseCursor.Count;
 
     private static IKeyboard? _clipboard;
     private static IntPtr _clipboardText;
@@ -71,16 +70,19 @@ public sealed class ImGuiController : IDisposable
         _context = ImGui.CreateContext();
         ImGui.SetCurrentContext(_context);
         _plotContext = ImPlot.CreateContext();
-        ImPlot.SetImGuiContext(_context);
+        unsafe { ImPlot.SetImGuiContext(ref *_context.Handle); }
         ImPlot.SetCurrentContext(_plotContext);
 
         var io = ImGui.GetIO();
-        io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset;
+        io.BackendFlags |= ImGuiBackendFlags.RendererHasVtxOffset | ImGuiBackendFlags.RendererHasTextures;
+        _gl.GetInteger(GetPName.MaxTextureSize, out var maxTexture);
+        var platform = ImGui.GetPlatformIO();
+        platform.RendererTextureMaxWidth = maxTexture;
+        platform.RendererTextureMaxHeight = maxTexture;
 
         configure?.Invoke();
 
         CreateDeviceObjects();
-        CreateFontTexture();
 
         _keyboard = input.Keyboards.Count > 0 ? input.Keyboards[0] : null;
         if (_keyboard != null)
@@ -181,10 +183,10 @@ public sealed class ImGuiController : IDisposable
         {
             ImGuiMouseCursor.TextInput => StandardCursor.IBeam,
             ImGuiMouseCursor.ResizeAll => StandardCursor.ResizeAll,
-            ImGuiMouseCursor.ResizeNS => StandardCursor.VResize,
-            ImGuiMouseCursor.ResizeEW => StandardCursor.HResize,
-            ImGuiMouseCursor.ResizeNESW => StandardCursor.NeswResize,
-            ImGuiMouseCursor.ResizeNWSE => StandardCursor.NwseResize,
+            ImGuiMouseCursor.ResizeNs => StandardCursor.VResize,
+            ImGuiMouseCursor.ResizeEw => StandardCursor.HResize,
+            ImGuiMouseCursor.ResizeNesw => StandardCursor.NeswResize,
+            ImGuiMouseCursor.ResizeNwse => StandardCursor.NwseResize,
             ImGuiMouseCursor.Hand => StandardCursor.Hand,
             ImGuiMouseCursor.NotAllowed => StandardCursor.NotAllowed,
             _ => StandardCursor.Default
@@ -219,8 +221,8 @@ public sealed class ImGuiController : IDisposable
         if (_clipboard == null) return;
 
         var platform = ImGui.GetPlatformIO();
-        platform.Platform_GetClipboardTextFn = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr>)&GetClipboard;
-        platform.Platform_SetClipboardTextFn = (IntPtr)(delegate* unmanaged[Cdecl]<IntPtr, IntPtr, void>)&SetClipboard;
+        platform.PlatformGetClipboardTextFn = (delegate* unmanaged[Cdecl]<IntPtr, IntPtr>)&GetClipboard;
+        platform.PlatformSetClipboardTextFn = (delegate* unmanaged[Cdecl]<IntPtr, IntPtr, void>)&SetClipboard;
     }
 
     [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
@@ -258,7 +260,7 @@ public sealed class ImGuiController : IDisposable
     private static ImGuiKey Map(Key key)
     {
         if (key is >= Key.A and <= Key.Z) return ImGuiKey.A + (key - Key.A);
-        if (key is >= Key.Number0 and <= Key.Number9) return ImGuiKey._0 + (key - Key.Number0);
+        if (key is >= Key.Number0 and <= Key.Number9) return ImGuiKey.Key0 + (key - Key.Number0);
         if (key is >= Key.Keypad0 and <= Key.Keypad9) return ImGuiKey.Keypad0 + (key - Key.Keypad0);
         if (key is >= Key.F1 and <= Key.F12) return ImGuiKey.F1 + (key - Key.F1);
 
@@ -363,27 +365,79 @@ public sealed class ImGuiController : IDisposable
         return shader;
     }
 
-    private unsafe void CreateFontTexture()
+    private unsafe void UpdateTextures(ImDrawDataPtr data)
     {
-        var io = ImGui.GetIO();
-        io.Fonts.GetTexDataAsRGBA32(out IntPtr pixels, out var width, out var height, out _);
+        var textures = data.Textures;
+        if (textures.Data == null) return;
+        for (var i = 0; i < textures.Size; i++)
+        {
+            var tex = textures.Data[i];
+            if (tex.Status != ImTextureStatus.Ok) UpdateTexture(tex);
+        }
+    }
+
+    private unsafe void UpdateTexture(ImTextureDataPtr tex)
+    {
+        if (tex.Status == ImTextureStatus.WantDestroy && tex.UnusedFrames > 0)
+        {
+            DestroyTexture(tex);
+            return;
+        }
+
+        if (tex.Status is not (ImTextureStatus.WantCreate or ImTextureStatus.WantUpdates)) return;
 
         _gl.GetInteger(GetPName.TextureBinding2D, out var previous);
-        _fontTexture = _gl.GenTexture();
-        _gl.BindTexture(TextureTarget.Texture2D, _fontTexture);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
-        _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
-        _gl.PixelStore(PixelStoreParameter.UnpackRowLength, 0);
-        _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba, (uint)width, (uint)height, 0,
-            PixelFormat.Rgba, PixelType.UnsignedByte, (void*)pixels);
-        _gl.BindTexture(TextureTarget.Texture2D, (uint)previous);
+        if (tex.Status == ImTextureStatus.WantCreate)
+        {
+            var id = _gl.GenTexture();
+            _gl.BindTexture(TextureTarget.Texture2D, id);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMinFilter, (int)TextureMinFilter.Linear);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureMagFilter, (int)TextureMagFilter.Linear);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapS, (int)TextureWrapMode.ClampToEdge);
+            _gl.TexParameter(TextureTarget.Texture2D, TextureParameterName.TextureWrapT, (int)TextureWrapMode.ClampToEdge);
+            _gl.PixelStore(PixelStoreParameter.UnpackRowLength, 0);
+            _gl.TexImage2D(TextureTarget.Texture2D, 0, InternalFormat.Rgba, (uint)tex.Width, (uint)tex.Height, 0,
+                PixelFormat.Rgba, PixelType.UnsignedByte, tex.GetPixels());
+            tex.SetTexID(new ImTextureID((ulong)id));
+        }
+        else
+        {
+            _gl.BindTexture(TextureTarget.Texture2D, (uint)tex.TexID.Handle);
+            _gl.PixelStore(PixelStoreParameter.UnpackRowLength, tex.Width);
+            for (var i = 0; i < tex.Updates.Size; i++)
+            {
+                var rect = tex.Updates.Data[i];
+                _gl.TexSubImage2D(TextureTarget.Texture2D, 0, rect.X, rect.Y, rect.W, rect.H,
+                    PixelFormat.Rgba, PixelType.UnsignedByte, tex.GetPixelsAt(rect.X, rect.Y));
+            }
+            _gl.PixelStore(PixelStoreParameter.UnpackRowLength, 0);
+        }
 
-        io.Fonts.SetTexID((IntPtr)_fontTexture);
-        io.Fonts.ClearTexData();
+        _gl.BindTexture(TextureTarget.Texture2D, (uint)previous);
+        tex.SetStatus(ImTextureStatus.Ok);
+    }
+
+    private void DestroyTexture(ImTextureDataPtr tex)
+    {
+        _gl.DeleteTexture((uint)tex.TexID.Handle);
+        tex.SetTexID(ImTextureID.Null);
+        tex.SetStatus(ImTextureStatus.Destroyed);
+    }
+
+    private unsafe void DestroyAllTextures()
+    {
+        var textures = ImGui.GetPlatformIO().Textures;
+        for (var i = 0; i < textures.Size; i++)
+        {
+            var tex = textures.Data[i];
+            if (tex.RefCount == 1 && !tex.TexID.IsNull) DestroyTexture(tex);
+        }
     }
 
     private unsafe void RenderDrawData(ImDrawDataPtr data)
     {
+        UpdateTextures(data);
+
         var width = (int)(data.DisplaySize.X * data.FramebufferScale.X);
         var height = (int)(data.DisplaySize.Y * data.FramebufferScale.Y);
         if (width <= 0 || height <= 0 || data.CmdListsCount == 0) return;
@@ -427,14 +481,14 @@ public sealed class ImGuiController : IDisposable
 
         for (var n = 0; n < data.CmdListsCount; n++)
         {
-            var list = data.CmdLists[n];
+            var list = data.CmdLists.Data[n];
             _gl.BufferData(BufferTargetARB.ArrayBuffer, (nuint)(list.VtxBuffer.Size * vertexSize), (void*)list.VtxBuffer.Data, BufferUsageARB.StreamDraw);
-            _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(list.IdxBuffer.Size * sizeof(ushort)), (void*)list.IdxBuffer.Data, BufferUsageARB.StreamDraw);
+            _gl.BufferData(BufferTargetARB.ElementArrayBuffer, (nuint)(list.IdxBuffer.Size * sizeof(ushort)), (ushort*)list.IdxBuffer.Data, BufferUsageARB.StreamDraw);
 
             for (var i = 0; i < list.CmdBuffer.Size; i++)
             {
-                var cmd = list.CmdBuffer[i];
-                if (cmd.UserCallback != IntPtr.Zero) continue;
+                var cmd = new ImDrawCmdPtr(&list.CmdBuffer.Data[i]);
+                if (cmd.UserCallback != null) continue;
 
                 var x0 = (cmd.ClipRect.X - clipOffset.X) * clipScale.X;
                 var y0 = (cmd.ClipRect.Y - clipOffset.Y) * clipScale.Y;
@@ -443,7 +497,7 @@ public sealed class ImGuiController : IDisposable
                 if (x1 <= x0 || y1 <= y0) continue;
 
                 _gl.Scissor((int)x0, (int)(height - y1), (uint)(x1 - x0), (uint)(y1 - y0));
-                _gl.BindTexture(TextureTarget.Texture2D, (uint)cmd.TextureId);
+                _gl.BindTexture(TextureTarget.Texture2D, (uint)cmd.GetTexID().Handle);
                 _gl.DrawElementsBaseVertex(PrimitiveType.Triangles, cmd.ElemCount, DrawElementsType.UnsignedShort,
                     (void*)(cmd.IdxOffset * sizeof(ushort)), (int)cmd.VtxOffset);
             }
@@ -483,8 +537,8 @@ public sealed class ImGuiController : IDisposable
         _gl.DeleteBuffer(_vbo);
         _gl.DeleteBuffer(_ebo);
         _gl.DeleteVertexArray(_vao);
-        _gl.DeleteTexture(_fontTexture);
         _gl.DeleteProgram(_program);
+        DestroyAllTextures();
 
         ImPlot.DestroyContext(_plotContext);
         ImGui.DestroyContext(_context);

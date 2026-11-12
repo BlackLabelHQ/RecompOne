@@ -19,7 +19,7 @@ public sealed partial class AssetPackEditor
     private int _texSeenVersion = -1;
     private float _texScale = 1f;
     private string? _texScaleFile;
-    private static readonly string[] TextureFilters = ["Auto", "Sharp", "Smooth"];
+    private static readonly string[] TextureFilters = ["Auto", "Sharp", "Smooth"]; //aka bilionar / none
 
     private void DrawTexturesTab(AssetPack pack)
     {
@@ -182,7 +182,7 @@ public sealed partial class AssetPackEditor
 
         unsafe
         {
-            var clipper = new ImGuiListClipperPtr(ImGuiNative.ImGuiListClipper_ImGuiListClipper());
+            var clipper = ImGui.ImGuiListClipper();
             clipper.Begin(rows, size + ImGui.GetStyle().ItemSpacing.Y);
             while (clipper.Step())
                 for (var row = clipper.DisplayStart; row < clipper.DisplayEnd; row++)
@@ -213,7 +213,7 @@ public sealed partial class AssetPackEditor
             var fit = MathF.Min(size / w, size / h);
             var drawn = new Vector2(w * fit, h * fit);
             var at = pos + (new Vector2(size, size) - drawn) * 0.5f;
-            dl.AddImage((nint)tex, at, at + drawn);
+            dl.AddImage(ImGuiUtils.Tex((nint)tex), at, at + drawn);
         }
 
         if (border is { } color)
@@ -314,7 +314,7 @@ public sealed partial class AssetPackEditor
                 var dl = ImGui.GetWindowDrawList();
                 ImGuiUtils.Checker(dl, pos, pos + new Vector2(small, small));
                 var tex = ImageCache.Seen(v);
-                if (tex != 0) dl.AddImage((nint)tex, pos, pos + new Vector2(small, small));
+                if (tex != 0) dl.AddImage(ImGuiUtils.Tex((nint)tex), pos, pos + new Vector2(small, small));
                 if (v.ClutHash == t.ClutHash)
                     dl.AddRect(pos, pos + new Vector2(small, small), ImGui.ColorConvertFloat4ToU32(Theme.Accent), 0f,
                         ImDrawFlags.None, 2f * scale);

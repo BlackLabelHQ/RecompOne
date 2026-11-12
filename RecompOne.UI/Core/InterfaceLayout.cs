@@ -65,7 +65,7 @@ public static class InterfaceLayout
         foreach (var (name, open) in _panels)
             sb.AppendLine($"{PanelPrefix}{name}={open}");
         sb.AppendLine();
-        sb.Append(ImGui.SaveIniSettingsToMemory());
+        sb.Append(ImGui.SaveIniSettingsToMemoryS());
 
         try
         {

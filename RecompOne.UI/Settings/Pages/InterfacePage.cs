@@ -10,8 +10,7 @@ public static class InterfacePage
             .Add("accent", DrawAccent, 0)
             .Add("background", DrawBackground, 100)
             .Add("scale", DrawScale, 200)
-            .Add("fps", DrawShowFps, 300)
-            .Add("big_picture", DrawBigPicture, 400, null, static () => Features.BigPictureInterface);
+            .Add("fps", DrawShowFps, 300);
     }
 
     private static void DrawAccent()
@@ -28,12 +27,6 @@ public static class InterfacePage
     private static void DrawShowFps()
     {
         SettingsWidgets.Toggle(InterfaceOptions.ShowFps, "settings.interface.show_fps");
-    }
-
-    private static void DrawBigPicture()
-    {
-        if (SettingsWidgets.Toggle(InterfaceOptions.BigPicture, "settings.interface.big_picture"))
-            NoticePopup.Show(Localization.T("common.restart_required"));
     }
 
     private static void DrawSwatches(string labelKey, Theme.Preset[] presets, int selected, Vector4 current,
@@ -61,7 +54,7 @@ public static class InterfacePage
         if (ImGui.InputFloat("##ui-scale", ref scale, 0.05f, 0.25f, "%.2fx"))
         {
             InterfaceOptions.Scale.Value = scale;
-            ImGui.GetIO().FontGlobalScale = InterfaceOptions.Scale.Value;
+            ImGui.GetStyle().FontScaleMain = InterfaceOptions.Scale.Value;
             Theme.Apply();
         }
 

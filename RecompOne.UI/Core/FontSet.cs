@@ -44,59 +44,38 @@ public static class FontSet
     public const string ExternalLink = "\uf35d";
     public const string Info = ""; //need to pull the rest later?
 
+    public const float BaseSize = 16f;
+
     private static readonly List<GCHandle> _pinned = [];
     private static readonly List<IntPtr> _unmanaged = [];
 
     public static bool Loaded { get; private set; }
 
-    public static unsafe void Load(float sizePixels)
+    public static unsafe void Load()
     {
         try
         {
             var io = ImGui.GetIO();
 
-            var baseCfg = ImGuiNative.ImFontConfig_ImFontConfig();
-            baseCfg->SizePixels = sizePixels;
-            baseCfg->FontDataOwnedByAtlas = 0;
-
-            var baseRange = BuildRange(io.Fonts.GetGlyphRangesDefault(), io.Fonts.GetGlyphRangesCyrillic(),
-                io.Fonts.GetGlyphRangesGreek(), io.Fonts.GetGlyphRangesVietnamese());
             var baseData = LoadResource(BaseFontResource);
             if (baseData != null)
-                io.Fonts.AddFontFromMemoryTTF(Pin(baseData), baseData.Length, sizePixels, baseCfg, baseRange);
+                io.Fonts.AddFontFromMemoryTTF((void*)Pin(baseData), baseData.Length, BaseSize, NewConfig(merge: false, snap: false));
             else
-                io.Fonts.AddFontDefault(baseCfg);
+                io.Fonts.AddFontDefault();
 
             var iconData = LoadResource(IconResource);
             if (iconData != null)
             {
-                var iconCfg = ImGuiNative.ImFontConfig_ImFontConfig();
-                iconCfg->MergeMode = 1;
-                iconCfg->PixelSnapH = 1;
-                iconCfg->FontDataOwnedByAtlas = 0;
-                iconCfg->GlyphMinAdvanceX = sizePixels;
+                var iconCfg = NewConfig(merge: true, snap: true);
+                iconCfg->GlyphMinAdvanceX = BaseSize;
                 iconCfg->GlyphOffset = new System.Numerics.Vector2(0f, 1f);
-
-                var iconRange = GCHandle.Alloc(new ushort[] { RangeMin, RangeMax, 0 }, GCHandleType.Pinned);
-                _pinned.Add(iconRange);
-                io.Fonts.AddFontFromMemoryTTF(Pin(iconData), iconData.Length, sizePixels, iconCfg,
-                    iconRange.AddrOfPinnedObject());
+                io.Fonts.AddFontFromMemoryTTF((void*)Pin(iconData), iconData.Length, BaseSize, iconCfg, IconRange());
             }
 
             var cjkData = LoadResource(CjkFontResource);
             if (cjkData != null)
-            {
-                var cjkCfg = ImGuiNative.ImFontConfig_ImFontConfig();
-                cjkCfg->MergeMode = 1;
-                cjkCfg->PixelSnapH = 1;
-                cjkCfg->FontDataOwnedByAtlas = 0;
+                io.Fonts.AddFontFromMemoryTTF((void*)Pin(cjkData), cjkData.Length, BaseSize, NewConfig(merge: true, snap: true));
 
-                var cjkRange = BuildRange(io.Fonts.GetGlyphRangesJapanese(),
-                    io.Fonts.GetGlyphRangesChineseSimplifiedCommon());
-                io.Fonts.AddFontFromMemoryTTF(Pin(cjkData), cjkData.Length, sizePixels, cjkCfg, cjkRange);
-            }
-
-            io.Fonts.Build();
             Loaded = true;
         }
         catch (Exception e)
@@ -105,21 +84,28 @@ public static class FontSet
         }
     }
 
-    public static unsafe ImFontPtr LoadIcons(float sizePixels)
+    public static unsafe ImFontPtr LoadIcons()
     {
         var io = ImGui.GetIO();
         var data = LoadResource(IconResource);
-        if (data == null) return io.Fonts.Fonts[0];
-        
-        var config = ImGuiNative.ImFontConfig_ImFontConfig();
-        config->PixelSnapH = 1;
-        config->OversampleH = 1;
-        config->OversampleV = 1;
-        config->FontDataOwnedByAtlas = 0;
-        
-        var range = GCHandle.Alloc(new ushort[] { RangeMin, RangeMax, 0 }, GCHandleType.Pinned);
+        if (data == null) return io.Fonts.Fonts.Data[0];
+        return io.Fonts.AddFontFromMemoryTTF((void*)Pin(data), data.Length, BaseSize, NewConfig(merge: false, snap: true), IconRange());
+    }
+
+    private static unsafe ImFontConfig* NewConfig(bool merge, bool snap)
+    {
+        var config = ImGui.ImFontConfig();
+        config.MergeMode = merge;
+        config.PixelSnapH = snap;
+        config.FontDataOwnedByAtlas = false;
+        return config.Handle;
+    }
+
+    private static unsafe uint* IconRange()
+    {
+        var range = GCHandle.Alloc(new uint[] { RangeMin, RangeMax, 0 }, GCHandleType.Pinned);
         _pinned.Add(range);
-        return io.Fonts.AddFontFromMemoryTTF(Pin(data), data.Length, sizePixels, config, range.AddrOfPinnedObject());
+        return (uint*)range.AddrOfPinnedObject();
     }
 
     private static byte[]? LoadResource(string name)
@@ -145,27 +131,6 @@ public static class FontSet
         return ptr;
     }
 
-
-    private static unsafe IntPtr BuildRange(params IntPtr[] ranges)
-    {
-        var merged = new List<ushort>();
-        foreach (var range in ranges)
-        {
-            var cursor = (ushort*)range;
-            while (cursor[0] != 0 || cursor[1] != 0)
-            {
-                merged.Add(cursor[0]);
-                merged.Add(cursor[1]);
-                cursor += 2;
-            }
-        }
-
-        merged.Add(0);
-
-        var handle = GCHandle.Alloc(merged.ToArray(), GCHandleType.Pinned);
-        _pinned.Add(handle);
-        return handle.AddrOfPinnedObject();
-    }
 
     public static string With(string icon, string label)
     {

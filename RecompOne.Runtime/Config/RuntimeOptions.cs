@@ -2,7 +2,6 @@ namespace RecompOne.Runtime.Config;
 
 public static class InterfaceOptions
 {
-    public static readonly Option<bool> BigPicture = Options.Bool("interface.big_picture");
     public static readonly Option<string> Language = Options.String("interface.language");
     public static readonly Option<string> Accent = Options.String("interface.accent");
     public static readonly Option<string> Background = Options.String("interface.background");
@@ -13,6 +12,18 @@ public static class InterfaceOptions
     public static readonly Option<bool> ShowFps = Options.Bool("interface.show_fps");
     public static readonly Option<bool> HideMenuBar = Options.Bool("interface.hide_menu_bar");
     public static readonly Option<bool> AutoHideMenuBar = Options.Bool("interface.autohide_menu_bar");
+
+    static InterfaceOptions()
+    {
+        AutoHideMenuBar.Changed += static on =>
+        {
+            if (on && HideMenuBar) HideMenuBar.Value = false;
+        };
+        HideMenuBar.Changed += static hide =>
+        {
+            if (hide && AutoHideMenuBar) AutoHideMenuBar.Value = false;
+        };
+    }
 }
 
 public static class DisplayOptions

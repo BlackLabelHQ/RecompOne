@@ -9,6 +9,47 @@ public class ClassicComponents : UiComponents
 {
     public override bool UsesRows => false;
     
+    public override bool InputInt(string label, ref int value, string? hint = null)
+    {
+        var changed = ImGui.InputInt(label, ref value);
+        Hint(hint);
+        return changed;
+    }
+    
+    public override bool BeginContextMenu(string id) => ImGui.BeginPopup(id);
+    
+    public override void EndContextMenu() => ImGui.EndPopup();
+    
+    public override void MenuNote(string text) => ImGui.TextDisabled(text);
+    
+    public override CardResult DrawCard(string id, Card card) => CardUi.DrawClassic(id, card);
+    
+    public override DialogChoice Dialog(string confirm, string? cancel = null, bool danger = false, bool enabled = true)
+    {
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Spacing();
+        
+        var size = new Vector2(120f * Theme.Scale, 0f);
+        var total = cancel == null ? size.X : size.X * 2f + ImGui.GetStyle().ItemSpacing.X;
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (ImGui.GetContentRegionAvail().X - total) * 0.5f);
+        
+        var choice = DialogChoice.None;
+        if (danger)
+        {
+            if (ImGuiUtils.Danger(confirm, enabled, size: size)) choice = DialogChoice.Confirm;
+        }
+        else
+        {
+            using (ImGuiUtils.Disabled(!enabled))
+                if (ImGui.Button(confirm, size)) choice = DialogChoice.Confirm;
+        }
+        
+        if (cancel == null) return choice;
+        ImGui.SameLine();
+        return ImGui.Button(cancel, size) ? DialogChoice.Cancel : choice;
+    }
+    
     public override float SelectableHeight => ImGui.GetTextLineHeightWithSpacing();
     
     public override bool Selectable(string label, bool selected)

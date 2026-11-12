@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace RecompOne.UI;
 
@@ -6,6 +7,13 @@ public static class MainDock
 {
     private const int RedockCooldownFrames = 8;
     
+    [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
+    private static extern IntPtr igGetCurrentWindow();
+    
+    [DllImport("cimgui", CallingConvention = CallingConvention.Cdecl)]
+    private static extern void igBringWindowToDisplayBack(IntPtr window);
+    
+    private static IntPtr _host;
     private static bool _layoutPending = true;
     private static int _redockCooldown;
     
@@ -17,6 +25,11 @@ public static class MainDock
     public static void CancelLayout()
     {
         _layoutPending = false;
+    }
+    
+    public static void SendToBack()
+    {
+        if (_host != IntPtr.Zero) igBringWindowToDisplayBack(_host);
     }
     
     public static void Draw(bool overlay)
@@ -39,6 +52,7 @@ public static class MainDock
         ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         ImGui.Begin("##DockHost", hostFlags);
+        _host = igGetCurrentWindow();
         ImGui.PopStyleVar(3);
         var dockId = ImGui.GetID("##MainDock");
         var openCount = PanelManager.Panels.Count(p => p.IsOpen && p is not IFloatingPanel);

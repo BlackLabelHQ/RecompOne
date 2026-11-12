@@ -41,7 +41,7 @@ public sealed class RamMapPanel : IPanel
         {
             if (ImGui.MenuItem("Reset view")) _view.Reset();
             ImGui.Separator();
-            ImGui.MenuItem("Show greyscale", null, ref Runtime.RamLog.ShowGreyscale);
+            ImGui.MenuItem("Show greyscale", (string?)null, ref Runtime.RamLog.ShowGreyscale);
             ImGui.EndMenu();
         }
 

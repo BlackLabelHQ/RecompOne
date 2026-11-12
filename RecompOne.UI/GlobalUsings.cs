@@ -23,5 +23,5 @@ global using RecompOne.Runtime.Modding;
 global using RecompOne.Runtime.Sdk;
 global using RecompOne.Runtime.Shaders;
 global using RecompOne.Runtime.Updates;
-global using ImGuiNET;
+global using Hexa.NET.ImGui;
 global using RecompOne.UI.Animation;

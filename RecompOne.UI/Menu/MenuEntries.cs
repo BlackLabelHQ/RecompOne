@@ -75,6 +75,8 @@ public sealed class MenuNode : MenuEntry
     public Action? OnClick;
     public Func<bool>? Enabled;
     public string? TooltipKey;
+    public Func<IPanel?>? Panel;
+    public string? Icon;
 
     public MenuNode(string labelKey)
     {
@@ -142,7 +144,7 @@ public sealed class MenuNode : MenuEntry
 
         if (_entries.Count == 0)
         {
-            if (ImGui.MenuItem(label, null, false, enabled)) OnClick?.Invoke();
+            if (ImGui.MenuItem(label, (string?)null, false, enabled)) OnClick?.Invoke();
             MenuTooltip.Draw(TooltipKey);
             return;
         }

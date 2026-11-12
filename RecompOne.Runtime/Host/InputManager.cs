@@ -16,8 +16,10 @@ public readonly record struct MenuPadState(
     bool Up, bool Down, bool Left, bool Right,
     bool Accept, bool Back, bool Alternate, bool Extra,
     bool LeftShoulder, bool RightShoulder,
-    bool Start, bool Select, bool Guide,
+    bool LeftStick, bool RightStick, bool Guide,
     float LeftX, float LeftY);
+
+public enum PadStyle { Xbox, PlayStation, PlayStation5, Nintendo, SteamDeck, SteamController }
 
 public static unsafe class InputManager
 {
@@ -80,6 +82,7 @@ public static unsafe class InputManager
         {
             _sdl = Sdl.GetApi();
             _sdl.SetHint("SDL_JOYSTICK_RAWINPUT", "0");
+            _sdl.SetHint("SDL_GAMECONTROLLER_USE_BUTTON_LABELS", "0");
             _sdl.InitSubSystem(Sdl.InitGamecontroller);
             Rescan();
         }
@@ -91,9 +94,21 @@ public static unsafe class InputManager
 
     public static bool IsConnected => _pad0 != null;
     
-    public static bool GameInputEnabled { get; set; } = true;
+    private static volatile bool _gameInput = true;
+    
+    public static bool GameInputEnabled
+    {
+        get => _gameInput;
+        set
+        {
+            _gameInput = value;
+            if (!value) ReleaseGameInput();
+        }
+    }
     
     public static MenuPadState MenuPad { get; private set; }
+    
+    public static PadStyle MenuPadStyle { get; private set; }
 
     public static bool IsPadConnected(int pad)
     {
@@ -112,11 +127,29 @@ public static unsafe class InputManager
 
 
         PollGamepadEvents();
-        PollKeyboard();
-        PollGamepads();
-        Controller.Connected2 = _pad1 != null || Settings.System.Input[1].Keys.Any;
         MenuPad = ReadMenuPad();
-        if (!GameInputEnabled) ReleaseGameInput();
+        Controller.Connected2 = _pad1 != null || Settings.System.Input[1].Keys.Any;
+        if (!_gameInput)
+        {
+            ReleaseGameInput();
+            return;
+        }
+        
+        var state = PollKeyboard();
+        PollGamepads(ref state);
+        if (!_gameInput) return;
+        Controller.State = state.State;
+        Controller.State2 = state.State2;
+        (Controller.LeftX, Controller.LeftY, Controller.RightX, Controller.RightY) = state.Sticks;
+        (Controller.LeftX2, Controller.LeftY2, Controller.RightX2, Controller.RightY2) = state.Sticks2;
+    }
+    
+    private struct GameInput
+    {
+        public ushort State;
+        public ushort State2;
+        public (byte, byte, byte, byte) Sticks;
+        public (byte, byte, byte, byte) Sticks2;
     }
     
     private static void ReleaseGameInput()
@@ -145,7 +178,7 @@ public static unsafe class InputManager
             AnyButton(GameControllerButton.A), AnyButton(GameControllerButton.B),
             AnyButton(GameControllerButton.X), AnyButton(GameControllerButton.Y),
             AnyButton(GameControllerButton.Leftshoulder), AnyButton(GameControllerButton.Rightshoulder),
-            AnyButton(GameControllerButton.Start), AnyButton(GameControllerButton.Back),
+            AnyButton(GameControllerButton.Leftstick), AnyButton(GameControllerButton.Rightstick),
             AnyButton(GameControllerButton.Guide),
             x, y);
     }
@@ -204,6 +237,7 @@ public static unsafe class InputManager
             if (ev.Type == (uint)EventType.Controllerdeviceadded) changed = true;
             if (ev.Type == (uint)EventType.Controllerdeviceremoved) changed = true;
             if (!anyCtrl) continue;
+            if (!_gameInput && ev.Type != (uint)EventType.Controllerbuttonup) continue;
             if (ev.Type == (uint)EventType.Controllerbuttondown || ev.Type == (uint)EventType.Controllerbuttonup)
                 EventBus.Dispatch(new ControllerEvent
                 {
@@ -301,6 +335,27 @@ public static unsafe class InputManager
         var used = new HashSet<int>();
         _pad0 = OpenFor(found, Settings.System.Input[0].Device, used);
         _pad1 = OpenFor(found, Settings.System.Input[1].Device, used);
+        MenuPadStyle = StyleOf(_pad0 != null ? _pad0 : _pad1);
+    }
+    
+    private static PadStyle StyleOf(GameController* pad)
+    {
+        if (Environment.GetEnvironmentVariable("SteamDeck") == "1") return PadStyle.SteamDeck;
+        if (_sdl == null || pad == null) return PadStyle.Xbox;
+        
+        var name = _sdl.GameControllerNameS(pad) ?? "";
+        if (name.Contains("Steam Deck", StringComparison.OrdinalIgnoreCase)) return PadStyle.SteamDeck;
+        if (name.Contains("Steam Controller", StringComparison.OrdinalIgnoreCase)) return PadStyle.SteamController;
+        
+        return _sdl.GameControllerGetType(pad) switch
+        {
+            GameControllerType.ControllerTypePS3 or GameControllerType.ControllerTypePS4 => PadStyle.PlayStation,
+            GameControllerType.ControllerTypePS5 => PadStyle.PlayStation5,
+            GameControllerType.ControllerTypeNintendoSwitchPro or GameControllerType.ControllerTypeNintendoSwitchJoyconLeft or
+                GameControllerType.ControllerTypeNintendoSwitchJoyconRight or
+                GameControllerType.ControllerTypeNintendoSwitchJoyconPair => PadStyle.Nintendo,
+            _ => PadStyle.Xbox
+        };
     }
 
     private static GameController* OpenFor(List<(int Index, string Id, string Name)> found, string wanted,
@@ -337,18 +392,19 @@ public static unsafe class InputManager
         return ctrl;
     }
 
-    private static void PollKeyboard()
+    private static GameInput PollKeyboard()
     {
-        var kb = _keyboard;
-        if (kb == null)
+        var input = new GameInput
         {
-            Controller.State = 0xFFFF;
-            Controller.State2 = 0xFFFF;
-            return;
-        }
+            State = 0xFFFF, State2 = 0xFFFF,
+            Sticks = (0x80, 0x80, 0x80, 0x80), Sticks2 = (0x80, 0x80, 0x80, 0x80)
+        };
+        var kb = _keyboard;
+        if (kb == null) return input;
 
-        Controller.State = KeyState(kb, Settings.System.Input[0].Keys);
-        Controller.State2 = KeyState(kb, Settings.System.Input[1].Keys);
+        input.State = KeyState(kb, Settings.System.Input[0].Keys);
+        input.State2 = KeyState(kb, Settings.System.Input[1].Keys);
+        return input;
     }
 
     private static ushort KeyState(IKeyboard kb, KeyBindings cfg)
@@ -381,28 +437,26 @@ public static unsafe class InputManager
         return s;
     }
 
-    private static void PollGamepads()
+    private static void PollGamepads(ref GameInput input)
     {
         if (_sdl == null) return;
 
         if (_pad0 != null)
         {
             var bind = Settings.System.Input[0].Gamepad;
-            Controller.State = PadState(_pad0, bind, Controller.State);
-            (Controller.LeftX, Controller.LeftY) = Stick(_pad0, bind.LeftStickX, bind.LeftStickY);
-            (Controller.RightX, Controller.RightY) = Stick(_pad0, bind.RightStickX, bind.RightStickY);
+            input.State = PadState(_pad0, bind, input.State);
+            var (lx, ly) = Stick(_pad0, bind.LeftStickX, bind.LeftStickY);
+            var (rx, ry) = Stick(_pad0, bind.RightStickX, bind.RightStickY);
+            input.Sticks = (lx, ly, rx, ry);
         }
 
         if (_pad1 != null)
         {
             var bind = Settings.System.Input[1].Gamepad;
-            Controller.State2 = PadState(_pad1, bind, Controller.State2);
-            (Controller.LeftX2, Controller.LeftY2) = Stick(_pad1, bind.LeftStickX, bind.LeftStickY);
-            (Controller.RightX2, Controller.RightY2) = Stick(_pad1, bind.RightStickX, bind.RightStickY);
-        }
-        else
-        {
-            Controller.LeftX2 = Controller.LeftY2 = Controller.RightX2 = Controller.RightY2 = 0x80;
+            input.State2 = PadState(_pad1, bind, input.State2);
+            var (lx, ly) = Stick(_pad1, bind.LeftStickX, bind.LeftStickY);
+            var (rx, ry) = Stick(_pad1, bind.RightStickX, bind.RightStickY);
+            input.Sticks2 = (lx, ly, rx, ry);
         }
     }
 
@@ -490,7 +544,7 @@ public static unsafe class InputManager
         if (key == Key.F1) _topBarToggle = true;
         if (key == Key.F11) _fullscreenToggle = true;
 
-        if (EventBus.HasAnyListeners<KeyboardEvent>())
+        if (_gameInput && EventBus.HasAnyListeners<KeyboardEvent>())
             EventBus.Dispatch(new KeyboardEvent
             {
                 Key = (int)key,
@@ -510,7 +564,7 @@ public static unsafe class InputManager
 
     private static void OnMouseMove(IMouse mouse, Vector2 position)
     {
-        if (EventBus.HasAnyListeners<MouseEvent>())
+        if (_gameInput && EventBus.HasAnyListeners<MouseEvent>())
             EventBus.Dispatch(new MouseEvent
             {
                 Action = MouseAction.Move,
@@ -521,7 +575,7 @@ public static unsafe class InputManager
 
     private static void OnMouseDown(IMouse mouse, MouseButton mouseButton)
     {
-        if (EventBus.HasAnyListeners<MouseEvent>())
+        if (_gameInput && EventBus.HasAnyListeners<MouseEvent>())
             EventBus.Dispatch(new MouseEvent
             {
                 Action = MouseAction.Button,
@@ -547,7 +601,7 @@ public static unsafe class InputManager
 
     private static void OnScroll(IMouse mouse, ScrollWheel wheel)
     {
-        if (EventBus.HasAnyListeners<MouseEvent>())
+        if (_gameInput && EventBus.HasAnyListeners<MouseEvent>())
             EventBus.Dispatch(new MouseEvent
             {
                 Action = MouseAction.Wheel,

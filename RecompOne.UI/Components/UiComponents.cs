@@ -2,6 +2,8 @@ using System.Numerics;
 
 namespace RecompOne.UI;
 
+public enum DialogChoice { None, Confirm, Cancel }
+
 /// <summary>Te components every interface style has to provide. called trough <see cref="Ui"/></summary>
 public abstract class UiComponents
 {
@@ -13,6 +15,19 @@ public abstract class UiComponents
     
     /// <summary>Entry of a list, marked when <paramref name="selected"/></summary>
     public abstract bool Selectable(string label, bool selected);
+    
+    public abstract CardResult DrawCard(string id, Card card);
+    
+    /// <summary>Buttons at the end of a dialog. No <paramref name="cancel"/> means a single button.</summary>
+    public abstract DialogChoice Dialog(string confirm, string? cancel = null, bool danger = false, bool enabled = true);
+    
+    /// <summar> Starts a context menu, fill it with <see cref="MenuItem"/> and close it with <see cref="EndContextMenu"/>.</summary>
+    public abstract bool BeginContextMenu(string id);
+    
+    public abstract void EndContextMenu();
+    
+    /// <summary>context menu thingy</summary>
+    public abstract void MenuNote(string text);
     
     /// <summary>on\off switch</summary>
     public abstract bool Toggle(string label, ref bool value, string? hint = null);
@@ -29,6 +44,8 @@ public abstract class UiComponents
     
     /// <summary>aame as <see cref="Combo"/></summary>
     public abstract bool CompactCombo(string id, string preview, IReadOnlyList<string> items, ref int index);
+    
+    public abstract bool InputInt(string label, ref int value, string? hint = null);
     
     /// <summary>Editable text boxx.</summary>
     public abstract bool Input(string label, ref string value, uint maxLength = 256, string? placeholder = null, string? hint = null);

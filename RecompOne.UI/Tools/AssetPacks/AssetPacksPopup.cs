@@ -90,25 +90,25 @@ public sealed class AssetPacksPopup : Popup
             ImGui.OpenPopup("opts");
         }
 
-        if (ImGui.BeginPopup("opts"))
+        if (Ui.BeginContextMenu("opts"))
         {
-            if (index > 0 && ImGui.MenuItem("Move up")) Manager.MovePack(pack.Id, index - 1);
-            if (index < total - 1 && ImGui.MenuItem("Move down")) Manager.MovePack(pack.Id, index + 1);
-            if (pack.Editable && ImGui.MenuItem(Localization.T("common.open_folder"))) PackAuthoring.OpenExternal(pack.Path);
-            if (ImGui.MenuItem("Export as .zip...")) Export(pack);
-            if (pack.IsZip && ImGui.MenuItem("Unpack to edit"))
+            if (index > 0 && Ui.MenuItem("Move up", null, false, true)) Manager.MovePack(pack.Id, index - 1);
+            if (index < total - 1 && Ui.MenuItem("Move down", null, false, true)) Manager.MovePack(pack.Id, index + 1);
+            if (pack.Editable && Ui.MenuItem(Localization.T("common.open_folder"), null, false, true)) PackAuthoring.OpenExternal(pack.Path);
+            if (Ui.MenuItem("Export as .zip...", null, false, true)) Export(pack);
+            if (pack.IsZip && Ui.MenuItem("Unpack to edit", null, false, true))
             {
                 if (PackAuthoring.Unpack(pack, out var error) == null)
                     ToastNotifications.ShowText("Asset Packs", $"Couldn't unpack: {error}");
             }
 
-            ImGui.Separator();
-            if (ImGui.MenuItem("Delete..."))
+            Ui.Separator();
+            if (Ui.MenuItem("Delete...", null, false, true))
                 ConfirmPopup.Ask($"Delete \"{pack.DisplayName}\"?", "Its files are removed. This can nt be undone.", "Delete",
                     () => PackAuthoring.Delete(pack));
-            ImGui.Separator();
-            ImGui.TextDisabled(pack.Id);
-            ImGui.EndPopup();
+            Ui.Separator();
+            Ui.MenuNote(pack.Id);
+            Ui.EndContextMenu();
         }
 
         ImGui.PopID();
@@ -190,21 +190,10 @@ public sealed class NewPackPopup : Popup
 
         if (_error.Length > 0) ImGuiUtils.TextWrappedColored(ImGuiUtils.Red, _error);
 
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        var button = 120f * Theme.Scale;
-        var spacing = ImGui.GetStyle().ItemSpacing.X;
-        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (ImGui.GetContentRegionAvail().X - button * 2f - spacing) * 0.5f);
-
         var valid = !string.IsNullOrWhiteSpace(_name);
-        using (ImGuiUtils.Disabled(!valid))
-        {
-            if ((ImGui.Button("Create", new Vector2(button, 0f)) || enter) && valid) Create();
-        }
-        ImGui.SameLine();
-        if (ImGui.Button(Localization.T("common.cancel"), new Vector2(button, 0f))) Close();
+        var choice = Ui.Dialog("Create", Localization.T("common.cancel"), enabled: valid);
+        if ((choice == DialogChoice.Confirm || enter) && valid) Create();
+        else if (choice == DialogChoice.Cancel) Close();
     }
 
     private void Create()
@@ -247,28 +236,19 @@ public sealed class ConfirmPopup : Popup
     {
         ImGui.TextWrapped(_title);
         ImGui.TextDisabled(_message);
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        var button = 120f * Theme.Scale;
-        var spacing = ImGui.GetStyle().ItemSpacing.X;
-        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + (ImGui.GetContentRegionAvail().X - button * 2f - spacing) * 0.5f);
-        if (ImGuiUtils.Danger(_confirm, size: new Vector2(button, 0f)))
+        var choice = Ui.Dialog(_confirm, Localization.T("common.cancel"), true);
+        if (choice == DialogChoice.Cancel) Close();
+        if (choice != DialogChoice.Confirm) return;
+        
+        try
         {
-            try
-            {
-                _action?.Invoke();
-            }
-            catch (Exception e)
-            {
-                ToastNotifications.ShowText(_confirm, e.Message);
-            }
-
-            Close();
+            _action?.Invoke();
         }
-
-        ImGui.SameLine();
-        if (ImGui.Button(Localization.T("common.cancel"), new Vector2(button, 0f))) Close();
+        catch (Exception e)
+        {
+            ToastNotifications.ShowText(_confirm, e.Message);
+        }
+        
+        Close();
     }
 }

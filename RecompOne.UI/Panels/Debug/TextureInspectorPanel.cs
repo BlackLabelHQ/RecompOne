@@ -213,12 +213,12 @@ public sealed class TextureInspectorPanel : IPanel
 
         var scale = _thumbSize / (float)Math.Max(t.W, t.H);
         var size = new Vector2(Math.Max(1, t.W * scale), Math.Max(1, t.H * scale));
-        ImGui.Image((nint)t.GlTex, size);
+        ImGui.Image(ImGuiUtils.Tex((nint)t.GlTex), size);
 
         if (!ImGui.IsItemHovered()) return;
         ImGui.BeginTooltip();
         var big = 256f / Math.Max(t.W, t.H);
-        ImGui.Image((nint)t.GlTex, new Vector2(t.W * big, t.H * big));
+        ImGui.Image(ImGuiUtils.Tex((nint)t.GlTex), new Vector2(t.W * big, t.H * big));
         ImGui.EndTooltip();
     }
 }

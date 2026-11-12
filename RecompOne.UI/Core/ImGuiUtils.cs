@@ -4,6 +4,25 @@ namespace RecompOne.UI;
 
 public static class ImGuiUtils
 {
+    public static unsafe ImTextureRef Tex(nint texture) => new(null, (ImTextureID)texture);
+
+    public static unsafe void AddText(ImDrawListPtr draw, ImFontPtr font, float size, Vector2 pos, uint color, string text,
+        float wrap = 0f)
+    {
+        var max = System.Text.Encoding.UTF8.GetMaxByteCount(text.Length);
+        Span<byte> bytes = max <= 2048 ? stackalloc byte[max] : new byte[max];
+        var count = System.Text.Encoding.UTF8.GetBytes(text, bytes);
+        fixed (byte* start = bytes) draw.AddText(font.Handle, size, pos, color, start, start + count, wrap);
+    }
+
+    public static unsafe Vector2 TextSize(ImFontPtr font, float size, string text)
+    {
+        var max = System.Text.Encoding.UTF8.GetMaxByteCount(text.Length);
+        Span<byte> bytes = max <= 2048 ? stackalloc byte[max] : new byte[max];
+        var count = System.Text.Encoding.UTF8.GetBytes(text, bytes);
+        fixed (byte* start = bytes) return ImGui.CalcTextSizeA(font, size, float.MaxValue, 0f, start, start + count);
+    }
+
     public static readonly Vector4 Green = new(0.40f, 0.85f, 0.45f, 1f);
     public static readonly Vector4 Amber = new(0.95f, 0.70f, 0.30f, 1f);
     public static readonly Vector4 Red = new(0.95f, 0.38f, 0.38f, 1f);
@@ -242,6 +261,8 @@ public static class ImGuiUtils
         return changed;
     }
 
+    public static bool NavFocused => ImGui.IsItemFocused() && ImGui.IsAnyItemFocused();
+
     public static bool Toggle(string id, ref bool value) //why doesnt igui have a nice toggle by default? :<
     {
         var scale = Theme.Scale;
@@ -251,7 +272,7 @@ public static class ImGuiUtils
         var pos = ImGui.GetCursorScreenPos();
         var clicked = ImGui.InvisibleButton(id, new Vector2(w, h), ImGuiButtonFlags.EnableNav);
         if (clicked) value = !value;
-        var hovered = ImGui.IsItemHovered() || ImGui.IsItemFocused();
+        var hovered = ImGui.IsItemHovered() || NavFocused;
 
         var t = AnimationStore.Update(gid, value ? 1f : 0f);
 
@@ -301,7 +322,7 @@ public static class ImGuiUtils
             var fit = MathF.Min(size.X / w, size.Y / h);
             var drawn = new Vector2(w * fit, h * fit);
             var at = pos + (size - drawn) * 0.5f;
-            dl.AddImage((nint)tex, at, at + drawn);
+            dl.AddImage(Tex((nint)tex), at, at + drawn);
         }
         else if (empty != null)
         {
@@ -318,13 +339,14 @@ public static class ImGuiUtils
         var dl = ImGui.GetWindowDrawList();
         var hash = 2166136261;
         foreach (var c in seed) hash = (hash ^ c) * 16777619;
-        ImGui.ColorConvertHSVtoRGB(hash % 360 / 360f, 0.42f, 0.42f, out var r, out var g, out var b);
+        float r = 0f, g = 0f, b = 0f;
+        ImGui.ColorConvertHSVtoRGB(hash % 360 / 360f, 0.42f, 0.42f, ref r, ref g, ref b);
         dl.AddRectFilled(pos, pos + new Vector2(size, size), ImGui.ColorConvertFloat4ToU32(new Vector4(r, g, b, 1f)),
             ImGui.GetStyle().FrameRounding);
         var letter = char.ToUpperInvariant(name.Length > 0 ? name[0] : '?').ToString();
         var fontSize = size * 0.5f;
-        var ts = ImGui.GetFont().CalcTextSizeA(fontSize, float.MaxValue, 0f, letter);
-        dl.AddText(ImGui.GetFont(), fontSize, pos + (new Vector2(size, size) - ts) * 0.5f,
+        var ts = TextSize(ImGui.GetFont(), fontSize, letter);
+        AddText(dl, ImGui.GetFont(), fontSize, pos + (new Vector2(size, size) - ts) * 0.5f,
             ImGui.ColorConvertFloat4ToU32(new Vector4(1f, 1f, 1f, 0.9f)), letter);
         ImGui.Dummy(new Vector2(size, size));
     }

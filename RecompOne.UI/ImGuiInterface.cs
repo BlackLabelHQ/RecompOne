@@ -39,13 +39,13 @@ public class ImGuiInterface : IUserInterface
         var io = ImGui.GetIO();
         io.ConfigFlags |= ImGuiConfigFlags.DockingEnable;
         io.ConfigWindowsMoveFromTitleBarOnly = true;
-        io.FontGlobalScale = InterfaceOptions.Scale;
         unsafe
         {
-            io.NativePtr->IniFilename = null;
+            io.IniFilename = null;
         }
         
         LoadFonts();
+        ApplyFontSize();
         Localization.Load();
         Theme.Load();
         
@@ -54,7 +54,14 @@ public class ImGuiInterface : IUserInterface
     
     protected virtual void LoadFonts()
     {
-        FontSet.Load(16f * HostWindow.DpiScale);
+        FontSet.Load();
+    }
+    
+    protected virtual void ApplyFontSize()
+    {
+        var style = ImGui.GetStyle();
+        style.FontSizeBase = FontSet.BaseSize * HostWindow.DpiScale;
+        style.FontScaleMain = InterfaceOptions.Scale;
     }
     
     protected virtual void RegisterPanels()
@@ -108,6 +115,7 @@ public class ImGuiInterface : IUserInterface
     
     public virtual void BeginFrame(double delta)
     {
+        ApplyFontSize();
         _imgui!.Update((float)delta);
         Autohide.Update();
         ToolUi.Pump(); //update thread state
@@ -149,6 +157,13 @@ public class ImGuiInterface : IUserInterface
     public virtual void ShowNotice(string message)
     {
         NoticePopup.Show(message);
+    }
+    
+    public virtual bool PickingDisc => PopupManager.Get<DiscPickerPopup>()?.IsOpen == true;
+    
+    public virtual void PickDisc(string missing)
+    {
+        DiscPickerPopup.Ask($"{Localization.T("disc.error.not_found")} ({missing})");
     }
     
     public virtual void ReportCrash(Exception error)

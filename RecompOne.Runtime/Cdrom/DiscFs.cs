@@ -14,8 +14,11 @@ public sealed class DiscFs : IDisposable
         _image = image;
     }
 
+    public static Func<string, string>? MissingDisc { get; set; }
+
     public static DiscFs Open(string path)
     {
+        if (!File.Exists(path) && MissingDisc != null) path = MissingDisc(path);
         return new DiscFs(DiscImage.Open(path));
     }
 

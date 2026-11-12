@@ -37,12 +37,6 @@ public sealed class NoticePopup : Popup
     {
         UiText.CenteredWrapped(_message);
 
-        ImGui.Spacing();
-        ImGui.Separator();
-        ImGui.Spacing();
-
-        var width = 140f;
-        ImGui.SetCursorPosX((ImGui.GetContentRegionAvail().X - width) * 0.5f + ImGui.GetCursorPosX());
-        if (ImGui.Button(Localization.T("common.ok"), new Vector2(width, 0f))) Close();
+        if (Ui.Dialog(Localization.T("common.ok")) != DialogChoice.None) Close();
     }
 }

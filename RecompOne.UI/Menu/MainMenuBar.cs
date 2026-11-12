@@ -92,7 +92,7 @@ public static class MainMenuBar
     {
         var turbo = Interrupts.Turbo;
 
-        if (ImGuiNET.ImGui.MenuItem("Turbo", null, turbo))
+        if (Hexa.NET.ImGui.ImGui.MenuItem("Turbo", (string?)null, turbo))
         {
             Interrupts.Turbo = !turbo;
             if (!Interrupts.Turbo) Interrupts.ResyncVBlank();
@@ -104,10 +104,10 @@ public static class MainMenuBar
         if (!InterfaceOptions.ShowFps) return;
 
         var text = $"{FrameClock.PresentFps:F0} / {FrameClock.Fps:F0} fps";
-        var width = ImGuiNET.ImGui.CalcTextSize(text).X;
-        ImGuiNET.ImGui.SameLine(ImGuiNET.ImGui.GetWindowWidth() - width -
-                                ImGuiNET.ImGui.GetStyle().FramePadding.X * 2f);
-        ImGuiNET.ImGui.TextUnformatted(text);
+        var width = Hexa.NET.ImGui.ImGui.CalcTextSize(text).X;
+        Hexa.NET.ImGui.ImGui.SameLine(Hexa.NET.ImGui.ImGui.GetWindowWidth() - width -
+                                Hexa.NET.ImGui.ImGui.GetStyle().FramePadding.X * 2f);
+        Hexa.NET.ImGui.ImGui.TextUnformatted(text);
     }
 
 

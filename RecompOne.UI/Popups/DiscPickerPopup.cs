@@ -11,11 +11,19 @@ public sealed class DiscPickerPopup : Popup
 
     private string _path = "";
     private string _error = "";
+    private static string _problem = "";
+
+    public static void Ask(string problem)
+    {
+        _problem = problem;
+        PopupManager.Open<DiscPickerPopup>();
+    }
 
     protected override void OnOpened()
     {
         _path = Settings.System.DiscPath;
-        _error = "";
+        _error = _problem;
+        _problem = "";
     }
 
     protected override void DrawContent()

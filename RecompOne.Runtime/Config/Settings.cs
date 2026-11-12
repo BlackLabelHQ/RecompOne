@@ -37,6 +37,8 @@ public static class Settings
 
     public static event Action<string>? Changed;
 
+    public static bool FirstBoot { get; private set; }
+
     public static void EnsureLoaded()
     {
         if (_loaded) return;
@@ -183,6 +185,7 @@ public static class Settings
 
     private static void Read()
     {
+        FirstBoot = !File.Exists(FilePath);
         JsonNode? root = null;
         if (File.Exists(FilePath))
             try

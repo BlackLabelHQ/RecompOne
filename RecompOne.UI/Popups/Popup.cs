@@ -2,6 +2,15 @@ using System.Numerics;
 
 namespace RecompOne.UI;
 
+//popout shit thing 
+public interface IPopupStyle
+{
+    void Push();
+    void Pop();
+
+    bool DrawTitle(string title, bool closable);
+}
+
 public abstract class Popup
 {
     protected virtual Vector2 Size => new(520f, 0f);
@@ -86,8 +95,10 @@ public abstract class Popup
 
         var viewport = ImGui.GetMainViewport();
         var style = ImGui.GetStyle();
+        var look = PopupManager.Style;
+        look?.Push();
 
-        ImGui.SetNextWindowPos(viewport.GetCenter(), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
+        ImGui.SetNextWindowPos((viewport.Pos + viewport.Size * 0.5f), ImGuiCond.Always, new Vector2(0.5f, 0.5f));
         ImGui.SetNextWindowSize(PopupManager.Fullscreen && Size.Y > 0f ? viewport.WorkSize : Vector2.Min(Size * Theme.Scale, viewport.WorkSize), ImGuiCond.Always);
 
         const ImGuiWindowFlags flags =
@@ -104,16 +115,19 @@ public abstract class Popup
             _pendingClose = false;
             if (IsOpen) Close();
             _pendingClose = false;
+            look?.Pop();
             return;
         }
 
-        DrawTitleBar();
+        if (look == null) DrawTitleBar();
+        else if (look.DrawTitle(Localization.T(TitleKey), Closable)) Close();
 
         var padding = style.WindowPadding;
         var body = new Vector2(0f, Size.Y > 0f ? -padding.Y : 0f);
         var childFlags = ImGuiChildFlags.AlwaysUseWindowPadding | ImGuiChildFlags.NavFlattened |
                          (Size.Y > 0f ? ImGuiChildFlags.None : ImGuiChildFlags.AutoResizeY);
 
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() - padding.Y * 0.5f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, padding);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 0f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, Vector4.Zero);
@@ -138,6 +152,7 @@ public abstract class Popup
         }
 
         ImGui.EndPopup();
+        look?.Pop();
     }
 
     private void DrawTitleBar()

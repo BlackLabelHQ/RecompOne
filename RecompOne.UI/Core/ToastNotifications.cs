@@ -11,7 +11,8 @@ public static class ToastNotifications
     private const float Margin = 12f;
     private const float Spacing = 8f;
     private const float IconSize = 34f;
-    private const float AccentBar = 3f;
+    private const float CenteredWidth = 420f;
+    private const float CenteredPadding = 1.4f;
 
     private sealed class Toast
     {
@@ -34,6 +35,8 @@ public static class ToastNotifications
     private static readonly List<Toast> _toasts = [];
     private static readonly object _gate = new();
     private static int _nextId;
+
+    public static bool Centered { get; set; }
 
     public static void Show(string titleKey, string messageKey, Func<uint>? icon = null,
         float duration = DefaultDuration)
@@ -83,10 +86,11 @@ public static class ToastNotifications
         var scale = Theme.Scale;
         var margin = Margin * scale;
         var spacing = Spacing * scale;
-        var width = MathF.Min(Width * scale, areaMax.X - areaMin.X - margin * 2f);
+        var width = MathF.Min((Centered ? CenteredWidth : Width) * scale, areaMax.X - areaMin.X - margin * 2f);
+        var padding = style.WindowPadding * (Centered ? CenteredPadding : 1f);
 
         var windowHovered = ImGui.IsWindowHovered(ImGuiHoveredFlags.ChildWindows);
-        var right = areaMax.X - margin;
+        var right = Centered ? (areaMin.X + areaMax.X + width) * 0.5f : areaMax.X - margin;
         var stackY = areaMin.Y + margin;
 
         var draw = ImGui.GetWindowDrawList();
@@ -103,7 +107,7 @@ public static class ToastNotifications
                 ? 1f - Ease(Math.Clamp(toast.Fade / SlideOut, 0f, 1f))
                 : Ease(Math.Clamp(toast.Enter / SlideIn, 0f, 1f));
 
-            var height = Measure(toast, width, scale, style, out var rowHeight, out var textHeight, out var textWidth);
+            var height = Measure(toast, width, scale, style, padding, out var rowHeight, out var textHeight, out var textWidth);
 
             if (!toast.Placed)
             {
@@ -115,11 +119,12 @@ public static class ToastNotifications
                 toast.Y += (stackY - toast.Y) * Math.Min(1f, dt * 14f);
             }
 
-            var slide = (1f - progress) * (width + margin * 2f);
-            var min = new Vector2(right - width + slide, toast.Y);
+            var min = Centered
+                ? new Vector2(right - width, toast.Y - (1f - progress) * (height + margin * 2f))
+                : new Vector2(right - width + (1f - progress) * (width + margin * 2f), toast.Y);
             var max = min + new Vector2(width, height);
 
-            Paint(draw, toast, min, max, progress, rowHeight, textHeight, textWidth, scale, style);
+            Paint(draw, toast, min, max, progress, rowHeight, textHeight, textWidth, scale, style, padding);
 
             toast.Hovered = windowHovered && ImGui.IsMouseHoveringRect(min, max);
             if (toast.Hovered && ImGui.IsMouseClicked(ImGuiMouseButton.Left)) toast.Closing = true;
@@ -135,13 +140,12 @@ public static class ToastNotifications
         }
     }
 
-    private static float Measure(Toast toast, float width, float scale, ImGuiStylePtr style, out float rowHeight,
-        out float textHeight, out float textWidth) //icon calc
+    private static float Measure(Toast toast, float width, float scale, ImGuiStylePtr style, Vector2 padding,
+        out float rowHeight, out float textHeight, out float textWidth) //icon calc
     {
         var icon = Texture(toast) != 0 ? IconSize * scale : 0f;
-        var inner = AccentBar * scale + style.WindowPadding.X;
 
-        textWidth = width - inner - style.WindowPadding.X;
+        textWidth = width - padding.X * 2f;
         if (icon > 0f) textWidth -= icon + style.ItemSpacing.X;
         if (textWidth < 1f) textWidth = 1f;
 
@@ -152,32 +156,26 @@ public static class ToastNotifications
         if (titleHeight > 0f && messageHeight > 0f) textHeight += style.ItemSpacing.Y;
 
         rowHeight = MathF.Max(icon, textHeight);
-        return rowHeight + style.WindowPadding.Y * 2f;
+        return rowHeight + padding.Y * 2f;
     }
 
     private static void Paint(ImDrawListPtr draw, Toast toast, Vector2 min, Vector2 max, float alpha,
-        float rowHeight, float textHeight, float textWidth, float scale, ImGuiStylePtr style)
+        float rowHeight, float textHeight, float textWidth, float scale, ImGuiStylePtr style, Vector2 padding)
     {
         var rounding = style.WindowRounding;
-        var bar = AccentBar * scale;
 
         draw.AddRectFilled(min, max, Fade(style.Colors[(int)ImGuiCol.PopupBg], alpha * 0.97f), rounding);
-
-        draw.PushClipRect(min, new Vector2(min.X + bar, max.Y), true);
-        draw.AddRectFilled(min, max, Fade(Theme.Accent, alpha), rounding, ImDrawFlags.RoundCornersLeft);
-        draw.PopClipRect();
-
         draw.AddRect(min, max, Fade(style.Colors[(int)ImGuiCol.Border], alpha), rounding);
 
-        var x = min.X + bar + style.WindowPadding.X;
-        var top = min.Y + style.WindowPadding.Y;
+        var x = min.X + padding.X;
+        var top = min.Y + padding.Y;
 
         var texture = Texture(toast);
         if (texture != 0)
         {
             var size = IconSize * scale;
             var at = new Vector2(x, top + (rowHeight - size) * 0.5f);
-            draw.AddImage((nint)texture, at, at + new Vector2(size, size), Vector2.Zero, Vector2.One,
+            draw.AddImage(ImGuiUtils.Tex((nint)texture), at, at + new Vector2(size, size), Vector2.Zero, Vector2.One,
                 Fade(Vector4.One, alpha));
             x += size + style.ItemSpacing.X;
         }
@@ -188,12 +186,12 @@ public static class ToastNotifications
 
         if (toast.Title.Length > 0)
         {
-            draw.AddText(font, fontSize, new Vector2(x, y), Fade(Theme.AccentText, alpha), toast.Title, textWidth);
+            ImGuiUtils.AddText(draw, font, fontSize, new Vector2(x, y), Fade(Theme.AccentText, alpha), toast.Title, textWidth);
             y += ImGui.CalcTextSize(toast.Title, false, textWidth).Y + style.ItemSpacing.Y;
         }
 
         if (toast.Message.Length > 0)
-            draw.AddText(font, fontSize, new Vector2(x, y), Fade(style.Colors[(int)ImGuiCol.Text], alpha),
+            ImGuiUtils.AddText(draw, font, fontSize, new Vector2(x, y), Fade(style.Colors[(int)ImGuiCol.Text], alpha),
                 toast.Message, textWidth);
     }
 

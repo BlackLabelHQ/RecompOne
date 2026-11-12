@@ -74,11 +74,13 @@ public sealed class PortSettings
 
     [JsonIgnore] public GamepadBindings Gamepad => Kind == PadKind.Analog ? Analog : Digital;
 
+    public static PadKind PrimaryKind { get; set; } = PadKind.Analog;
+
     public static PortSettings Primary()
     {
         return new PortSettings
         {
-            Kind = PadKind.Analog,
+            Kind = PrimaryKind,
             Keys = new KeyBindings(),
             Digital = new GamepadBindings(),
             Analog = GamepadBindings.DefaultAnalog()
