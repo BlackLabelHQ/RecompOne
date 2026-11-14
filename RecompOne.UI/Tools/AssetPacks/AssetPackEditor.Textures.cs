@@ -328,6 +328,12 @@ public sealed partial class AssetPackEditor
             _texPalette = false;
         }
 
+        if (mine != null)
+        {
+            ImGui.Spacing();
+            DrawTextureOptions(pack, mine);
+        }
+
         ImGui.Spacing();
         var editable = pack.Editable;
 

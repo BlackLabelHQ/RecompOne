@@ -40,6 +40,7 @@ public static class XaRegistry
         {
             if (newRun || _current == null)
             {
+                runLba = DiscAudio.Find(runLba, file, channel)?.StartLba ?? runLba;
                 _current = _seen.FirstOrDefault(s => s.File == file && s.Channel == channel && s.StartLba == runLba) ??
                            _seen.FirstOrDefault(s => s.File == file && s.Channel == channel &&
                                                      runLba >= s.StartLba && runLba <= s.LastLba + SameRunSlack);
@@ -75,6 +76,34 @@ public static class XaRegistry
         lock (_gate)
         {
             return _seen.Select(s => s.Clone()).ToArray();
+        }
+    }
+
+    public static void Resnap()
+    {
+        lock (_gate)
+        {
+            for (var i = 0; i < _seen.Count; i++)
+            {
+                var seen = _seen[i];
+                var track = DiscAudio.Find(seen.StartLba, seen.File, seen.Channel);
+                if (track == null || track.StartLba == seen.StartLba) continue;
+
+                var kept = _seen.FirstOrDefault(s => !ReferenceEquals(s, seen) && s.File == seen.File &&
+                                                     s.Channel == seen.Channel && s.StartLba == track.StartLba);
+                if (kept == null)
+                {
+                    seen.StartLba = track.StartLba;
+                    continue;
+                }
+
+                kept.Hits += seen.Hits;
+                kept.Sectors += seen.Sectors;
+                kept.LastLba = Math.Max(kept.LastLba, seen.LastLba);
+                kept.LastSeen = Math.Max(kept.LastSeen, seen.LastSeen);
+                if (ReferenceEquals(_current, seen)) _current = kept;
+                _seen.RemoveAt(i--);
+            }
         }
     }
 

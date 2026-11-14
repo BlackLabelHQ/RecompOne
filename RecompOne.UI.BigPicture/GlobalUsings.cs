@@ -1,0 +1,18 @@
+global using System.Numerics;
+global using Hexa.NET.ImGui;
+global using RecompOne.Runtime.Config;
+global using RecompOne.Runtime.Host;
+global using RecompOne.UI.Animation;
+global using static RecompOne.UI.BigPicture.Style.Units;
+global using RecompOne.UI.BigPicture.Animations;
+global using RecompOne.UI.BigPicture.Components;
+global using RecompOne.UI.BigPicture.Components.Widgets;
+global using RecompOne.UI.BigPicture.Glyphs;
+global using RecompOne.UI.BigPicture.Glyphs.Svg;
+global using RecompOne.UI.BigPicture.Input;
+global using RecompOne.UI.BigPicture.Navigation;
+global using RecompOne.UI.BigPicture.Session;
+global using RecompOne.UI.BigPicture.Shell;
+global using RecompOne.UI.BigPicture.Style;
+global using RecompOne.UI.BigPicture.Tabs;
+global using RecompOne.UI.BigPicture.Tabs.Pages;

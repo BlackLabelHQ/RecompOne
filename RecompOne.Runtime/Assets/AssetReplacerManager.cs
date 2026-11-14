@@ -7,6 +7,8 @@ public sealed class XaEntry
     public byte? FileNumber;
     public byte? Channel;
     public int StartLba;
+    public int? Track;
+    public bool Pinned;
     public ulong PayloadHash;
     public string AudioName = "";
     public Func<byte[]?> Open = () => null;
@@ -19,6 +21,7 @@ public sealed class XaEntry
 
     public bool Matches(byte file, byte channel, int lba)
     {
+        if (Track.HasValue) return false;
         if (FileNumber.HasValue && FileNumber.Value != file) return false;
         if (Channel.HasValue && Channel.Value != channel) return false;
         return StartLba <= lba;
@@ -26,6 +29,7 @@ public sealed class XaEntry
 
     public override string ToString()
     {
+        if (Track.HasValue) return $"{PackId}: cd track {Track} -> {AudioName}";
         return $"{PackId}: f{FileNumber?.ToString() ?? "*"} c{Channel?.ToString() ?? "*"} @{StartLba} -> {AudioName}";
     }
 }
@@ -137,6 +141,7 @@ public sealed class AssetReplacerManager
             if (_enabled == value) return;
             _enabled = value;
             Xa.XaRouter.Rebind(); //so this shit dont crash
+            Xa.CddaRouter.Rebind();
         }
     }
     public bool AutoReload { get; set; } = true;
@@ -304,7 +309,9 @@ public sealed class AssetReplacerManager
         LoadAll(string.IsNullOrEmpty(Root) ? null : Root);
         Textures.TextureResolver.Invalidate();
         Sfx.SfxCache.Clear();
-        if (XaSignature() != xa) Xa.XaRouter.Rebind();
+        if (XaSignature() == xa) return;
+        Xa.XaRouter.Rebind();
+        Xa.CddaRouter.Rebind();
     }
 
     public void RequestReload(int delayMs = 0)
@@ -323,7 +330,7 @@ public sealed class AssetReplacerManager
     {
         lock (_gate)
         {
-            return string.Join('|', _xa.Select(e => $"{e.PackId}:{e.FileNumber}:{e.Channel}:{e.StartLba}:{e.AudioName}"));
+            return string.Join('|', _xa.Select(e => $"{e.PackId}:{e.FileNumber}:{e.Channel}:{e.StartLba}:{e.Track}:{e.AudioName}"));
         }
     }
 
@@ -481,6 +488,8 @@ public sealed class AssetReplacerManager
             if (dto.FileNumber.HasValue) entry.FileNumber = (byte)dto.FileNumber.Value;
             if (dto.Channel.HasValue) entry.Channel = (byte)dto.Channel.Value;
             entry.StartLba = dto.StartLba ?? 0;
+            entry.Track = dto.Track;
+            entry.Pinned = dto.FileNumber.HasValue && dto.Channel.HasValue && dto.StartLba.HasValue;
 
             if (entry.StartLba == 0 && !string.IsNullOrWhiteSpace(dto.File))
                 try
@@ -812,6 +821,47 @@ public sealed class AssetReplacerManager
         }
     }
 
+    public XaEntry? ResolveXaIn(byte file, byte channel, int firstLba, int lastLba)
+    {
+        if (!Enabled) return null;
+        lock (_gate)
+        {
+            foreach (var e in _runtimeXa)
+                if (e.Pinned && e.FileNumber == file && e.Channel == channel && e.StartLba >= firstLba && e.StartLba <= lastLba)
+                    return e;
+            foreach (var e in _xa)
+                if (e.Pinned && e.FileNumber == file && e.Channel == channel && e.StartLba >= firstLba && e.StartLba <= lastLba)
+                    return e;
+            return null;
+        }
+    }
+
+    public XaEntry? ResolveCdda(int track)
+    {
+        if (!Enabled) return null;
+        lock (_gate)
+        {
+            foreach (var e in _runtimeXa)
+                if (e.Track == track)
+                    return e;
+            foreach (var e in _xa)
+                if (e.Track == track)
+                    return e;
+            return null;
+        }
+    }
+
+    public bool HasStreams
+    {
+        get
+        {
+            lock (_gate)
+            {
+                return _xa.Count > 0 || _runtimeXa.Count > 0;
+            }
+        }
+    }
+
     public bool HasXaHashes
     {
         get
@@ -911,6 +961,25 @@ public sealed class AssetReplacerManager
             _runtimeXa.Add(entry);
         }
 
+        return entry;
+    }
+
+    public XaEntry RegisterCdda(int track, string audioPath, XaOptions? options = null, string owner = "mod")
+    {
+        var entry = new XaEntry
+        {
+            Track = track,
+            AudioName = audioPath,
+            Options = options ?? new XaOptions(),
+            PackId = owner,
+            Open = () => File.Exists(audioPath) ? File.ReadAllBytes(audioPath) : null
+        };
+        lock (_gate)
+        {
+            _runtimeXa.Add(entry);
+        }
+
+        Xa.CddaRouter.Rebind();
         return entry;
     }
 

@@ -12,6 +12,9 @@ public sealed partial class AssetPackEditor
 
     private int _musView;
     private string _musKey = "";
+    private string _musSearch = "";
+    private bool _musPlayed;
+    private bool _musHideDone;
     private readonly Dictionary<string, AudioClip?> _xaClips = [];
     private readonly HashSet<string> _xaDecoding = [];
 
@@ -255,61 +258,230 @@ public sealed partial class AssetPackEditor
         }
     }
 
+    private sealed class MusicRow
+    {
+        public string Key = "";
+        public string Group = "";
+        public string Label = "";
+        public string Where = "";
+        public DiscAudioTrack? Disc;
+        public SeenStream? Seen;
+        public XaEntryDto? Mine;
+        public int File;
+        public int Channel;
+        public int Lba;
+        public int Track;
+        public bool Cdda;
+        public double Seconds;
+        public int Hits;
+    }
+
+    private const string HeardGroup = "Heard in game";
+
+    private static string Clock(double seconds)
+    {
+        var total = (int)Math.Round(seconds);
+        return $"{total / 60}:{total % 60:00}";
+    }
+
+    private static MusicRow DiscRow(AssetPack pack, DiscAudioTrack track)
+    {
+        var cdda = track.Kind == DiscAudioKind.Cdda;
+        return new MusicRow
+        {
+            Key = cdda ? $"t:{track.Number}" : Key(track.File, track.Channel, track.StartLba),
+            Group = track.Source,
+            Label = cdda
+                ? $"Track {track.Number:00}"
+                : $"Channel {track.Channel}, stream {track.Number}" + (track.Video ? "  (video)" : ""),
+            Where = cdda
+                ? $"sectors {track.StartLba} to {track.LastLba}"
+                : $"file {track.File}, channel {track.Channel}, sectors {track.StartLba} to {track.LastLba}",
+            Disc = track,
+            Mine = PackAuthoring.MusicFor(pack, track),
+            File = track.File,
+            Channel = track.Channel,
+            Lba = track.StartLba,
+            Track = track.Number,
+            Cdda = cdda,
+            Seconds = track.Seconds,
+            Hits = track.Hits
+        };
+    }
+
+    private static MusicRow HeardRow(PackContents contents, SeenStream seen)
+    {
+        return new MusicRow
+        {
+            Key = Key(seen),
+            Group = HeardGroup,
+            Label = $"Track {seen.File}, channel {seen.Channel}  (sector {seen.StartLba})",
+            Where = $"file {seen.File}, channel {seen.Channel}, starts at sector {seen.StartLba}",
+            Seen = seen,
+            Mine = MineFor(contents, seen.File, seen.Channel, seen.StartLba),
+            File = seen.File,
+            Channel = seen.Channel,
+            Lba = seen.StartLba,
+            Seconds = seen.Seconds,
+            Hits = seen.Hits
+        };
+    }
+
+    private static MusicRow PackRow(AssetPack pack, XaEntryDto entry)
+    {
+        var track = entry.Track is { } number
+            ? DiscAudio.CddaTrack(number)
+            : DiscAudio.Find(entry.StartLba ?? 0, (byte)(entry.FileNumber ?? 0), (byte)(entry.Channel ?? 0));
+        if (track != null)
+        {
+            var row = DiscRow(pack, track);
+            row.Label = $"{track.Source}  -  {row.Label}";
+            row.Group = "";
+            row.Mine = entry;
+            return row;
+        }
+
+        var cdda = entry.Track.HasValue;
+        return new MusicRow
+        {
+            Key = cdda ? $"t:{entry.Track}" : Key(entry.FileNumber ?? 0, entry.Channel ?? 0, entry.StartLba ?? 0),
+            Label = cdda
+                ? $"CD audio track {entry.Track:00}"
+                : $"Track {entry.FileNumber ?? 0}, channel {entry.Channel ?? 0}  (sector {entry.StartLba ?? 0})",
+            Where = cdda ? "not on this disc" : $"starts at sector {entry.StartLba ?? 0}",
+            Mine = entry,
+            File = entry.FileNumber ?? 0,
+            Channel = entry.Channel ?? 0,
+            Lba = entry.StartLba ?? 0,
+            Track = entry.Track ?? 0,
+            Cdda = cdda
+        };
+    }
+
+    private List<MusicRow> MusicRows(AssetPack pack, PackContents contents, bool onDisc)
+    {
+        var rows = new List<MusicRow>();
+        if (_musView != 0)
+        {
+            foreach (var entry in contents.Music) rows.Add(PackRow(pack, entry));
+            return rows;
+        }
+
+        foreach (var track in DiscAudio.Cdda) rows.Add(DiscRow(pack, track));
+        foreach (var source in DiscAudio.Xa.GroupBy(t => t.Source))
+        foreach (var track in source.OrderBy(t => t.Channel).ThenBy(t => t.StartLba))
+            rows.Add(DiscRow(pack, track));
+
+        if (!DiscAudio.HasXa)
+            foreach (var seen in XaRegistry.Snapshot().OrderByDescending(s => s.LastSeen))
+                rows.Add(HeardRow(contents, seen));
+
+        rows.RemoveAll(r => (_musPlayed && onDisc && r.Hits == 0) || (_musHideDone && r.Mine != null) ||
+                            (_musSearch.Length > 0 &&
+                             !r.Label.Contains(_musSearch, StringComparison.OrdinalIgnoreCase) &&
+                             !r.Group.Contains(_musSearch, StringComparison.OrdinalIgnoreCase)));
+        return rows;
+    }
+
+    private XaEntry? MusicOwner(MusicRow row)
+    {
+        if (row.Cdda) return Manager.ResolveCdda(row.Track);
+        var inTrack = row.Disc == null
+            ? null
+            : Manager.ResolveXaIn((byte)row.File, (byte)row.Channel, row.Disc.StartLba, row.Disc.LastLba);
+        return inTrack ?? Manager.ResolveXa((byte)row.File, (byte)row.Channel, row.Lba);
+    }
+
     private void DrawMusicTab(AssetPack pack)
     {
         var scale = Theme.Scale;
         var contents = Contents(pack);
+        var discCount = DiscAudio.Cdda.Count + DiscAudio.Xa.Count;
+        var onDisc = discCount > 0;
 
-        ImGuiUtils.Segmented("musview", ref _musView, "Heard in game", $"In this pack ({contents.Music.Count})");
-        ImGui.SameLine();
-        if (_musView == 0 && ImGui.Button("Clear list##mus")) XaRegistry.Clear();
+        ImGuiUtils.Segmented("musview", ref _musView, onDisc ? $"On disc ({discCount})" : HeardGroup,
+            $"In this pack ({contents.Music.Count})");
+        if (_musView == 0)
+        {
+            ImGui.SameLine();
+            ImGui.SetNextItemWidth(160f * scale);
+            ImGui.InputTextWithHint("##mussearch", "Search", ref _musSearch, 48);
+            if (onDisc)
+            {
+                ImGui.SameLine();
+                ImGui.Checkbox("Only played##mus", ref _musPlayed);
+            }
+
+            ImGui.SameLine();
+            ImGui.Checkbox("Hide replaced##mus", ref _musHideDone);
+            if (!DiscAudio.HasXa)
+            {
+                ImGui.SameLine();
+                if (ImGui.Button("Clear list##mus")) XaRegistry.Clear();
+            }
+
+            if (DiscAudio.Scanning)
+            {
+                ImGui.SameLine();
+                ImGui.TextDisabled("Reading the disc...");
+            }
+        }
 
         var detailsHeight = 170f * scale;
         ImGui.BeginChild("##muslist", new Vector2(0f, -detailsHeight), ImGuiChildFlags.Borders);
 
-        var rows = new List<(int File, int Channel, int Lba, SeenStream? Seen, XaEntryDto? Mine)>();
-        if (_musView == 0)
-            foreach (var s in XaRegistry.Snapshot().OrderByDescending(s => s.LastSeen))
-                rows.Add((s.File, s.Channel, s.StartLba, s, MineFor(contents, s.File, s.Channel, s.StartLba)));
-        else
-            foreach (var e in contents.Music)
-                rows.Add((e.FileNumber ?? 0, e.Channel ?? 0, e.StartLba ?? 0, null, e));
-
+        var rows = MusicRows(pack, contents, onDisc);
         if (rows.Count == 0)
         {
-            ImGuiUtils.Hint(_musView == 0
-                ? "Play the game and streamed tracks will show up here."
-                : "No tracks in this pack yet.");
+            ImGuiUtils.Hint(_musView != 0 ? "No tracks in this pack yet."
+                : onDisc ? "No matches."
+                : "Play the game and streamed tracks will show up here.");
         }
         else if (ImGui.BeginTable("##music", 5, ImGuiTableFlags.RowBg | ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingStretchProp))
         {
             ImGui.TableSetupScrollFreeze(0, 1);
             ImGui.TableSetupColumn("Track");
-            ImGui.TableSetupColumn("Heard", ImGuiTableColumnFlags.WidthFixed, 70f * scale);
+            ImGui.TableSetupColumn("Length", ImGuiTableColumnFlags.WidthFixed, 70f * scale);
             ImGui.TableSetupColumn("Played", ImGuiTableColumnFlags.WidthFixed, 60f * scale);
             ImGui.TableSetupColumn("Status", ImGuiTableColumnFlags.WidthFixed, 150f * scale);
             ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 28f * scale);
             ImGui.TableHeadersRow();
 
-            foreach (var (file, channel, lba, seen, mine) in rows)
+            string? group = null;
+            foreach (var row in rows)
             {
-                var key = Key(file, channel, lba);
+                if (row.Group.Length > 0 && row.Group != group)
+                {
+                    group = row.Group;
+                    ImGui.TableNextRow();
+                    ImGui.TableNextColumn();
+                    ImGuiUtils.TextColored(Theme.AccentText, group);
+                }
+
                 ImGui.TableNextRow();
                 ImGui.TableNextColumn();
-                if (ImGui.Selectable($"Track {file}, channel {channel}  (sector {lba})", _musKey == key,
+                if (ImGui.Selectable($"{row.Label}##{row.Key}", _musKey == row.Key,
                         ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
-                    _musKey = key;
+                    _musKey = row.Key;
+                ImGuiUtils.Tooltip(row.Where);
 
                 ImGui.TableNextColumn();
-                ImGui.TextDisabled(seen != null ? $"{seen.Seconds:0} s" : "-");
+                ImGui.TextDisabled(row.Seconds > 0 ? Clock(row.Seconds) : "-");
                 ImGui.TableNextColumn();
-                ImGui.TextDisabled(seen != null ? $"{seen.Hits}x" : "-");
+                ImGui.TextDisabled(row.Hits > 0 ? $"{row.Hits}x" : "-");
                 ImGui.TableNextColumn();
-                var owner = Manager.ResolveXa((byte)file, (byte)channel, lba);
-                if (mine != null) ImGuiUtils.Tag("this pack", ImGuiUtils.Green);
-                else if (owner != null) ImGuiUtils.Tag(PackName(owner.PackId), ImGuiUtils.Amber);
+                if (row.Mine != null)
+                {
+                    ImGuiUtils.Tag("this pack", ImGuiUtils.Green);
+                }
+                else if (MusicOwner(row) is { } owner)
+                {
+                    ImGuiUtils.Tag(PackName(owner.PackId), ImGuiUtils.Amber);
+                }
+
                 ImGui.TableNextColumn();
-                PlayButton($"x{key}", () => XaOriginal(file, channel, lba), "play the original");
+                if (row.Disc != null || !row.Cdda)
+                    PlayButton($"x{row.Key}", () => MusicOriginal(row), "play the original");
             }
 
             ImGui.EndTable();
@@ -318,22 +490,27 @@ public sealed partial class AssetPackEditor
         ImGui.EndChild();
 
         ImGui.BeginChild("##musdetails", Vector2.Zero, ImGuiChildFlags.Borders);
-        var selected = rows.FirstOrDefault(r => Key(r.File, r.Channel, r.Lba) == _musKey);
-        if (_musKey.Length == 0 || (selected.Seen == null && selected.Mine == null))
-            ImGuiUtils.Hint("Select a track.");
-        else
-            DrawMusicDetails(pack, selected.File, selected.Channel, selected.Lba, selected.Mine);
+        var selected = rows.FirstOrDefault(r => r.Key == _musKey);
+        if (selected == null) ImGuiUtils.Hint("Select a track.");
+        else DrawMusicDetails(pack, selected);
         ImGui.EndChild();
     }
 
     private static XaEntryDto? MineFor(PackContents contents, int file, int channel, int lba)
     {
-        return contents.Music.FirstOrDefault(e => e.FileNumber == file && e.Channel == channel && e.StartLba == lba);
+        return contents.Music.FirstOrDefault(e =>
+            e.Track == null && e.FileNumber == file && e.Channel == channel && e.StartLba == lba);
     }
 
-    private (short[] Pcm, int Channels, int Rate)? XaOriginal(int file, int channel, int lba)
+    private static AudioClip? DecodeOriginal(MusicRow row)
     {
-        var key = Key(file, channel, lba);
+        if (row.Disc != null) return XaExport.Decode(row.Disc);
+        return row.Cdda ? null : XaExport.Decode(row.Lba, (byte)row.File, (byte)row.Channel);
+    }
+
+    private (short[] Pcm, int Channels, int Rate)? MusicOriginal(MusicRow row)
+    {
+        var key = row.Key;
         bool start;
         lock (_xaClips)
         {
@@ -347,7 +524,7 @@ public sealed partial class AssetPackEditor
             Say("Reading the track from the disc...");
             Task.Run(() =>
             {
-                var decoded = XaExport.Decode(lba, (byte)file, (byte)channel);
+                var decoded = DecodeOriginal(row);
                 lock (_xaClips)
                 {
                     _xaClips[key] = decoded;
@@ -365,62 +542,75 @@ public sealed partial class AssetPackEditor
         return null;
     }
 
-    private void DrawMusicDetails(AssetPack pack, int file, int channel, int lba, XaEntryDto? mine)
+    private void DrawMusicDetails(AssetPack pack, MusicRow row)
     {
         var editable = pack.Editable;
-        ImGui.TextUnformatted($"Track {file}, channel {channel}");
+        var mine = row.Mine;
+        var known = row.Disc != null || !row.Cdda;
+        ImGui.TextUnformatted(row.Group.Length > 0 && row.Group != HeardGroup ? $"{row.Group}  -  {row.Label}" : row.Label);
         ImGui.SameLine();
-        ImGui.TextDisabled($"starts at sector {lba}");
+        ImGui.TextDisabled(row.Disc != null ? $"{Clock(row.Seconds)}  -  {row.Where}" : row.Where);
 
-        PlayButton($"dx{Key(file, channel, lba)}", () => XaOriginal(file, channel, lba), "Play the original");
-        ImGui.SameLine();
-        ImGui.TextDisabled("Original");
+        if (known)
+        {
+            PlayButton($"dx{row.Key}", () => MusicOriginal(row), "Play the original");
+            ImGui.SameLine();
+            ImGui.TextDisabled("Original");
+        }
+
         if (mine?.Audio is { } audio)
         {
-            ImGui.SameLine();
-            PlayButton($"dy{Key(file, channel, lba)}", () => FromPack(pack, audio), "Play your version");
+            if (known) ImGui.SameLine();
+            PlayButton($"dy{row.Key}", () => FromPack(pack, audio), "Play your version");
             ImGui.SameLine();
             ImGui.TextDisabled("Yours");
         }
 
         var buttonW = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * 2f) / 3f;
-        using (ImGuiUtils.Disabled(!editable))
+        using (ImGuiUtils.Disabled(!editable || !known))
         {
             if (ImGui.Button("Choose audio file...", new Vector2(buttonW, 0f)))
                 ToolUi.PickFile("Audio", "wav,ogg", source => Try("Replacing", () =>
                 {
-                    var stream = new SeenStream { File = (byte)file, Channel = (byte)channel, StartLba = lba };
-                    PackAuthoring.SetMusic(pack, stream, source);
+                    if (row.Disc != null)
+                        PackAuthoring.SetMusic(pack, row.Disc, source);
+                    else
+                        PackAuthoring.SetMusic(pack,
+                            new SeenStream { File = (byte)row.File, Channel = (byte)row.Channel, StartLba = row.Lba }, source);
                     Say("Replaced.");
                 }));
             ImGuiUtils.Tooltip("WAV or OGG.");
         }
 
         ImGui.SameLine();
-        if (ImGui.Button("Save original as...", new Vector2(buttonW, 0f)))
-            ToolUi.SaveFile("WAV audio", "wav", $"track_f{file}_c{channel}_{lba}.wav", target =>
-            {
-                Say("Reading the track from the disc...");
-                Task.Run(() =>
+        using (ImGuiUtils.Disabled(!known))
+        {
+            var name = row.Cdda ? $"cd_track{row.Track:00}.wav" : $"track_f{row.File}_c{row.Channel}_{row.Lba}.wav";
+            if (ImGui.Button("Save original as...", new Vector2(buttonW, 0f)))
+                ToolUi.SaveFile("WAV audio", "wav", name, target =>
                 {
-                    var clip = XaExport.Decode(lba, (byte)file, (byte)channel);
-                    if (clip == null)
+                    Say("Reading the track from the disc...");
+                    Task.Run(() =>
                     {
-                        Say("Couldn't read that track from the disc.", true);
-                        return;
-                    }
+                        var clip = DecodeOriginal(row);
+                        if (clip == null)
+                        {
+                            Say("Couldn't read that track from the disc.", true);
+                            return;
+                        }
 
-                    try
-                    {
-                        WavWriter.Write(target, clip);
-                        Say($"Saved to {target}");
-                    }
-                    catch (Exception e)
-                    {
-                        Say($"Saving failed: {e.Message}", true);
-                    }
+                        try
+                        {
+                            WavWriter.Write(target, clip);
+                            Say($"Saved to {target}");
+                        }
+                        catch (Exception e)
+                        {
+                            Say($"Saving failed: {e.Message}", true);
+                        }
+                    });
                 });
-            });
+        }
 
         ImGui.SameLine();
         using (ImGuiUtils.Disabled(mine == null || !editable))
@@ -456,6 +646,8 @@ public sealed partial class AssetPackEditor
                     PackAuthoring.Save(pack);
                 });
             ImGuiUtils.Help("Restarts when your file ends.");
+
+            if (row.Cdda) return;
 
             ImGui.SameLine();
             var longer = mine.Extend ?? false;

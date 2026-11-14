@@ -1,0 +1,64 @@
+{
+    "strings": {
+        "settings.interface.big_picture": {
+            "en": "Big Picture mode",
+            "pt-BR": "Modo Big Picture",
+            "es-419": "Modo Big Picture"
+        },
+        "settings.interface.big_picture_hint": {
+            "en": "Fullscreen interface for controllers. Turn it off to use the desktop interface.",
+            "pt-BR": "Interface em tela cheia para controle. Desligue para usar a interface desktop.",
+            "es-419": "Interfaz a pantalla completa para mando. Desactívala para usar la interfaz de escritorio."
+        },
+        "big_picture.ask.title": {
+            "en": "Big Picture mode",
+            "pt-BR": "Modo Big Picture",
+            "es-419": "Modo Big Picture"
+        },
+        "big_picture.ask.message": {
+            "en": "Would you like to use the Big Picture interface? It is made for controllers and TVs.\nYou can change this later in Settings > Interface.",
+            "pt-BR": "Deseja usar a interface Big Picture? Ela foi feita para controles e TVs.\nVocê pode mudar isso depois em Configurações > Interface.",
+            "es-419": "¿Quieres usar la interfaz Big Picture? Está hecha para mandos y televisores.\nPuedes cambiarlo después en Configuración > Interfaz."
+        },
+        "big_picture.ask.enable": {
+            "en": "Use Big Picture",
+            "pt-BR": "Usar Big Picture",
+            "es-419": "Usar Big Picture"
+        },
+        "big_picture.ask.keep": {
+            "en": "Keep desktop",
+            "pt-BR": "Manter desktop",
+            "es-419": "Mantener escritorio"
+        },
+        "big_picture.hint.title": {
+            "en": "Big Picture",
+            "pt-BR": "Big Picture",
+            "es-419": "Big Picture"
+        },
+        "big_picture.hint.message": {
+            "en": "Press [[escape]], or {0} on a controller, to open the menu.",
+            "pt-BR": "Aperte [[escape]], ou {0} no controle, para abrir o menu.",
+            "es-419": "Presiona [[escape]], o {0} en el mando, para abrir el menú."
+        },
+        "big_picture.keys.open": {
+            "en": "Open",
+            "pt-BR": "Abrir",
+            "es-419": "Abrir"
+        },
+        "big_picture.keys.select": {
+            "en": "Select",
+            "pt-BR": "Selecionar",
+            "es-419": "Seleccionar"
+        },
+        "big_picture.keys.resume": {
+            "en": "Resume",
+            "pt-BR": "Voltar ao jogo",
+            "es-419": "Volver al juego"
+        },
+        "big_picture.keys.back": {
+            "en": "Back",
+            "pt-BR": "Voltar",
+            "es-419": "Atrás"
+        }
+    }
+}

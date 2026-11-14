@@ -54,6 +54,7 @@ public sealed partial class AssetPackEditor : IPanel
         TextureRegistry.Collect(this, on);
         SampleRegistry.Enabled = on;
         XaRegistry.Enabled = on;
+        if (on) DiscAudio.Ensure();
     }
 
     public void Draw()

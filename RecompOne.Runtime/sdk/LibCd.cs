@@ -227,6 +227,8 @@ public static class LibCd
         _cddaEndLba = _cddaAutoPause ? NextTrack(fs, lba) : fs.LeadoutLba;
         _cddaStart = lba;
         _cddaFeed = lba;
+        Assets.Xa.CddaRouter.Stop();
+        Assets.Xa.DiscAudio.Ensure();
         _cddaPlaying = true;
         EnsureXaThread();
         WakeXa();
@@ -249,6 +251,7 @@ public static class LibCd
     {
         if (!_cddaPlaying) return;
         _cddaPlaying = false;
+        Assets.Xa.CddaRouter.Stop();
         XaAudio.Reset();
     }
 
@@ -647,11 +650,13 @@ public static class LibCd
         while (_cddaPlaying && _cddaFeed < _cddaEndLba
                && XaAudio.BufferedSamples < CddaBuffer && scanned < 64)
         {
-            byte[] raw;
-            lock (DiscLock)
-            {
-                raw = cd.ReadRawSector(_cddaFeed);
-            }
+            var replaced = Assets.Xa.CddaRouter.Fill(_cddaFeed, _cddaBlock, CddaFrames);
+            byte[] raw = [];
+            if (!replaced)
+                lock (DiscLock)
+                {
+                    raw = cd.ReadRawSector(_cddaFeed);
+                }
 
             _cddaFeed++;
             scanned++;
@@ -660,7 +665,7 @@ public static class LibCd
             {
                 Array.Clear(_cddaBlock);
             }
-            else
+            else if (!replaced)
             {
                 for (var i = 0; i < CddaFrames; i++)
                 {

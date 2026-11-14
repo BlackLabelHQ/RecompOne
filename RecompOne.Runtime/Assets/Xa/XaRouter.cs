@@ -193,8 +193,10 @@ public static class XaRouter
     {
         var mgr = AssetReplacerManager.Instance;
         mgr.Stats.XaRuns++;
+        if (XaRegistry.Enabled || mgr.HasStreams) DiscAudio.Ensure();
 
-        var entry = Resolve(lba, file, channel, sec, out var exact);
+        var entry = Resolve(lba, file, channel, sec, out var exact, out var track);
+        if (track != null) DiscAudio.Played(track);
 
         if (_stream != null && !_exhausted && ReferenceEquals(entry, _entry) && !_stream.Ended &&
             Environment.TickCount64 - _lastSectorTick <= ResumeWindowMs)
@@ -215,33 +217,43 @@ public static class XaRouter
         _channel = channel;
 
         if (entry == null) return;
-        Open(entry, fromStr, exact ? 0 : OffsetSeconds(entry, lba));
+        Open(entry, fromStr, exact ? 0 : OffsetSeconds(entry, track, lba));
     }
 
     private static void RebindRun(bool fromStr)
     {
-        var entry = Resolve(_runLba, _file, _channel, null, out var exact);
+        var entry = Resolve(_runLba, _file, _channel, null, out var exact, out var track);
         if (entry == null) return;
-        Open(entry, fromStr, (exact ? 0 : OffsetSeconds(entry, _runLba)) + _runSeconds);
+        Open(entry, fromStr, (exact ? 0 : OffsetSeconds(entry, track, _runLba)) + _runSeconds);
     }
 
-    private static XaEntry? Resolve(int runLba, byte file, byte channel, byte[]? first, out bool exact)
+    private static XaEntry? Resolve(int runLba, byte file, byte channel, byte[]? first, out bool exact,
+        out DiscAudioTrack? track)
     {
         var mgr = AssetReplacerManager.Instance;
         exact = false;
+        track = DiscAudio.Find(runLba, file, channel);
         if (!mgr.Enabled) return null;
 
+        var atStart = track == null || runLba - track.StartLba <= NewRunLbaSlack;
         if (mgr.HasXaHashes)
         {
-            var byTrack = mgr.ResolveXaByPayload(XaTrack.Hash(runLba, file, channel));
+            var byTrack = mgr.ResolveXaByPayload(XaTrack.Hash(track?.StartLba ?? runLba, file, channel));
             if (byTrack != null)
             {
-                exact = true;
+                exact = atStart;
                 return byTrack;
             }
         }
 
+        if (track != null && mgr.ResolveXaIn(file, channel, track.StartLba, track.LastLba) is { } inTrack)
+        {
+            exact = atStart;
+            return inTrack;
+        }
+
         var byLba = mgr.ResolveXa(file, channel, runLba);
+        if (byLba != null && track != null && byLba.Pinned && byLba.StartLba < track.StartLba) byLba = null;
         if (byLba != null || first == null) return byLba;
 
         var probe = AssetHash.XaPayload(first.AsSpan(8, Math.Min(2304, Math.Max(0, first.Length - 8))));
@@ -250,8 +262,11 @@ public static class XaRouter
         return bySector;
     }
 
-    private static double OffsetSeconds(XaEntry entry, int lba)
+    private static double OffsetSeconds(XaEntry entry, DiscAudioTrack? track, int lba)
     {
+        if (track != null && (entry.PayloadHash != 0 || (entry.Pinned && track.Contains(entry.StartLba))))
+            return track.SecondsAt(lba);
+
         var delta = lba - entry.StartLba;
         if (delta <= NewRunLbaSlack) return 0;
         var interleave = entry.Interleave <= 0 ? 1 : entry.Interleave;

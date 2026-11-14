@@ -241,11 +241,61 @@ public static class PackAuthoring
         return entry;
     }
 
+    public static XaEntryDto SetMusic(AssetPack pack, DiscAudioTrack track, string source)
+    {
+        if (track.Kind == DiscAudioKind.Xa)
+        {
+            Adopt(pack, track);
+            return SetMusic(pack, new SeenStream { File = track.File, Channel = track.Channel, StartLba = track.StartLba }, source);
+        }
+
+        var extension = Path.GetExtension(source).ToLowerInvariant();
+        if (extension is not (".wav" or ".ogg"))
+            throw new NotSupportedException("music must be .wav or .ogg");
+
+        pack.Manifest.Xa ??= [];
+        var entry = pack.Manifest.Xa.FirstOrDefault(e => e.Track == track.Number);
+        if (entry == null)
+        {
+            entry = new XaEntryDto { Track = track.Number };
+            pack.Manifest.Xa.Add(entry);
+        }
+
+        if (!string.IsNullOrWhiteSpace(entry.Audio))
+        {
+            var old = Full(pack, entry.Audio!);
+            if (File.Exists(old)) File.Delete(old);
+        }
+
+        var relative = $"cdda/track{track.Number:00}{extension}";
+        File.Copy(source, Full(pack, relative), true);
+        entry.Audio = relative;
+        Save(pack);
+        return entry;
+    }
+
+    public static XaEntryDto? MusicFor(AssetPack pack, DiscAudioTrack track)
+    {
+        var list = pack.Manifest.Xa;
+        if (list == null) return null;
+        if (track.Kind == DiscAudioKind.Cdda) return list.FirstOrDefault(e => e.Track == track.Number);
+        return list.FirstOrDefault(e => e.Track == null && e.FileNumber == track.File && e.Channel == track.Channel &&
+                                        e.StartLba == track.StartLba) ??
+               list.FirstOrDefault(e => e.Track == null && e.FileNumber == track.File && e.Channel == track.Channel &&
+                                        e.StartLba is { } lba && track.Contains(lba));
+    }
+
+    private static void Adopt(AssetPack pack, DiscAudioTrack track)
+    {
+        var entry = MusicFor(pack, track);
+        if (entry != null) entry.StartLba = track.StartLba;
+    }
+
     public static XaEntryDto MusicEntry(AssetPack pack, int file, int channel, int startLba)
     {
         pack.Manifest.Xa ??= [];
         var entry = pack.Manifest.Xa.FirstOrDefault(e =>
-            e.FileNumber == file && e.Channel == channel && e.StartLba == startLba);
+            e.Track == null && e.FileNumber == file && e.Channel == channel && e.StartLba == startLba);
         if (entry != null) return entry;
         entry = new XaEntryDto { FileNumber = file, Channel = channel, StartLba = startLba };
         pack.Manifest.Xa.Add(entry);

@@ -5,11 +5,51 @@ public static class XaExport
     private const int SectorBytes = 2336;
     private const int MaxMissRun = 256;
     private const int MaxSectors = 200000;
+    private const int CddaFrames = 588;
 
     private static readonly int[] Pos = [0, 60, 115, 98];
     private static readonly int[] Neg = [0, 0, -52, -55];
 
-    public static AudioClip? Decode(int startLba, byte file, byte channel, double maxSeconds = 900)
+    public static AudioClip? Decode(DiscAudioTrack track, double maxSeconds = 900)
+    {
+        return track.Kind == DiscAudioKind.Cdda
+            ? DecodeCdda(track, maxSeconds)
+            : Decode(track.StartLba, track.File, track.Channel, maxSeconds, track.LastLba);
+    }
+
+    public static AudioClip? DecodeCdda(DiscAudioTrack track, double maxSeconds = 900)
+    {
+        var cd = Runtime.Cd;
+        if (cd == null) return null;
+
+        var sectors = (int)Math.Min(track.Sectors, maxSeconds * DiscAudio.CddaSectorsPerSecond);
+        var pcm = new short[sectors * CddaFrames * 2];
+        var at = 0;
+        for (var i = 0; i < sectors; i++)
+        {
+            byte[] raw;
+            try
+            {
+                lock (Sdk.LibCd.DiscLock)
+                {
+                    raw = cd.ReadRawSector(track.StartLba + i);
+                }
+            }
+            catch
+            {
+                break;
+            }
+
+            if (raw.Length < CddaFrames * 4) break;
+            for (var o = 0; o < CddaFrames * 4; o += 2) pcm[at++] = (short)(raw[o] | (raw[o + 1] << 8));
+        }
+
+        if (at == 0) return null;
+        if (at < pcm.Length) Array.Resize(ref pcm, at);
+        return new AudioClip { Pcm = pcm, Channels = 2, Rate = 44100 };
+    }
+
+    public static AudioClip? Decode(int startLba, byte file, byte channel, double maxSeconds = 900, int lastLba = int.MaxValue)
     {
         var cd = Runtime.Cd;
         if (cd == null) return null;
@@ -23,7 +63,7 @@ public static class XaExport
         var l = new int[28];
         var r = new int[28];
 
-        for (var lba = startLba; lba < startLba + MaxSectors; lba++)
+        for (var lba = startLba; lba < startLba + MaxSectors && lba <= lastLba; lba++)
         {
             byte[] sec;
             try

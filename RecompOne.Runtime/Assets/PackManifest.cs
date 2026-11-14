@@ -81,6 +81,7 @@ public sealed class XaEntryDto
     public int? FileNumber { get; set; }
     public int? Channel { get; set; }
     public int? StartLba { get; set; }
+    public int? Track { get; set; }
     public string? Hash { get; set; }
     public string? Audio { get; set; }
     public float? Gain { get; set; }
