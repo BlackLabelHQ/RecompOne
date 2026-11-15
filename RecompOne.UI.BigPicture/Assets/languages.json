@@ -3,62 +3,98 @@
         "settings.interface.big_picture": {
             "en": "Big Picture mode",
             "pt-BR": "Modo Big Picture",
-            "es-419": "Modo Big Picture"
+            "es-419": "Modo Big Picture",
+            "ja-JP": "Big Picture mode",
+            "zh-CN": "大屏幕模式",
+            "fr-FR": "Big Picture mode"
         },
         "settings.interface.big_picture_hint": {
             "en": "Fullscreen interface for controllers. Turn it off to use the desktop interface.",
             "pt-BR": "Interface em tela cheia para controle. Desligue para usar a interface desktop.",
-            "es-419": "Interfaz a pantalla completa para mando. Desactívala para usar la interfaz de escritorio."
+            "es-419": "Interfaz a pantalla completa para mando. Desactívala para usar la interfaz de escritorio.",
+            "ja-JP": "Fullscreen interface for controllers. Turn it off to use the desktop interface.",
+            "zh-CN": "可以使用手柄选择设定选项的全屏模式. 如果将其关闭可以回到原桌面模式.",
+            "fr-FR": "Fullscreen interface for controllers. Turn it off to use the desktop interface."
         },
         "big_picture.ask.title": {
             "en": "Big Picture mode",
             "pt-BR": "Modo Big Picture",
-            "es-419": "Modo Big Picture"
+            "es-419": "Modo Big Picture",
+            "ja-JP": "Big Picture mode",
+            "zh-CN": "大屏幕模式",
+            "fr-FR": "Big Picture mode"
         },
         "big_picture.ask.message": {
             "en": "Would you like to use the Big Picture interface? It is made for controllers and TVs.\nYou can change this later in Settings > Interface.",
             "pt-BR": "Deseja usar a interface Big Picture? Ela foi feita para controles e TVs.\nVocê pode mudar isso depois em Configurações > Interface.",
-            "es-419": "¿Quieres usar la interfaz Big Picture? Está hecha para mandos y televisores.\nPuedes cambiarlo después en Configuración > Interfaz."
+            "es-419": "¿Quieres usar la interfaz Big Picture? Está hecha para mandos y televisores.\nPuedes cambiarlo después en Configuración > Interfaz.",
+            "ja-JP": "Would you like to use the Big Picture interface? It is made for controllers and TVs.\nYou can change this later in Settings > Interface.",
+            "zh-CN": "你是否喜欢大屏幕模式的交互界面?它是应玩家要求为智能电视或游戏手柄的操作逻辑而设置的.\n 你可以在 设定 > 界面 选项中更改它.",
+            "fr-FR": "Would you like to use the Big Picture interface? It is made for controllers and TVs.\nYou can change this later in Settings > Interface."
         },
         "big_picture.ask.enable": {
             "en": "Use Big Picture",
             "pt-BR": "Usar Big Picture",
-            "es-419": "Usar Big Picture"
+            "es-419": "Usar Big Picture",
+            "ja-JP": "Use BigPicture UI",
+            "zh-CN": "使用大屏幕模式界面",
+            "fr-FR": "Use BigPicture UI"
         },
         "big_picture.ask.keep": {
             "en": "Keep desktop",
             "pt-BR": "Manter desktop",
-            "es-419": "Mantener escritorio"
+            "es-419": "Mantener escritorio",
+            "ja-JP": "Keep desktop",
+            "zh-CN": "留在桌面模式",
+            "fr-FR": "Keep desktop"
         },
         "big_picture.hint.title": {
             "en": "Big Picture",
             "pt-BR": "Big Picture",
-            "es-419": "Big Picture"
+            "es-419": "Big Picture",
+            "ja-JP": "Big Picture",
+            "zh-CN": "大屏幕模式",
+            "fr-FR": "Big Picture"
         },
         "big_picture.hint.message": {
             "en": "Press [[escape]], or {0} on a controller, to open the menu.",
             "pt-BR": "Aperte [[escape]], ou {0} no controle, para abrir o menu.",
-            "es-419": "Presiona [[escape]], o {0} en el mando, para abrir el menú."
+            "es-419": "Presiona [[escape]], o {0} en el mando, para abrir el menú.",
+            "ja-JP": "Press [[escape]], or {0} on a controller, to open the menu.",
+            "zh-CN": "按 [[escape]], 或者手柄上的 {0} 键, 来开启大屏幕模式菜单.",
+            "fr-FR": "Press [[escape]], or {0} on a controller, to open the menu."
         },
         "big_picture.keys.open": {
             "en": "Open",
             "pt-BR": "Abrir",
-            "es-419": "Abrir"
+            "es-419": "Abrir",
+            "ja-JP": "Open",
+            "zh-CN": "打开",
+            "fr-FR": "Open"
         },
         "big_picture.keys.select": {
             "en": "Select",
             "pt-BR": "Selecionar",
-            "es-419": "Seleccionar"
+            "es-419": "Seleccionar",
+            "ja-JP": "Select",
+            "zh-CN": "选择",
+            "fr-FR": "Select"
         },
         "big_picture.keys.resume": {
             "en": "Resume",
             "pt-BR": "Voltar ao jogo",
-            "es-419": "Volver al juego"
+            "es-419": "Volver al juego",
+            "ja-JP": "Resume",
+            "zh-CN": "返回",
+            "fr-FR": "Resume"
         },
         "big_picture.keys.back": {
             "en": "Back",
             "pt-BR": "Voltar",
-            "es-419": "Atrás"
+            "es-419": "Atrás",
+            "ja-JP": "Back",
+            "zh-CN": "回到上一选项",
+            "fr-FR": "Back"
         }
     }
 }
