@@ -46,7 +46,7 @@
       "es-419": "Oculta la barra de menú cuando el mouse no está sobre ella. Lleva el mouse a la parte superior de la pantalla para mostrarle",
       "ja-JP": "Hides the menu bar when the mouse isn't over it. Move the mouse to the top of the screen to show it",
       "zh-CN": "如果将鼠标移开菜单栏所在位置会自动隐藏菜单栏; 如果将鼠标再放回屏幕最上端可以重新显示菜单栏.",
-      "fr-FR": "Hides the menu bar when the mouse isn't over it. Move the mouse to the top of the screen to show it"
+      "fr-FR": "Cache la barre de menu si la souris n'est pas dessus. Déplacez-la en haut de l'écran pour l'afficher"
     },
     "menu.system.fullscreen": {
       "en": "Fullscreen",
@@ -270,7 +270,7 @@
       "es-419": "Seguir",
       "ja-jp": "追従",
       "zh-CN": "Follow",
-      "fr-FR": "Follow"
+      "fr-FR": "Suivre"
     },
     "panel.input_roll.pad2": {
       "en": "Pad 2",
@@ -606,7 +606,7 @@
       "es-419": "Mostrar FPS",
       "ja-jp": "FPSを表示",
       "zh-CN": "显示FPS",
-      "fr-FR": "Show FPS"
+      "fr-FR": "Afficher les FPS"
     },
     "theme.blue": {
       "en": "Blue",
@@ -718,7 +718,7 @@
       "es-419": "True color (24-bit)",
       "ja-JP": "True color (24-bit)",
       "zh-CN": "真彩色 (24-bit)",
-      "fr-FR": "True color (24-bit)"
+      "fr-FR": "Couleurs profondes (24-bit)"
     },
     "settings.display.true_color_hint": {
       "en": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart.",
@@ -726,7 +726,7 @@
       "es-419": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart.",
       "ja-JP": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart.",
       "zh-CN": "以每个通道完整的 8-bit 颜色进行渲染（取代原作PSX的 15-bit 色彩），以消除色彩断层现象. 此设定更改后只在重新启动时生效.",
-      "fr-FR": "Renders with full 8-bit color per channel instead of the PSX's 15-bit color, removing color banding. Takes effect after a restart."
+      "fr-FR": "Effectue le rendu avec 8 bits pour chaque couleur au lieu de 15 bits pour toutes sur la version PSX, retirant le color banding. Prends effet après un redémarrage"
     },
     "settings.display.dithering": {
       "en": "Apply dithering",
@@ -734,7 +734,7 @@
       "es-419": "Apply dithering",
       "ja-JP": "Apply dithering",
       "zh-CN": "应用抖动",
-      "fr-FR": "Apply dithering"
+      "fr-FR": "Appliquer du tramage"
     },
     "settings.display.dithering_hint": {
       "en": "Uses the PSX dither pattern to smooth gradients. Not needed with true color.",
@@ -742,7 +742,7 @@
       "es-419": "Uses the PSX dither pattern to smooth gradients. Not needed with true color.",
       "ja-JP": "Uses the PSX dither pattern to smooth gradients. Not needed with true color.",
       "zh-CN": "使用 PSX 抖动方式来平滑渐变。在真彩色模式下无需此操作。",
-      "fr-FR": "Uses the PSX dither pattern to smooth gradients. Not needed with true color."
+      "fr-FR": "Applique le tramage de la PSX pour des gradients de couleurs plus doux. Pas nécessaire avec les couleurs profondes."
     },
     "settings.display.render_scale_lines": {
       "en": "{1} lines in the current context, {3} after scale ({4}x)",
@@ -1174,7 +1174,7 @@
       "es-419": "Mod Hub",
       "ja-JP": "Mod Hub",
       "zh-CN": "模组中心",
-      "fr-FR": "Mod Hub"
+      "fr-FR": "Hub des Mods"
     },
     "modhub.count": {
       "en": "{0} in the hub",
@@ -1182,7 +1182,7 @@
       "es-419": "{0} in the hub",
       "ja-JP": "{0} in the hub",
       "zh-CN": "{0} 个在模组中心内",
-      "fr-FR": "{0} in the hub"
+      "fr-FR": "{0} dans le hub"
     },
     "modhub.installed_count": {
       "en": "{0} installed",
@@ -1190,7 +1190,7 @@
       "es-419": "{0} installed",
       "ja-JP": "{0} installed",
       "zh-CN": "{0} 个模组已安装",
-      "fr-FR": "{0} installed"
+      "fr-FR": "{0} installé"
     },
     "modhub.refresh": {
       "en": "Refresh",
@@ -1198,7 +1198,7 @@
       "es-419": "Refresh",
       "ja-JP": "Refresh",
       "zh-CN": "刷新",
-      "fr-FR": "Refresh"
+      "fr-FR": "Rafraichir"
     },
     "modhub.open_hub": {
       "en": "Open the hub repository",
@@ -1206,7 +1206,7 @@
       "es-419": "Open the hub repository",
       "ja-JP": "Open the hub repository",
       "zh-CN": "打开模组中心",
-      "fr-FR": "Open the hub repository"
+      "fr-FR": "Ouvrir le dépôt du hub"
     },
     "modhub.open_repository": {
       "en": "Open repository",
@@ -1214,7 +1214,7 @@
       "es-419": "Open repository",
       "ja-JP": "Open repository",
       "zh-CN": "打开存储库",
-      "fr-FR": "Open repository"
+      "fr-FR": "Ouvrir le dépôt"
     },
     "modhub.search": {
       "en": "Search",
@@ -1222,7 +1222,7 @@
       "es-419": "Search",
       "ja-JP": "Search",
       "zh-CN": "搜索",
-      "fr-FR": "Search"
+      "fr-FR": "Chercher"
     },
     "modhub.all_types": {
       "en": "All types",
@@ -1230,7 +1230,7 @@
       "es-419": "All types",
       "ja-JP": "All types",
       "zh-CN": "所有类别",
-      "fr-FR": "All types"
+      "fr-FR": "Tous types"
     },
     "modhub.sort_stars": {
       "en": "Most stars",
@@ -1238,7 +1238,7 @@
       "es-419": "Most stars",
       "ja-JP": "Most stars",
       "zh-CN": "按星标数量排序",
-      "fr-FR": "Most stars"
+      "fr-FR": "Mieux notés"
     },
     "modhub.sort_name": {
       "en": "Name",
@@ -1246,7 +1246,7 @@
       "es-419": "Name",
       "ja-JP": "Name",
       "zh-CN": "按模组名字排序",
-      "fr-FR": "Name"
+      "fr-FR": "Nom"
     },
     "modhub.sort_installed": {
       "en": "Installed first",
@@ -1254,7 +1254,7 @@
       "es-419": "Installed first",
       "ja-JP": "Installed first",
       "zh-CN": "按安装次数排序",
-      "fr-FR": "Installed first"
+      "fr-FR": "Plus installés"
     },
     "modhub.loading": {
       "en": "Loading the hub...",
@@ -1262,7 +1262,7 @@
       "es-419": "Loading the hub...",
       "ja-JP": "Loading the hub...",
       "zh-CN": "读取模组中心中...",
-      "fr-FR": "Loading the hub..."
+      "fr-FR": "Chargement du hub..."
     },
     "modhub.empty": {
       "en": "The hub is empty.",
@@ -1270,7 +1270,7 @@
       "es-419": "The hub is empty.",
       "ja-JP": "The hub is empty.",
       "zh-CN": "模组中心目前内容为空.",
-      "fr-FR": "The hub is empty."
+      "fr-FR": "Le hub est vide."
     },
     "modhub.empty_hint": {
       "en": "Submit yours with a pull request to the hub repository.",
@@ -1278,7 +1278,7 @@
       "es-419": "Submit yours with a pull request to the hub repository.",
       "ja-JP": "Submit yours with a pull request to the hub repository.",
       "zh-CN": "将你的模组投稿到模组中心.",
-      "fr-FR": "Submit yours with a pull request to the hub repository."
+      "fr-FR": "Proposez le votre avec une pull request sur le dépôt du hub."
     },
     "modhub.failed": {
       "en": "Could not load the hub.",
@@ -1286,7 +1286,7 @@
       "es-419": "Could not load the hub.",
       "ja-JP": "Could not load the hub.",
       "zh-CN": "无法读取模组中心.",
-      "fr-FR": "Could not load the hub."
+      "fr-FR": "Impossible de charger le hub."
     },
     "modhub.no_results": {
       "en": "Nothing matches.",
@@ -1294,7 +1294,7 @@
       "es-419": "Nothing matches.",
       "ja-JP": "Nothing matches.",
       "zh-CN": "无法读取到你要搜寻的结果.",
-      "fr-FR": "Nothing matches."
+      "fr-FR": "Aucune correspondance."
     },
     "modhub.install": {
       "en": "Install",
@@ -1302,7 +1302,7 @@
       "es-419": "Install",
       "ja-JP": "Install",
       "zh-CN": "安装",
-      "fr-FR": "Install"
+      "fr-FR": "Installer"
     },
     "modhub.update": {
       "en": "Update",
@@ -1310,7 +1310,7 @@
       "es-419": "Update",
       "ja-JP": "Update",
       "zh-CN": "更新",
-      "fr-FR": "Update"
+      "fr-FR": "Mise à jour"
     },
     "modhub.remove": {
       "en": "Remove",
@@ -1318,7 +1318,7 @@
       "es-419": "Remove",
       "ja-JP": "Remove",
       "zh-CN": "移除",
-      "fr-FR": "Remove"
+      "fr-FR": "Supprimer"
     },
     "modhub.remove_title": {
       "en": "Remove {0}?",
@@ -1326,7 +1326,7 @@
       "es-419": "Remove {0}?",
       "ja-JP": "Remove {0}?",
       "zh-CN": "确定移除 {0} 吗?",
-      "fr-FR": "Remove {0}?"
+      "fr-FR": "Supprimer {0}?"
     },
     "modhub.remove_message": {
       "en": "Its files are deleted. You can install it again later.",
@@ -1334,7 +1334,7 @@
       "es-419": "Its files are deleted. You can install it again later.",
       "ja-JP": "Its files are deleted. You can install it again later.",
       "zh-CN": "该模组的内容已被移除. 不过你如果反悔的话可以稍后重新安装.",
-      "fr-FR": "Its files are deleted. You can install it again later."
+      "fr-FR": "Les fichiers seront supprimés. Vous pouvez les réinstaller plus tard."
     },
     "modhub.warning_title": {
       "en": "{0} - warning",
@@ -1342,7 +1342,7 @@
       "es-419": "{0} - warning",
       "ja-JP": "{0} - warning",
       "zh-CN": "{0} - 警告",
-      "fr-FR": "{0} - warning"
+      "fr-FR": "{0} - attention"
     },
     "modhub.installing": {
       "en": "Installing...",
@@ -1350,7 +1350,7 @@
       "es-419": "Installing...",
       "ja-JP": "Installing...",
       "zh-CN": "模组安装中...",
-      "fr-FR": "Installing..."
+      "fr-FR": "Installation..."
     },
     "modhub.removing": {
       "en": "Removing...",
@@ -1358,7 +1358,7 @@
       "es-419": "Removing...",
       "ja-JP": "Removing...",
       "zh-CN": "模组移除中...",
-      "fr-FR": "Removing..."
+      "fr-FR": "Suppression..."
     },
     "modhub.dismiss": {
       "en": "Dismiss",
@@ -1366,7 +1366,7 @@
       "es-419": "Dismiss",
       "ja-JP": "Dismiss",
       "zh-CN": "忽略",
-      "fr-FR": "Dismiss"
+      "fr-FR": "Rejeter"
     },
     "modhub.state_installed": {
       "en": "Installed",
@@ -1374,7 +1374,7 @@
       "es-419": "Installed",
       "ja-JP": "Installed",
       "zh-CN": "模组已安装",
-      "fr-FR": "Installed"
+      "fr-FR": "Installé"
     },
     "modhub.state_outdated": {
       "en": "Update available",
@@ -1382,7 +1382,7 @@
       "es-419": "Update available",
       "ja-JP": "Update available",
       "zh-CN": "更新完成",
-      "fr-FR": "Update available"
+      "fr-FR": "Mise à jour disponible"
     },
     "modhub.state_conflict": {
       "en": "A folder with this name already exists and was not installed by the hub",
@@ -1390,7 +1390,7 @@
       "es-419": "A folder with this name already exists and was not installed by the hub",
       "ja-JP": "A folder with this name already exists and was not installed by the hub",
       "zh-CN": "有相同名字的模组已存在，但是未在模组中心安装",
-      "fr-FR": "A folder with this name already exists and was not installed by the hub"
+      "fr-FR": "Un dossier avec ce nom existe déjà et n'a pas été installé par le hub"
     },
     "modhub.state_missing": {
       "en": "Not installed",
@@ -1398,7 +1398,7 @@
       "es-419": "Not installed",
       "ja-JP": "Not installed",
       "zh-CN": "模组未安装",
-      "fr-FR": "Not installed"
+      "fr-FR": "Pas installé"
     },
     "modhub.no_stars": {
       "en": "(can't retrieve)",
@@ -1406,7 +1406,7 @@
       "es-419": "(can't retrieve)",
       "ja-JP": "(can't retrieve)",
       "zh-CN": "(无法取得信息)",
-      "fr-FR": "(can't retrieve)"
+      "fr-FR": "(indisponible)"
     },
     "modhub.type.mod": {
       "en": "Mod",
@@ -1422,7 +1422,7 @@
       "es-419": "Asset pack",
       "ja-JP": "Asset pack",
       "zh-CN": "素材包",
-      "fr-FR": "Asset pack"
+      "fr-FR": "Pack d'asset"
     },
     "modhub.type.shader": {
       "en": "Shader",
@@ -1486,7 +1486,7 @@
       "es-419": "Open folder",
       "ja-jp": "Open folder",
       "zh-CN": "打开目录",
-      "fr-FR": "Open folder"
+      "fr-FR": "Ouvrir le dossierr"
     },
     "menu.mods.asset_packs": {
       "en": "Asset Packs",
@@ -1494,7 +1494,7 @@
       "es-419": "Asset Packs",
       "ja-jp": "Asset Packs",
       "zh-CN": "素材包",
-      "fr-FR": "Asset Packs"
+      "fr-FR": "Pack d'asset"
     },
     "assetpacks.title": {
       "en": "Asset Packs",
@@ -1502,7 +1502,7 @@
       "es-419": "Asset Packs",
       "ja-jp": "Asset Packs",
       "zh-CN": "素材包",
-      "fr-FR": "Asset Packs"
+      "fr-FR": "Pack d'asset"
     },
     "assetpacks.new_title": {
       "en": "New Asset Pack",
@@ -1510,7 +1510,7 @@
       "es-419": "New Asset Pack",
       "ja-jp": "New Asset Pack",
       "zh-CN": "新素材包",
-      "fr-FR": "New Asset Pack"
+      "fr-FR": "Nouveau pack d'asset"
     },
     "panel.asset_pack_editor": {
       "en": "Asset Pack Editor",
@@ -1518,7 +1518,7 @@
       "es-419": "Asset Pack Editor",
       "ja-jp": "Asset Pack Editor",
       "zh-CN": "素材包编辑器",
-      "fr-FR": "Asset Pack Editor"
+      "fr-FR": "Editeur de pack d'asset"
     },
     "menu.updates": {
       "en": "Updates",
@@ -1750,7 +1750,7 @@
       "es-419": "Instalados",
       "ja-JP": "Installed",
       "zh-CN": "已安装",
-      "fr-FR": "Installed"
+      "fr-FR": "Installé"
     },
     "shaders.browse": {
       "en": "Browse",
@@ -1758,7 +1758,7 @@
       "es-419": "Explorar",
       "ja-JP": "Browse",
       "zh-CN": "浏览",
-      "fr-FR": "Browse"
+      "fr-FR": "Parcourir"
     },
     "shaders.search": {
       "en": "Search",
@@ -1766,7 +1766,7 @@
       "es-419": "Buscar",
       "ja-JP": "Search",
       "zh-CN": "查找",
-      "fr-FR": "Search"
+      "fr-FR": "Rechercher"
     },
     "shaders.none": {
       "en": "None",
@@ -1774,7 +1774,7 @@
       "es-419": "Ninguno",
       "ja-JP": "None",
       "zh-CN": "没有",
-      "fr-FR": "None"
+      "fr-FR": "Aucun"
     },
     "shaders.no_installed": {
       "en": "No shaders installed. Get some in the Browse tab.",
@@ -1782,7 +1782,7 @@
       "es-419": "No shaders installed. Get some in the Browse tab.",
       "ja-JP": "No shaders installed. Get some in the Browse tab.",
       "zh-CN": "目前没有已安装的滤镜. 请在浏览选项中重新查找.",
-      "fr-FR": "No shaders installed. Get some in the Browse tab."
+      "fr-FR": "Aucun shaders trouvé. Récupérez en dans la partie recherche."
     },
     "shaders.inactive": {
       "en": "No shader active",
@@ -1790,7 +1790,7 @@
       "es-419": "Ningún shader activo",
       "ja-JP": "No shader active",
       "zh-CN": "滤镜没有启用",
-      "fr-FR": "No shader active"
+      "fr-FR": "Aucun shader actif"
     },
     "shaders.parameters": {
       "en": "Parameters",
@@ -1798,7 +1798,7 @@
       "es-419": "Parámetros",
       "ja-JP": "Parameters",
       "zh-CN": "数值设定",
-      "fr-FR": "Parameters"
+      "fr-FR": "Paramètres"
     },
     "shaders.no_parameters": {
       "en": "This shader has no parameters",
@@ -1806,7 +1806,7 @@
       "es-419": "Este shader no tiene parámetros",
       "ja-JP": "This shader has no parameters",
       "zh-CN": "此滤镜没有可调整的数值设定",
-      "fr-FR": "This shader has no parameters"
+      "fr-FR": "Ce shader n'a pas de paramètres"
     },
     "shaders.reset": {
       "en": "Reset",
@@ -1822,7 +1822,7 @@
       "es-419": "Recargar",
       "ja-JP": "Reload",
       "zh-CN": "重新载入",
-      "fr-FR": "Reload"
+      "fr-FR": "Recharger"
     },
     "shaders.remove": {
       "en": "Remove",
@@ -1830,7 +1830,7 @@
       "es-419": "Quitar",
       "ja-JP": "Remove",
       "zh-CN": "停用滤镜",
-      "fr-FR": "Remove"
+      "fr-FR": "Retirer"
     },
     "shaders.failed": {
       "en": "The shader failed to load:",
@@ -1838,7 +1838,7 @@
       "es-419": "El shader no se pudo cargar:",
       "ja-JP": "The shader failed to load:",
       "zh-CN": "读取此滤镜失败:",
-      "fr-FR": "The shader failed to load:"
+      "fr-FR": "Ce shader n'a pas pu être chargé:"
     },
     "shaders.all_categories": {
       "en": "All categories",
@@ -1846,7 +1846,7 @@
       "es-419": "Todas las categorías",
       "ja-JP": "All categories",
       "zh-CN": "全部类别",
-      "fr-FR": "All categories"
+      "fr-FR": "Toutes catégories"
     },
     "shaders.refresh": {
       "en": "Refresh catalog",
@@ -1854,7 +1854,7 @@
       "es-419": "Actualizar catálogo",
       "ja-JP": "Refresh catalog",
       "zh-CN": "刷新目录",
-      "fr-FR": "Refresh catalog"
+      "fr-FR": "Rafraichir le catalogue"
     },
     "shaders.loading": {
       "en": "Loading catalog...",
@@ -1862,7 +1862,7 @@
       "es-419": "Cargando catálogo...",
       "ja-JP": "Loading catalog...",
       "zh-CN": "读取滤镜目录中...",
-      "fr-FR": "Loading catalog..."
+      "fr-FR": "Chargement du catalogue..."
     },
     "shaders.catalog_info": {
       "en": "{0} presets in {1}",
@@ -1878,7 +1878,7 @@
       "es-419": "No se encontró nada",
       "ja-JP": "Nothing found",
       "zh-CN": "无法查找到结果",
-      "fr-FR": "Nothing found"
+      "fr-FR": "Aucun résultat"
     },
     "shaders.truncated": {
       "en": "The repository is too big, some presets are missing",
@@ -1886,7 +1886,7 @@
       "es-419": "El repositorio es demasiado grande, faltan algunos presets",
       "ja-JP": "The repository is too big, some presets are missing",
       "zh-CN": "此目录太大了, 一部分预设可能丢失",
-      "fr-FR": "The repository is too big, some presets are missing"
+      "fr-FR": "Le dépôt est trop grand, certains préreglages sont manquants"
     },
     "shaders.install": {
       "en": "Install",
@@ -1894,7 +1894,7 @@
       "es-419": "Instalar",
       "ja-JP": "Install",
       "zh-CN": "安装滤镜",
-      "fr-FR": "Install"
+      "fr-FR": "Installer"
     },
     "shaders.use": {
       "en": "Use",
@@ -1902,7 +1902,7 @@
       "es-419": "Usar",
       "ja-JP": "Use",
       "zh-CN": "使用滤镜",
-      "fr-FR": "Use"
+      "fr-FR": "Utilisé"
     },
     "shaders.active": {
       "en": "Active",
@@ -1910,7 +1910,7 @@
       "es-419": "Activo",
       "ja-JP": "Active",
       "zh-CN": "滤镜生效中",
-      "fr-FR": "Active"
+      "fr-FR": "Actif"
     },
     "shaders.installing": {
       "en": "{0} files...",
@@ -1918,7 +1918,7 @@
       "es-419": "{0} archivos...",
       "ja-JP": "{0} files...",
       "zh-CN": "{0} 个文件安装中...",
-      "fr-FR": "{0} files..."
+      "fr-FR": "{0} fichiers..."
     },
     "shaders.installed_ok": {
       "en": "Installed {0}",
@@ -1926,7 +1926,7 @@
       "es-419": "{0} instalado",
       "ja-JP": "Installed {0}",
       "zh-CN": "{0} 个文件安装完成",
-      "fr-FR": "Installed {0}"
+      "fr-FR": "Installé {0}"
     },
     "shaders.install_failed": {
       "en": "Could not install {0}: {1}",
@@ -1934,7 +1934,7 @@
       "es-419": "No se pudo instalar {0}: {1}",
       "ja-JP": "Could not install {0}: {1}",
       "zh-CN": "目前无法安装 {0}: {1}",
-      "fr-FR": "Could not install {0}: {1}"
+      "fr-FR": "Impossible d'installer {0}: {1}"
     },
     "shaders.repository": {
       "en": "Repository",
@@ -1942,7 +1942,7 @@
       "es-419": "Repositorio",
       "ja-JP": "Repository",
       "zh-CN": "滤镜目录",
-      "fr-FR": "Repository"
+      "fr-FR": "Dépôt"
     },
     "shaders.repository_hint": {
       "en": "GitHub repository listed in the Browse tab",
@@ -1950,7 +1950,7 @@
       "es-419": "Repositorio de GitHub que se lista en Explorar",
       "ja-JP": "GitHub repository listed in the Browse tab",
       "zh-CN": "GitHub 上可被重编译前端支持的滤镜会在浏览列表中列出",
-      "fr-FR": "GitHub repository listed in the Browse tab"
+      "fr-FR": "Dépôt Github listé dans la recherche"
     },
     "shaders.branch": {
       "en": "Branch",
@@ -1958,7 +1958,7 @@
       "es-419": "Rama",
       "ja-JP": "Branch",
       "zh-CN": "滤镜分支",
-      "fr-FR": "Branch"
+      "fr-FR": "Branche"
     },
     "shaders.branch_hint": {
       "en": "Empty uses the default branch",
@@ -1966,7 +1966,7 @@
       "es-419": "Vacío usa la rama predeterminada",
       "ja-JP": "Empty uses the default branch",
       "zh-CN": "如果滤镜分支为空则使用原始分支",
-      "fr-FR": "Empty uses the default branch"
+      "fr-FR": "Utilise la branche par défaut si laissé vide"
     },
     "shaders.default_repository": {
       "en": "Use default repository",
@@ -1974,7 +1974,7 @@
       "es-419": "Usar repositorio predeterminado",
       "ja-JP": "Use default repository",
       "zh-CN": "使用原始滤镜分支",
-      "fr-FR": "Use default repository"
+      "fr-FR": "Utiliser le dépôt par défaut"
     },
     "shaders.bad_repository": {
       "en": "Not a GitHub repository",
@@ -1982,7 +1982,7 @@
       "es-419": "No es un repositorio de GitHub",
       "ja-JP": "Not a GitHub repository",
       "zh-CN": "此分支不是 GitHub 上被重编译前端支持的滤镜分支",
-      "fr-FR": "Not a GitHub repository"
+      "fr-FR": "Pas un dépôt Github"
     },
     "shaders.native": {
       "en": "Native resolution input",
@@ -1990,7 +1990,7 @@
       "es-419": "Entrada en resolución nativa",
       "ja-JP": "Native resolution input",
       "zh-CN": "原始分辨率输入",
-      "fr-FR": "Native resolution input"
+      "fr-FR": "Entrée de la résolution native"
     },
     "shaders.native_hint": {
       "en": "Feeds the shader the original resolution instead of the upscaled image. Best for CRT shaders",
@@ -1998,7 +1998,7 @@
       "es-419": "Envía al shader la resolución original en vez de la imagen escalada. Mejor para shaders CRT",
       "ja-JP": "Feeds the shader the original resolution instead of the upscaled image. Best for CRT shaders",
       "zh-CN": "为滤镜指定原作PSX版的原始分辨率而非扩大后的分辨率. 对CRT滤镜而言效果最好.",
-      "fr-FR": "Feeds the shader the original resolution instead of the upscaled image. Best for CRT shaders"
+      "fr-FR": "Utilise la résolution native pour le shader au lieu de l'image upscalée. Mieux pour les shaders CRT"
     },
     "shaders.open_folder": {
       "en": "Open shaders folder",
@@ -2006,7 +2006,7 @@
       "es-419": "Abrir carpeta de shaders",
       "ja-JP": "Open shaders folder",
       "zh-CN": "打开滤镜所在目录",
-      "fr-FR": "Open shaders folder"
+      "fr-FR": "Ouvrir le dossier des shaders"
     },
     "quit.title": {
       "en": "Quit the game?",
@@ -2014,7 +2014,7 @@
       "es-419": "¿Salir del juego?",
       "ja-JP": "ゲームを終了しますか?",
       "zh-CN": "确认退出游戏吗?",
-      "fr-FR": "Quit the game?"
+      "fr-FR": "Quitter le jeu ?"
     },
     "quit.message": {
       "en": "Any unsaved progress will be lost.",
@@ -2022,7 +2022,7 @@
       "es-419": "Se perderá todo el progreso sin guardar.",
       "ja-JP": "保存していない進行状況は失われます。",
       "zh-CN": "在重编译前端中退出游戏之前未保存的进度会被舍弃。",
-      "fr-FR": "Any unsaved progress will be lost."
+      "fr-FR": "Toute progression non sauvegardée sera perdue."
     },
     "quit.confirm": {
       "en": "Quit",
@@ -2030,7 +2030,7 @@
       "es-419": "Salir",
       "ja-JP": "終了",
       "zh-CN": "退出游戏",
-      "fr-FR": "Quit"
+      "fr-FR": "Quitter"
     },
     "shell.resume": {
       "en": "Resume",
@@ -2038,7 +2038,7 @@
       "es-419": "Continuar",
       "ja-JP": "再開",
       "zh-CN": "返回",
-      "fr-FR": "Resume"
+      "fr-FR": "Reprendre"
     }
   }
 }
