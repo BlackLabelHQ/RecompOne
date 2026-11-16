@@ -46,7 +46,7 @@
       "es-419": "Oculta la barra de menú cuando el mouse no está sobre ella. Lleva el mouse a la parte superior de la pantalla para mostrarle",
       "ja-JP": "Hides the menu bar when the mouse isn't over it. Move the mouse to the top of the screen to show it",
       "zh-CN": "如果将鼠标移开菜单栏所在位置会自动隐藏菜单栏; 如果将鼠标再放回屏幕最上端可以重新显示菜单栏.",
-      "fr-FR": "Hides the menu bar when the mouse isn't over it. Move the mouse to the top of the screen to show it"
+      "fr-FR": "Cache la barre de menu si la souris n'est pas dessus. Déplacez-la en haut de l'écran pour l'afficher"
     },
     "menu.system.fullscreen": {
       "en": "Fullscreen",
