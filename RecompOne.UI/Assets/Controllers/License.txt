@@ -1,0 +1,3 @@
+DualShock artwork from PCSX2 (https://github.com/PCSX2/pcsx2)
+Source: pcsx2-qt/resources/images/DualShock_1.svg
+License: GNU General Public License v3.0 or later (GPL-3.0+)

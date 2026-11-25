@@ -1,4 +1,6 @@
-namespace RecompOne.UI.BigPicture.Glyphs.Svg;
+using System.Numerics;
+
+namespace RecompOne.UI;
 
 internal static class SvgRasterizer
 {
@@ -18,7 +20,17 @@ internal static class SvgRasterizer
                 for (var i = 0; i < contour.Count; i++)
                     edges.Add((contour[i] * scale, contour[(i + 1) % contour.Count] * scale));
 
-            for (var y = 0; y < height; y++)
+            var top = float.MaxValue;
+            var bottom = float.MinValue;
+            foreach (var (a, b) in edges)
+            {
+                top = MathF.Min(top, MathF.Min(a.Y, b.Y));
+                bottom = MathF.Max(bottom, MathF.Max(a.Y, b.Y));
+            }
+
+            var first = Math.Max(0, (int)MathF.Floor(top));
+            var last = Math.Min(height - 1, (int)MathF.Ceiling(bottom));
+            for (var y = first; y <= last; y++)
             {
                 Array.Clear(coverage);
                 for (var sy = 0; sy < Samples; sy++)

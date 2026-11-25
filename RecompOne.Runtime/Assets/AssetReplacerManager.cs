@@ -27,6 +27,12 @@ public sealed class XaEntry
         return StartLba <= lba;
     }
 
+    public bool SameAs(XaEntry? other)
+    {
+        return other != null && PackId == other.PackId && FileNumber == other.FileNumber && Channel == other.Channel &&
+               StartLba == other.StartLba && Track == other.Track && AudioName == other.AudioName;
+    }
+
     public override string ToString()
     {
         if (Track.HasValue) return $"{PackId}: cd track {Track} -> {AudioName}";
@@ -309,7 +315,13 @@ public sealed class AssetReplacerManager
         LoadAll(string.IsNullOrEmpty(Root) ? null : Root);
         Textures.TextureResolver.Invalidate();
         Sfx.SfxCache.Clear();
-        if (XaSignature() == xa) return;
+        if (XaSignature() == xa)
+        {
+            Xa.XaRouter.Refresh();
+            Xa.CddaRouter.Refresh();
+            return;
+        }
+
         Xa.XaRouter.Rebind();
         Xa.CddaRouter.Rebind();
     }

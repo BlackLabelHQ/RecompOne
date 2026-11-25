@@ -58,6 +58,11 @@ public sealed class DiscFs : IDisposable
         return _image.ReadSectorData(lba, size);
     }
 
+    public void ReadSectorData(int lba, Span<byte> destination)
+    {
+        _image.ReadSectorData(lba, destination);
+    }
+
     public byte[] ReadRawSector(int lba)
     {
         return _image.ReadRawSector(lba);

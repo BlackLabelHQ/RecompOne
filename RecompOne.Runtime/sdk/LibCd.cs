@@ -620,6 +620,11 @@ public static class LibCd
                 _xaWake.Reset();
                 _xaWake.Wait(8);
             }
+            else if (Runtime.Cd != null && !LibCdStream.Streaming && Assets.Xa.XaRouter.PumpTail())
+            {
+                _xaWake.Reset();
+                _xaWake.Wait(8);
+            }
             else
             {
                 _xaWake.Reset();
@@ -1285,7 +1290,11 @@ public static class LibCd
                 }
 
                 _cddaPlaying = false;
-                if (com != Pause) XaAudio.Reset();
+                if (com != Pause)
+                {
+                    Assets.Xa.XaRouter.EndTail();
+                    XaAudio.Reset();
+                }
                 LibCdStream.OnStopStream();
                 _readActive = false;
                 _readyOnlyRead = false;

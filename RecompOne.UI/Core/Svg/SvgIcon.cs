@@ -1,7 +1,8 @@
 using System.Globalization;
 using System.Xml.Linq;
+using System.Numerics;
 
-namespace RecompOne.UI.BigPicture.Glyphs.Svg;
+namespace RecompOne.UI;
 
 internal readonly record struct SvgShape(List<List<Vector2>> Contours, byte R, byte G, byte B, float Alpha);
 
@@ -11,6 +12,10 @@ public sealed class SvgIcon
     private readonly List<SvgShape> _shapes = [];
 
     internal IReadOnlyList<SvgShape> Shapes => _shapes;
+
+    private readonly Dictionary<string, Vector2[]> _outlines = new();
+
+    public IReadOnlyDictionary<string, Vector2[]> Outlines => _outlines;
 
     public float Width { get; private init; }
     public float Height { get; private init; }
@@ -33,7 +38,9 @@ public sealed class SvgIcon
             if (alpha <= 0f) continue;
             var (r, g, b) = Color(fill);
             var contours = SvgPath.Contours((string?)path.Attribute("d") ?? "");
-            if (contours.Count > 0) icon._shapes.Add(new SvgShape(contours, r, g, b, alpha));
+            if (contours.Count == 0) continue;
+            icon._shapes.Add(new SvgShape(contours, r, g, b, alpha));
+            if ((string?)path.Attribute("id") is { Length: > 0 } id) icon._outlines[id] = contours[0].ToArray();
         }
 
         return icon;

@@ -28,6 +28,11 @@ public interface IDiscImage : IDisposable
 
     byte[] ReadSectorData(int lba, int size);
 
+    void ReadSectorData(int lba, Span<byte> destination)
+    {
+        ReadSectorData(lba, destination.Length).AsSpan().CopyTo(destination);
+    }
+
     byte[] ReadRawSector(int lba);
 
     byte[] ReadSector(int lba)

@@ -77,15 +77,22 @@ public sealed class CueBinImage : IDiscImage
 
     public byte[] ReadSectorData(int lba, int size)
     {
+        var buffer = new byte[size];
+        ReadSectorData(lba, buffer);
+        return buffer;
+    }
+
+    public void ReadSectorData(int lba, Span<byte> buffer)
+    {
+        buffer.Clear();
         var t = DataTrack();
         var stream = GetStream(t.BinPath);
         var offset = t.SectorSize == 2352
-            ? size switch { >= 2340 => 12, >= 2329 => 16, _ => 24 }
+            ? buffer.Length switch { >= 2340 => 12, >= 2329 => 16, _ => 24 }
             : t.DataOffset;
         var pos = t.FileOffset + (long)lba * t.SectorSize + offset;
-        var buf = new byte[size];
-        if (lba < 0) return buf;
-        var want = Math.Min(size, t.SectorSize - offset);
+        if (lba < 0) return;
+        var want = Math.Min(buffer.Length, t.SectorSize - offset);
         lock (_ioGate)
         {
             var dataSectors = DataTrackSectors(t, stream);
@@ -97,15 +104,13 @@ public sealed class CueBinImage : IDiscImage
                     Console.WriteLine($"[DiscImage] read outside data track: lba={lba}");
                 }
 
-                return buf;
+                return;
             }
 
             var avail = (int)Math.Min(want, stream.Length - pos);
             stream.Seek(pos, SeekOrigin.Begin);
-            stream.ReadExactly(buf, 0, avail);
+            stream.ReadExactly(buffer[..avail]);
         }
-
-        return buf;
     }
 
     public byte[] ReadRawSector(int lba)

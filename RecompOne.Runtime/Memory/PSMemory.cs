@@ -73,6 +73,8 @@ public sealed class PSMemory : IMemory
         _dma.SetCd(cd);
     }
 
+    public void CompleteMdecTransfer(int channel) => _dma.CompleteMdecTransfer(channel);
+
     private static bool IsDmaChcr(uint phys)
     {
         return phys >= 0x1F801080u && phys < 0x1F8010F0u && (phys & 0xFu) == 8u;

@@ -68,6 +68,12 @@ public sealed class Dma
         Complete(channel);
     }
 
+    public void CompleteMdecTransfer(int channel)
+    {
+        if (channel is not (0 or 1)) return;
+        Complete(channel);
+    }
+
     private void TransferMdecIn(uint madr, uint bcr)
     {
         var words = WordCount(bcr);

@@ -18,6 +18,7 @@
         <EmbeddedResource Include="Assets\NotoSans-Regular.ttf"/>
         <EmbeddedResource Include="Assets\NotoSansCJK-Regular.otf"/>
         <EmbeddedResource Include="Assets\languages.json"/>
+        <EmbeddedResource Include="Assets\Controllers\*.svg" LogicalName="Controllers/%(Filename)%(Extension)"/>
     </ItemGroup>
 
     <ItemGroup>

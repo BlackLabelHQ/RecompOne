@@ -15,6 +15,12 @@ public static class FrameClock
     private static int _fpsFrames;
 
     private static double _frameMark;
+    private const int FrameSampleCount = 300;
+    private static readonly double[] _frameSamples = new double[FrameSampleCount];
+    private static readonly double[] _frameScratch = new double[FrameSampleCount];
+    private static readonly object _frameStatsGate = new();
+    private static int _frameSampleHead;
+    private static int _frameSamplesUsed;
 
     private static double _presentStartMs;
     private static int _presentFrames;
@@ -93,6 +99,13 @@ public static class FrameClock
         LastFrameMs = now - _frameMark;
         _frameMark = now;
 
+        lock (_frameStatsGate)
+        {
+            _frameSamples[_frameSampleHead] = LastFrameMs;
+            _frameSampleHead = (_frameSampleHead + 1) % FrameSampleCount;
+            if (_frameSamplesUsed < FrameSampleCount) _frameSamplesUsed++;
+        }
+
         _fpsAccumMs += LastFrameMs;
         _fpsFrames++;
         if (_fpsAccumMs < 1000.0) return;
@@ -100,6 +113,33 @@ public static class FrameClock
         Fps = _fpsFrames * 1000.0 / _fpsAccumMs;
         _fpsAccumMs = 0;
         _fpsFrames = 0;
+    }
+
+    public static void ReadFrameStats(out double average, out double p95, out double maximum, out int samples)
+    {
+        lock (_frameStatsGate)
+        {
+            samples = _frameSamplesUsed;
+            if (samples == 0)
+            {
+                average = p95 = maximum = 0.0;
+                return;
+            }
+
+            double total = 0.0;
+            maximum = 0.0;
+            for (var i = 0; i < samples; i++)
+            {
+                var value = _frameSamples[i];
+                _frameScratch[i] = value;
+                total += value;
+                if (value > maximum) maximum = value;
+            }
+
+            Array.Sort(_frameScratch, 0, samples);
+            average = total / samples;
+            p95 = _frameScratch[Math.Clamp((int)Math.Ceiling(samples * 0.95) - 1, 0, samples - 1)];
+        }
     }
 
 }

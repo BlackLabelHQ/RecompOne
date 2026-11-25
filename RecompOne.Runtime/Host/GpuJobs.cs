@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace RecompOne.Runtime.Host;
 
@@ -15,6 +16,11 @@ public static class GpuJobs
     private static readonly ConcurrentBag<Job> _spare = [];
     
     private static int _owner = -1;
+    private static long _lastWaitBits;
+    private static long _maxWaitBits;
+
+    public static double LastWaitMs => BitConverter.Int64BitsToDouble(Interlocked.Read(ref _lastWaitBits));
+    public static double MaxWaitMs => BitConverter.Int64BitsToDouble(Interlocked.Read(ref _maxWaitBits));
     
     public static bool Claimed => _owner >= 0;
     
@@ -40,7 +46,18 @@ public static class GpuJobs
         job.Done.Reset();
         
         _queue.Enqueue(job);
+        var waitStart = Stopwatch.GetTimestamp();
         job.Done.Wait();
+        var waitMs = Stopwatch.GetElapsedTime(waitStart).TotalMilliseconds;
+        var waitBits = BitConverter.DoubleToInt64Bits(waitMs);
+        Interlocked.Exchange(ref _lastWaitBits, waitBits);
+        var maxBits = Interlocked.Read(ref _maxWaitBits);
+        while (waitBits > maxBits)
+        {
+            var observed = Interlocked.CompareExchange(ref _maxWaitBits, waitBits, maxBits);
+            if (observed == maxBits) break;
+            maxBits = observed;
+        }
         
         var error = job.Error;
         job.Work = null;

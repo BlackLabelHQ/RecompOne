@@ -142,7 +142,13 @@ public static class DiscAudio
             _cdda = ReadCdda(disc.Fs);
         }
 
-        Task.Run(() => Scan(disc, generation));
+        var scanThread = new Thread(() => Scan(disc, generation))
+        {
+            IsBackground = true,
+            Name = "disc-audio-scan",
+            Priority = ThreadPriority.BelowNormal
+        };
+        scanThread.Start();
     }
 
     public static DiscAudioTrack? Find(int lba, byte file, byte channel)
@@ -238,6 +244,7 @@ public static class DiscAudio
         {
             var files = disc.Fs.Enumerate().Where(e => !e.IsDir).OrderBy(e => e.Lba).ToArray();
             var open = new Dictionary<(byte, byte), Open>();
+            var sec = new byte[SectorBytes];
             var total = disc.Fs.DataSectors;
             var lastVideo = int.MinValue;
             var fileAt = 0;
@@ -246,13 +253,11 @@ public static class DiscAudio
             {
                 if (Volatile.Read(ref _generation) != generation) return;
 
-                byte[] sec;
                 lock (Sdk.LibCd.DiscLock)
                 {
-                    sec = disc.ReadSectorData(lba, SectorBytes);
+                    disc.Fs.ReadSectorData(lba, sec);
                 }
 
-                if (sec.Length < 12) continue;
                 var submode = sec[2];
                 if ((submode & AudioMask) != AudioMask || sec[1] == NoChannel)
                 {

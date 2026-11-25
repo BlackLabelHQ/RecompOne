@@ -34,6 +34,8 @@ public static class LibPress
         mdec.Write0(head);
         for (var i = 0u; i < words; i++) mdec.Write0(m.ReadU32(p + 4u + i * 4u));
 
+        if (m is PSMemory psm) psm.CompleteMdecTransfer(0);
+
     }
 
     public static void DecDCTout(CpuContext c, IMemory m)
@@ -50,6 +52,8 @@ public static class LibPress
         for (var i = 0u; i < words; i++) m.WriteU32(dst + i * 4u, mdec.ReadData());
 
         c.V0 = 0u;
+
+        if (m is PSMemory psm) psm.CompleteMdecTransfer(1);
 
         if (_outCb == 0) return;
 

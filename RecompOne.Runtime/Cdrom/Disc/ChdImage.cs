@@ -96,10 +96,17 @@ public sealed class ChdImage : IDiscImage
     public byte[] ReadSectorData(int lba, int size)
     {
         var buf = new byte[size];
-        if (lba < 0) return buf;
+        ReadSectorData(lba, buf);
+        return buf;
+    }
+
+    public void ReadSectorData(int lba, Span<byte> destination)
+    {
+        destination.Clear();
+        if (lba < 0) return;
 
         var track = DataTrack();
-        if (track == null) return buf;
+        if (track == null) return;
 
         if (lba >= DataSectors)
         {
@@ -109,19 +116,18 @@ public sealed class ChdImage : IDiscImage
                 Console.WriteLine($"[DiscImage] read outside data track: lba={lba}");
             }
 
-            return buf;
+            return;
         }
 
-        var offset = size switch { >= 2340 => 12, >= 2329 => 16, _ => 24 };
+        var offset = destination.Length switch { >= 2340 => 12, >= 2329 => 16, _ => 24 };
         var frame = track.ChdFrame + (lba - track.DiscBase);
         var hunk = frame / _framesPerHunk;
         var indexInHunk = frame % _framesPerHunk;
 
         var hunkData = _chd.ReadHunk(hunk);
         var start = indexInHunk * FrameSize + offset;
-        var want = Math.Min(size, SectorData - offset);
-        Array.Copy(hunkData, start, buf, 0, want);
-        return buf;
+        var want = Math.Min(destination.Length, SectorData - offset);
+        hunkData.AsSpan(start, want).CopyTo(destination);
     }
 
     private Track? DataTrack()

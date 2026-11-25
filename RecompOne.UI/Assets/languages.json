@@ -1016,6 +1016,54 @@
       "zh-CN": "[按下按键来追加...]",
       "fr-FR": "[Appuyez sur un bouton pour ajouter...]"
     },
+    "settings.input.port": {
+      "en": "Port",
+      "pt-BR": "Porta",
+      "es-419": "Puerto",
+      "ja-JP": "ポート",
+      "zh-CN": "端口",
+      "fr-FR": "Port"
+    },
+    "settings.input.capture": {
+      "en": "Press a key or a controller button",
+      "pt-BR": "Pressione uma tecla ou um botão do controle",
+      "es-419": "Presiona una tecla o un botón del control",
+      "ja-JP": "キーまたはコントローラのボタンを押してください",
+      "zh-CN": "请按下键盘按键或游戏控制器按键",
+      "fr-FR": "Appuyez sur une touche ou un bouton de la manette"
+    },
+    "settings.input.capture_add": {
+      "en": "Press another controller button to add",
+      "pt-BR": "Pressione outro botão do controle para adicionar",
+      "es-419": "Presiona otro botón del control para agregar",
+      "ja-JP": "追加するコントローラのボタンを押してください",
+      "zh-CN": "按下另一个游戏控制器按键来追加",
+      "fr-FR": "Appuyez sur un autre bouton de la manette pour l'ajouter"
+    },
+    "settings.input.capture_cancel": {
+      "en": "Cancels in {0}s",
+      "pt-BR": "Cancela em {0}s",
+      "es-419": "Se cancela en {0}s",
+      "ja-JP": "{0}秒後にキャンセル",
+      "zh-CN": "{0}秒后取消",
+      "fr-FR": "Annulation dans {0}s"
+    },
+    "settings.input.help": {
+      "en": "Click to bind, Shift+click to add another controller button, right-click to clear",
+      "pt-BR": "Clique para atribuir, Shift+clique para adicionar outro botão do controle, clique direito para limpar",
+      "es-419": "Clic para asignar, Shift+clic para agregar otro botón del control, clic derecho para borrar",
+      "ja-JP": "クリックで割り当て、Shift+クリックでボタンを追加、右クリックで解除",
+      "zh-CN": "单击设定，Shift+单击追加另一个按键，右键清除",
+      "fr-FR": "Clic pour assigner, Maj+clic pour ajouter un autre bouton, clic droit pour effacer"
+    },
+    "settings.input.help_pad": {
+      "en": "{0} bind   {1} add another   {2} clear",
+      "pt-BR": "{0} atribuir   {1} adicionar outro   {2} limpar",
+      "es-419": "{0} asignar   {1} agregar otro   {2} borrar",
+      "ja-JP": "{0} 割り当て   {1} 追加   {2} 解除",
+      "zh-CN": "{0} 设定   {1} 追加   {2} 清除",
+      "fr-FR": "{0} assigner   {1} ajouter   {2} effacer"
+    },
     "settings.input.reset_defaults": {
       "en": "Reset to Defaults",
       "pt-BR": "Restaurar Padrões",

@@ -5,6 +5,8 @@ public static class XaRouter
     private const int MaxGap = 512;
     private const int NewRunLbaSlack = 64;
     private const int ResumeWindowMs = 2000;
+    private const int ExtendResumeMs = 10000;
+    private const int ExtendTailMs = 500;
 
     private static readonly object _gate = new();
     private static readonly int[] _frames = new int[4032];
@@ -76,6 +78,33 @@ public static class XaRouter
         {
             DropStream();
             _rebind = _lastLba != int.MinValue;
+        }
+    }
+
+    public static void Refresh()
+    {
+        lock (_gate)
+        {
+            if (_entry == null || _stream == null) return;
+            var current = AssetReplacerManager.Instance.XaEntries.FirstOrDefault(e => e.SameAs(_entry));
+            if (current == null)
+            {
+                DropStream();
+                _rebind = _lastLba != int.MinValue;
+                return;
+            }
+
+            current.Interleave = _entry.Interleave;
+            _entry = current;
+            _stream.Options.CopyFrom(current.Options);
+        }
+    }
+
+    public static void EndTail()
+    {
+        lock (_gate)
+        {
+            _tailDeadline = 0;
         }
     }
 
@@ -153,8 +182,8 @@ public static class XaRouter
             XaAudio.PushFrames(_frames, want, rate);
             AssetReplacerManager.Instance.Stats.XaReplaced++;
 
-            if (_stream.Options.TailMs > 0)
-                _tailDeadline = Environment.TickCount64 + _stream.Options.TailMs;
+            var tail = Math.Max(_stream.Options.TailMs, _stream.Options.Extend ? ExtendTailMs : 0);
+            if (tail > 0) _tailDeadline = Environment.TickCount64 + tail;
         }
     }
 
@@ -198,9 +227,11 @@ public static class XaRouter
         var entry = Resolve(lba, file, channel, sec, out var exact, out var track);
         if (track != null) DiscAudio.Played(track);
 
-        if (_stream != null && !_exhausted && ReferenceEquals(entry, _entry) && !_stream.Ended &&
-            Environment.TickCount64 - _lastSectorTick <= ResumeWindowMs)
+        var window = _stream?.Options.Extend == true ? ExtendResumeMs : ResumeWindowMs;
+        if (_stream != null && !_exhausted && entry != null && entry.SameAs(_entry) && !_stream.Ended &&
+            Environment.TickCount64 - _lastSectorTick <= window)
         {
+            _entry = entry;
             _accepted = 0;
             _startLba = lba;
             _file = file;
@@ -325,7 +356,7 @@ public static class XaRouter
             if (_stream == null || _exhausted) return false;
             if (!_stream.Options.Extend) return false;
             if (_stream.Ended) return false;
-            if (_stream.PositionSeconds * 1000 > _stream.Options.ExtendMaxMs) return false;
+            if (!_stream.Options.Loop && _stream.PositionSeconds * 1000 > _stream.Options.ExtendMaxMs) return false;
             rewindLba = _startLba;
             return true;
         }

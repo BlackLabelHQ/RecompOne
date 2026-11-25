@@ -45,6 +45,7 @@ public static class XaTrack
         if (cd == null) return 0;
 
         var buffer = new byte[HashSectors * (PayloadBytes + 1)];
+        var sec = new byte[2336];
         var used = 0;
         var picked = 0;
         var last = lba;
@@ -53,13 +54,11 @@ public static class XaTrack
         {
             for (var at = lba; at < lba + ScanSectors && picked < HashSectors && at - last <= MaxGap; at++)
             {
-                byte[] sec;
                 lock (Sdk.LibCd.DiscLock)
                 {
-                    sec = cd.ReadSectorData(at, 2336);
+                    cd.Fs.ReadSectorData(at, sec);
                 }
 
-                if (sec.Length < 8 + PayloadBytes) return 0;
                 var submode = sec[2];
                 if ((submode & 0x24) != 0x24 || sec[0] != file || sec[1] != channel) continue;
 

@@ -1,6 +1,7 @@
 using System.Globalization;
+using System.Numerics;
 
-namespace RecompOne.UI.BigPicture.Glyphs.Svg;
+namespace RecompOne.UI;
 
 internal static class SvgPath
 {

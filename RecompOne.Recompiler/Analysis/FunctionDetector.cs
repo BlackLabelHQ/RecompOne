@@ -427,8 +427,29 @@ public static class FunctionDetector
         var codeEnd = all[^1].Vram + 4;
         var named = noTypeSymbols.GroupBy(s => s.Address).ToDictionary(g => g.Key, g => g.First());
 
-        var claimed = new List<MipsFunction>(existing);
+        var claimed = existing.Where(f => f.End > f.Start).OrderBy(f => f.Start).ToArray();
+        var active = new List<MipsFunction>();
+        var claimedIndex = 0;
         var knownStarts = new SortedSet<uint>(existing.Select(f => f.Start));
+        var knownStartSet = new HashSet<uint>(knownStarts);
+        var callTargets = new HashSet<uint>();
+        foreach (var instr in all)
+        {
+            if (instr.Word >> 26 is 2 or 3)
+                callTargets.Add(instr.JumpTarget);
+            else if (instr.Word >> 26 == 1 && (instr.Rt is 0x10 or 0x11))
+                callTargets.Add(instr.BranchTarget);
+        }
+
+        var fingerprints = new Dictionary<ulong, int>();
+        foreach (var func in existing)
+        {
+            var index = InstrIndex(all, func.Start);
+            if (index < 0 || index + 1 >= all.Length) continue;
+            var key = StartFingerprint(all[index], all[index + 1]);
+            fingerprints[key] = fingerprints.GetValueOrDefault(key) + 1;
+        }
+
         var result = new List<MipsFunction>();
 
         var i = 0;
@@ -436,31 +457,35 @@ public static class FunctionDetector
         {
             var addr = all[i].Vram;
 
-            var cover = claimed.FirstOrDefault(f => f.Start <= addr && addr < f.End);
+            while (claimedIndex < claimed.Length && claimed[claimedIndex].Start <= addr)
+                active.Add(claimed[claimedIndex++]);
+            active.RemoveAll(f => f.End <= addr);
+
+            var cover = active.FirstOrDefault(f => f.Start <= addr && addr < f.End);
             if (cover != null)
             {
                 i = Math.Max(i + 1, InstrIndex(all, cover.End));
                 continue;
             }
 
-            if (all[i].IsNop)
-            {
-                i++;
-                continue;
-            }
-
             var nextStart = knownStarts.FirstOrDefault(s => s > addr, codeEnd);
             var boundIdx = InstrIndex(all, nextStart);
 
-            if (!ValidatesAsFunction(all, i, boundIdx))
+            if (!HasLinearSweepStartEvidence(all, i, fingerprints, callTargets, named.ContainsKey(addr)))
             {
                 i++;
                 continue;
             }
 
-            var ei = Math.Clamp(RefineEnd(all, i, boundIdx), i + 1, all.Length);
+            var ei = Math.Clamp(Math.Min(RefineEnd(all, i, boundIdx), boundIdx), i + 1, all.Length);
 
             if (SliceHasUnknownInstruction(all, i, ei))
+            {
+                i++;
+                continue;
+            }
+
+            if (!ValidatesControlFlowFunction(all, i, ei, knownStartSet))
             {
                 i++;
                 continue;
@@ -479,26 +504,135 @@ public static class FunctionDetector
                 Instructions = all[i..ei]
             };
             result.Add(fn);
-            claimed.Add(fn);
             knownStarts.Add(addr);
+            knownStartSet.Add(addr);
+            callTargets.Remove(addr);
+            if (i + 1 < all.Length)
+            {
+                var key = StartFingerprint(all[i], all[i + 1]);
+                fingerprints[key] = fingerprints.GetValueOrDefault(key) + 1;
+            }
             i = ei;
         }
 
         return result;
     }
 
-    //accepts a block as funct only if every instruction decodes and a return turns up before the next boundary
-    private static bool ValidatesAsFunction(MipsInstruction[] all, int startIdx, int boundIdx)
+    private static bool HasLinearSweepStartEvidence(MipsInstruction[] all, int index,
+        Dictionary<ulong, int> fingerprints, HashSet<uint> callTargets, bool hasSymbol)
     {
-        boundIdx = Math.Clamp(boundIdx, startIdx + 1, all.Length);
-        for (var i = startIdx; i < boundIdx; i++)
+        var instr = all[index];
+        if (hasSymbol) return true;
+        if (IsPrologue(instr)) return true;
+        if (callTargets.Contains(instr.Vram)) return true;
+
+        if (index >= 2 && all[index - 2].HasDelaySlot && EndsControlFlow(all[index - 2]))
+            return true;
+        if (index >= 1 && !all[index - 1].HasDelaySlot && EndsControlFlow(all[index - 1]))
+            return true;
+
+        if (index + 1 >= all.Length || !IsKnownInstruction(instr) || !IsKnownInstruction(all[index + 1]))
+            return false;
+
+        return fingerprints.GetValueOrDefault(StartFingerprint(instr, all[index + 1])) >= 4;
+    }
+
+    private static ulong StartFingerprint(MipsInstruction first, MipsInstruction second)
+    {
+        return ((ulong)NormalizeStartInstruction(first.Word) << 32) | NormalizeStartInstruction(second.Word);
+    }
+
+    private static uint NormalizeStartInstruction(uint word)
+    {
+        var op = word >> 26;
+        if (op is 2 or 3) return word & 0xFC000000u;
+        if (op is 1 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15
+            or 32 or 33 or 34 or 35 or 36 or 37 or 38 or 40 or 41 or 42 or 43 or 46 or 50 or 58)
+            return word & 0xFFFF0000u;
+        return word;
+    }
+
+    private static bool ValidatesControlFlowFunction(MipsInstruction[] all, int startIdx, int endIdx,
+        HashSet<uint> knownStarts)
+    {
+        if (endIdx - startIdx <= 2) return false;
+
+        var pending = new Stack<int>();
+        var visited = new HashSet<int>();
+        pending.Push(startIdx);
+        var hasExit = false;
+
+        while (pending.Count > 0)
         {
-            var instr = all[i];
+            var index = pending.Pop();
+            if (index < startIdx || index >= endIdx) return false;
+            if (!visited.Add(index)) continue;
+
+            var instr = all[index];
             if (!IsKnownInstruction(instr)) return false;
-            if (IsFunctionEnd(all, startIdx, i)) return true;
+            if (index != startIdx && knownStarts.Contains(instr.Vram)) return false;
+
+            if (instr.HasDelaySlot)
+            {
+                var delayIndex = index + 1;
+                if (delayIndex >= endIdx || !IsKnownInstruction(all[delayIndex])) return false;
+                if (knownStarts.Contains(all[delayIndex].Vram) && delayIndex != startIdx) return false;
+                visited.Add(delayIndex);
+
+                var op = instr.Word >> 26;
+                var afterDelay = index + 2;
+                if (instr.IsFunctionCall)
+                {
+                    if (afterDelay >= endIdx) return false;
+                    pending.Push(afterDelay);
+                    continue;
+                }
+
+                if (instr.IsJrRegister)
+                {
+                    hasExit = true;
+                    continue;
+                }
+
+                if (op == 2)
+                {
+                    var target = instr.JumpTarget;
+                    if (target >= all[startIdx].Vram && target < all[endIdx - 1].Vram + 4)
+                    {
+                        var targetIndex = InstrIndex(all, target);
+                        if (targetIndex < startIdx || targetIndex >= endIdx) return false;
+                        pending.Push(targetIndex);
+                    }
+                    else
+                    {
+                        hasExit = true;
+                    }
+                    continue;
+                }
+
+                if (instr.IsBranch)
+                {
+                    var target = instr.BranchTarget;
+                    var targetIndex = InstrIndex(all, target);
+                    if (targetIndex < startIdx || targetIndex >= endIdx) return false;
+                    pending.Push(targetIndex);
+                    if (instr.IsUnconditionalBranch) continue;
+                    if (afterDelay >= endIdx) return false;
+                    pending.Push(afterDelay);
+                    continue;
+                }
+
+                if (afterDelay >= endIdx) return false;
+                pending.Push(afterDelay);
+                continue;
+            }
+
+            var next = index + 1;
+            if (next >= endIdx) return false;
+            pending.Push(next);
         }
 
-        return false;
+        return hasExit && visited.Count > 2;
     }
     
     private const uint MergeLimit = 0x2000;

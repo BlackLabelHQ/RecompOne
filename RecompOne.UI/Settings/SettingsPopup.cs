@@ -9,7 +9,7 @@ public sealed class SettingsPopup : Popup
     private static string _selectedId = "";
 
     protected override string TitleKey => "settings.title";
-    protected override Vector2 Size => new(780f, 500f);
+    protected override Vector2 Size => new(860f, 540f);
 
     public static void Select(string? id)
     {

@@ -84,7 +84,6 @@ public static class MainMenuBar
 
     public static void Draw()
     {
-        MenuRegistry.RightAligned = DrawFps;
         MenuRegistry.Draw();
     }
 
@@ -98,18 +97,6 @@ public static class MainMenuBar
             if (!Interrupts.Turbo) Interrupts.ResyncVBlank();
         }
     }
-
-    private static void DrawFps()
-    {
-        if (!InterfaceOptions.ShowFps) return;
-
-        var text = $"{FrameClock.PresentFps:F0} / {FrameClock.Fps:F0} fps";
-        var width = Hexa.NET.ImGui.ImGui.CalcTextSize(text).X;
-        Hexa.NET.ImGui.ImGui.SameLine(Hexa.NET.ImGui.ImGui.GetWindowWidth() - width -
-                                Hexa.NET.ImGui.ImGui.GetStyle().FramePadding.X * 2f);
-        Hexa.NET.ImGui.ImGui.TextUnformatted(text);
-    }
-
 
     private static void ResetView()
     {

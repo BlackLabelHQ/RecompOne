@@ -26,6 +26,20 @@ public sealed class XaOptions
     {
         return (XaOptions)MemberwiseClone();
     }
+
+    public void CopyFrom(XaOptions other)
+    {
+        Gain = other.Gain;
+        Loop = other.Loop;
+        LoopStart = other.LoopStart;
+        LoopEnd = other.LoopEnd;
+        Extend = other.Extend;
+        Direct = other.Direct;
+        ExtendMaxMs = other.ExtendMaxMs;
+        OnShorter = other.OnShorter;
+        TailMs = other.TailMs;
+        AllowStr = other.AllowStr;
+    }
 }
 
 public sealed class ReplacementStream : IDisposable

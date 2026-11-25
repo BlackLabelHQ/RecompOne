@@ -1,4 +1,5 @@
 using Silk.NET.OpenAL;
+using System.Diagnostics;
 using ALDevice = Silk.NET.OpenAL.Device;
 using ALCtx = Silk.NET.OpenAL.Context;
 
@@ -26,6 +27,11 @@ public static unsafe class Audio
     private static Spu? _spu;
     private static volatile bool _running;
     private static float _masterVolume = 1.0f;
+    private static long _lastMixBits;
+    private static long _maxMixBits;
+
+    public static double LastMixMs => BitConverter.Int64BitsToDouble(Interlocked.Read(ref _lastMixBits));
+    public static double MaxMixMs => BitConverter.Int64BitsToDouble(Interlocked.Read(ref _maxMixBits));
 
     public static void Initialize()
     {
@@ -157,7 +163,18 @@ public static unsafe class Audio
             uint buf = 0;
             _al.SourceUnqueueBuffers(_source, 1, &buf);
 
+            var mixStart = Stopwatch.GetTimestamp();
             spu.Mix(_sampleBuf, FramesPerBuffer);
+            var mixMs = Stopwatch.GetElapsedTime(mixStart).TotalMilliseconds;
+            var mixBits = BitConverter.DoubleToInt64Bits(mixMs);
+            Interlocked.Exchange(ref _lastMixBits, mixBits);
+            var maxBits = Interlocked.Read(ref _maxMixBits);
+            while (mixBits > maxBits)
+            {
+                var observed = Interlocked.CompareExchange(ref _maxMixBits, mixBits, maxBits);
+                if (observed == maxBits) break;
+                maxBits = observed;
+            }
 
             _al.BufferData(buf, BufferFormat.Stereo16, _sampleBuf, 44100);
             _al.SourceQueueBuffers(_source, 1, &buf);

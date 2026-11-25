@@ -47,7 +47,9 @@ public sealed class OutputPanel : IPanel
             HostOutput.ViewHeight = (int)MathF.Round(imageSize.Y * scale.Y);
             var offset = (avail - imageSize) * 0.5f;
             ImGui.SetCursorPos(ImGui.GetCursorPos() + offset);
+            var imagePosition = ImGui.GetCursorScreenPos();
             ImGui.Image(ImGuiUtils.Tex((nint)output.Id), imageSize);
+            GameStatsOverlay.Draw(imagePosition, imageSize);
         }
 
         if (ShowToasts) ToastNotifications.Draw();

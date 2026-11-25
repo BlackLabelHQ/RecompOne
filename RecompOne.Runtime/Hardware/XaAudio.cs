@@ -11,6 +11,9 @@ public static class XaAudio
     private const int MaxHold = 8192;
 
     private static readonly int[] _ring = new int[Capacity];
+    private static readonly int[] _decodeLeft = new int[28];
+    private static readonly int[] _decodeRight = new int[28];
+    private static readonly int[] _decodeFrames = new int[4032];
     private static int _writeIdx, _readIdx, _count;
     private static readonly object _gate = new();
 
@@ -21,6 +24,22 @@ public static class XaAudio
     private static double _pos;
     private static short _s0L, _s0R, _s1L, _s1R;
     private static int _underrun;
+
+    private static void PushLocked(int[] frames, int count)
+    {
+        if (count <= 0) return;
+        var sourceOffset = Math.Max(0, count - Capacity);
+        count = Math.Min(count, Capacity);
+        var first = Math.Min(count, Capacity - _writeIdx);
+        Array.Copy(frames, sourceOffset, _ring, _writeIdx, first);
+        var second = count - first;
+        if (second > 0) Array.Copy(frames, sourceOffset + first, _ring, 0, second);
+
+        _writeIdx = (_writeIdx + count) & Mask;
+        var overflow = Math.Max(0, _count + count - Capacity);
+        _readIdx = (_readIdx + overflow) & Mask;
+        _count = Math.Min(Capacity, _count + count);
+    }
 
     public static void Reset()
     {
@@ -63,8 +82,9 @@ public static class XaAudio
     {
         var stereo = (coding & 0x01) != 0;
         var rate = (coding & 0x04) != 0 ? 18900 : 37800;
-        int[] l = new int[28], r = new int[28];
-        var frames = new int[stereo ? 2016 : 4032];
+        var l = _decodeLeft;
+        var r = _decodeRight;
+        var frames = _decodeFrames;
         var n = 0;
 
         for (var p = 0; p < 18; p++)
@@ -88,13 +108,7 @@ public static class XaAudio
         lock (_gate)
         {
             _srcRate = rate;
-            for (var i = 0; i < n; i++)
-            {
-                _ring[_writeIdx] = frames[i];
-                _writeIdx = (_writeIdx + 1) & Mask;
-                if (_count < Capacity) _count++;
-                else _readIdx = (_readIdx + 1) & Mask;
-            }
+            PushLocked(frames, n);
 
             if (!_playing && _count >= PrimeFrames) _playing = true;
         }
@@ -105,13 +119,7 @@ public static class XaAudio
         lock (_gate)
         {
             _srcRate = rate;
-            for (var i = 0; i < count; i++)
-            {
-                _ring[_writeIdx] = frames[i];
-                _writeIdx = (_writeIdx + 1) & Mask;
-                if (_count < Capacity) _count++;
-                else _readIdx = (_readIdx + 1) & Mask;
-            }
+            PushLocked(frames, count);
 
             if (!_playing && _count >= PrimeFrames) _playing = true;
         }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using RecompOne.Runtime.Context;
 using RecompOne.Runtime.Memory;
@@ -33,7 +34,7 @@ public static class LibCdStream
     private static bool _primed;
     private static bool[] _busy = Array.Empty<bool>();
     private static readonly Queue<(int start, int n)> _ready = new();
-    private static int _prevStart = -1, _prevN;
+    private static readonly Dictionary<int, int> _leased = new();
 
     private static readonly ManualResetEventSlim _wake = new(false);
     private static Thread? _thread;
@@ -107,12 +108,6 @@ public static class LibCdStream
         {
             lock (_lock)
             {
-                if (_prevStart >= 0)
-                {
-                    for (var i = 0; i < _prevN; i++) _busy[_prevStart + i] = false;
-                    _prevStart = -1;
-                }
-
                 if (!_active)
                 {
                     c.V0 = 1;
@@ -125,8 +120,8 @@ public static class LibCdStream
                     var (start, n) = _ready.Dequeue();
                     m.WriteU32(c.A0, _dataBase + (uint)(start * SlotData));
                     m.WriteU32(c.A1, _statusBase + (uint)(start * HeaderSize));
-                    _prevStart = start;
-                    _prevN = n;
+                    _leased[start] = n;
+                    m.WriteU16(_statusBase + (uint)(start * HeaderSize), 4);
                     c.V0 = 0;
                     return;
                 }
@@ -148,7 +143,39 @@ public static class LibCdStream
 
     public static void StFreeRing(CpuContext c, IMemory m)
     {
-        c.V0 = 0;
+        var address = c.A0;
+        lock (_lock)
+        {
+            if (_slots <= 0 || address < _dataBase)
+            {
+                c.V0 = 1;
+                return;
+            }
+
+            var offset = address - _dataBase;
+            if (offset % (uint)SlotData != 0 || offset / (uint)SlotData >= (uint)_slots)
+            {
+                c.V0 = 1;
+                return;
+            }
+
+            var start = (int)(offset / (uint)SlotData);
+            if (!_leased.Remove(start, out var n))
+            {
+                c.V0 = 1;
+                return;
+            }
+
+            for (var i = 0; i < n; i++)
+            {
+                var slot = (start + i) % _slots;
+                _busy[slot] = false;
+                m.WriteU16(_statusBase + (uint)(slot * HeaderSize), 0);
+            }
+
+            Monitor.PulseAll(_lock);
+            c.V0 = 0;
+        }
         Log.Sdk("StFreeRing");
     }
 
@@ -189,8 +216,7 @@ public static class LibCdStream
             _streamLba = -1;
             _streamStartLba = 0;
             _writeIdx = 0;
-            _prevStart = -1;
-            _prevN = 0;
+            _leased.Clear();
             _starvedSince = -1;
             _generation++;
             _busy = Array.Empty<bool>();
@@ -205,8 +231,7 @@ public static class LibCdStream
         _generation++;
         _primed = false;
         _writeIdx = 0;
-        _prevStart = -1;
-        _prevN = 0;
+        _leased.Clear();
         _starvedSince = -1;
         _ready.Clear();
         _busy = _slots > 0 ? new bool[_slots] : Array.Empty<bool>();
@@ -338,6 +363,7 @@ public static class LibCdStream
                 _streamLba = next;
                 for (var i = 0; i < n; i++) _busy[start + i] = true;
                 _ready.Enqueue((start, n));
+                m.WriteU16(_statusBase + (uint)(start * HeaderSize), 2);
                 _writeIdx = start + n;
 
                 if (!_primed && _ready.Count >= PrimeFrames)

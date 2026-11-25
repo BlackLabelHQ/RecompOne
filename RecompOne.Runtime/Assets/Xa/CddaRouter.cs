@@ -40,6 +40,23 @@ public static class CddaRouter
         }
     }
 
+    public static void Refresh()
+    {
+        lock (_gate)
+        {
+            if (_stream == null || _track == null) return;
+            var current = AssetReplacerManager.Instance.ResolveCdda(_track.Number);
+            if (current == null || current.AudioName != _stream.Name)
+            {
+                Drop();
+                _track = null;
+                return;
+            }
+
+            _stream.Options.CopyFrom(current.Options);
+        }
+    }
+
     public static bool Fill(int lba, int[] frames, int count)
     {
         lock (_gate)

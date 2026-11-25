@@ -94,6 +94,7 @@ public class ImGuiInterface : IUserInterface
         PopupManager.Register(new StartupNoticePopup());
         PopupManager.Register(new DiscPickerPopup());
         PopupManager.Register(new ShadersPopup());
+        PopupManager.Register(new BindingCapturePopup());
         if (AutoUpdater.Configured) PopupManager.Register(new UpdatePopup());
     }
     
