@@ -16,6 +16,7 @@ public static class Gte
     private static int MAC0, MAC1, MAC2, MAC3;
     private static uint LZCS, LZCR;
 
+    private static readonly short[] _garbage = new short[9];
     private static readonly short[] RT = new short[9];
     private static readonly short[] LLM = new short[9];
     private static readonly short[] LCM = new short[9];
@@ -645,16 +646,18 @@ public static class Gte
     public static void Avsz3()
     {
         FLAG = 0;
-        MAC0 = (int)CheckMac0((long)ZSF3 * (SZ[1] + SZ[2] + SZ[3]));
-        OTZ = (ushort)SatSZ(MAC0 >> 12);
+        var p = CheckMac0((long)ZSF3 * (SZ[1] + SZ[2] + SZ[3]));
+        MAC0 = (int)p;
+        OTZ = (ushort)SatSZ((int)(p >> 12));
         EndFlag();
     }
 
     public static void Avsz4()
     {
         FLAG = 0;
-        MAC0 = (int)CheckMac0((long)ZSF4 * (SZ[0] + SZ[1] + SZ[2] + SZ[3]));
-        OTZ = (ushort)SatSZ(MAC0 >> 12);
+        var p = CheckMac0((long)ZSF4 * (SZ[0] + SZ[1] + SZ[2] + SZ[3]));
+        MAC0 = (int)p;
+        OTZ = (ushort)SatSZ((int)(p >> 12));
         EndFlag();
     }
 
@@ -904,7 +907,17 @@ public static class Gte
 
     private static void Mvmva(int sf, bool lm, int mx, int vn, int cv)
     {
-        var mat = mx == 0 ? RT : mx == 1 ? LLM : mx == 2 ? LCM : RT;
+        short[] mat;
+        if (mx == 3)
+        {
+            _garbage[0] = (short)(-(RGBC_R << 4));
+            _garbage[1] = (short)(RGBC_R << 4);
+            _garbage[2] = (short)IR0;
+            _garbage[3] = _garbage[4] = _garbage[5] = RT[2];
+            _garbage[6] = _garbage[7] = _garbage[8] = RT[4];
+            mat = _garbage;
+        }
+        else mat = mx == 0 ? RT : mx == 1 ? LLM : LCM;
         int vx, vy, vz;
         if (vn < 3)
         {

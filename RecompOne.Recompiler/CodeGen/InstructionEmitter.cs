@@ -4,7 +4,6 @@ using RecompOne.Recompiler.Disasm;
 
 namespace RecompOne.Recompiler.CodeGen;
 
-//Todo: later cleanup
 public static class InstructionEmitter
 {
     private static string R(int r)
@@ -81,7 +80,7 @@ public static class InstructionEmitter
         var immU = i.ImmU;
         string RS = R(rs), RT = R(rt), RD = R(rd);
 
-        if (op == 0)
+        if (op == 0) //SPECIAL handling
             return (int)fn switch
             {
                 0 => rd == 0 ? "" : sa == 0
@@ -100,30 +99,30 @@ public static class InstructionEmitter
                 17 => $"c.HI = {RS};",
                 18 => rd == 0 ? "" : $"{RD} = c.LO;",
                 19 => $"c.LO = {RS};",
-                24 => Operands($"var _r = (long)(int)_s * (int)_t; c.LO = (uint)_r; c.HI = (uint)(_r >> 32);", rs, rt),
-                25 => Operands($"var _r = (ulong)_s * _t; c.LO = (uint)_r; c.HI = (uint)(_r >> 32);", rs, rt),
-                26 => rt == 0
-                    ? "c.LO = 0u; c.HI = 0u;"
-                    : Operands($"if (_t != 0u) {{ if ((int)_s == int.MinValue && (int)_t == -1) {{ c.LO = 0x80000000u; c.HI = 0u; }} else {{ c.LO = (uint)((int)_s / (int)_t); c.HI = (uint)((int)_s % (int)_t); }} }}", rs, rt),
-                27 => rt == 0
-                    ? "c.LO = 0u; c.HI = 0u;"
-                    : Operands($"if (_t != 0u) {{ c.LO = _s / _t; c.HI = _s % _t; }}", rs, rt),
-                32 or 33 => rd == 0 ? "" : rt == 0
+                24 => Operands($"var _r = (long)(int)_s * (int)_t; c.LO = (uint)_r; c.HI = (uint)(_r >> 32);", rs, rt), //MULT handling
+                25 => Operands($"var _r = (ulong)_s * _t; c.LO = (uint)_r; c.HI = (uint)(_r >> 32);", rs, rt), //MULTU handling
+                26 => rt == 0 //DIV handling
+                    ? Operands("c.HI = _s; c.LO = (int)_s < 0 ? 1u : 0xFFFFFFFFu;", rs, rt)
+                    : Operands($"if (_t != 0u) {{ if ((int)_s == int.MinValue && (int)_t == -1) {{ c.LO = 0x80000000u; c.HI = 0u; }} else {{ c.LO = (uint)((int)_s / (int)_t); c.HI = (uint)((int)_s % (int)_t); }} }} else {{ c.HI = _s; c.LO = (int)_s < 0 ? 1u : 0xFFFFFFFFu; }}", rs, rt),
+                27 => rt == 0 //DIVU handling
+                    ? Operands("c.HI = _s; c.LO = 0xFFFFFFFFu;", rs, rt)
+                    : Operands($"if (_t != 0u) {{ c.LO = _s / _t; c.HI = _s % _t; }} else {{ c.HI = _s; c.LO = 0xFFFFFFFFu; }}", rs, rt),
+                32 or 33 => rd == 0 ? "" : rt == 0 //ADD/ADDU handling
                     ? $"{RD} = {RS};"
                     : rs == 0
                         ? $"{RD} = {RT};"
                         : Operands($"{RD} = _s + _t;", rs, rt),
-                34 or 35 => rd == 0 ? "" : Operands($"{RD} = _s - _t;", rs, rt),
-                36 => rd == 0 ? "" : Operands($"{RD} = _s & _t;", rs, rt),
-                37 => rd == 0 ? "" : rs == 0
+                34 or 35 => rd == 0 ? "" : Operands($"{RD} = _s - _t;", rs, rt), //SUB/SUBU handling
+                36 => rd == 0 ? "" : Operands($"{RD} = _s & _t;", rs, rt), //AND handling
+                37 => rd == 0 ? "" : rs == 0 //OR handling
                     ? $"{RD} = {RT};"
                     : rt == 0
                         ? $"{RD} = {RS};"
                         : Operands($"{RD} = _s | _t;", rs, rt),
-                38 => rd == 0 ? "" : Operands($"{RD} = _s ^ _t;", rs, rt),
-                39 => rd == 0 ? "" : Operands($"{RD} = ~(_s | _t);", rs, rt),
-                42 => rd == 0 ? "" : Operands($"{RD} = (int)_s < (int)_t ? 1u : 0u;", rs, rt),
-                43 => rd == 0 ? "" : Operands($"{RD} = _s < _t ? 1u : 0u;", rs, rt),
+                38 => rd == 0 ? "" : Operands($"{RD} = _s ^ _t;", rs, rt), //XOR handling
+                39 => rd == 0 ? "" : Operands($"{RD} = ~(_s | _t);", rs, rt), //NOR handling
+                42 => rd == 0 ? "" : Operands($"{RD} = (int)_s < (int)_t ? 1u : 0u;", rs, rt), //SLT handling
+                43 => rd == 0 ? "" : Operands($"{RD} = _s < _t ? 1u : 0u;", rs, rt), //SLTU handling
                 _ => UnknownInstr(i, $"SPECIAL fn=0x{fn:X2}")
             };
 
@@ -187,42 +186,42 @@ public static class InstructionEmitter
         }
 
         if (op is 2 or 3 or 4 or 5 or 6 or 7)
-            return ""; //thej umps and branches are handled in EmitWithDelaySlot to process with the delayslot
+            return ""; //the jumps and branches are handled in EmitWithDelaySlot to process with the delayslot
 
         return (int)op switch
         {
-            8 or 9 => rt == 0 ? "" :
+            8 or 9 => rt == 0 ? "" : //ADDI/ADDIU handling
                 moved ? $"{RT} = 0x{reloc:X8}u;" :
                 rs == 0 ? $"{RT} = 0x{unchecked((uint)(int)imm):X8}u;" :
                 imm >= 0
                     ? $"{RT} = {RS} + 0x{(uint)imm:X}u;"
                     : $"{RT} = {RS} - 0x{unchecked((uint)-(int)imm):X}u;",
-            10 => rt == 0 ? "" : $"{RT} = (int){RS} < {(int)imm} ? 1u : 0u;",
-            11 => rt == 0 ? "" : $"{RT} = {RS} < 0x{(uint)(int)imm:X8}u ? 1u : 0u;",
-            12 => rt == 0 ? "" : $"{RT} = {RS} & 0x{immU:X4}u;",
-            13 => rt == 0 ? "" :
+            10 => rt == 0 ? "" : $"{RT} = (int){RS} < {(int)imm} ? 1u : 0u;", //SLTI handling
+            11 => rt == 0 ? "" : $"{RT} = {RS} < 0x{(uint)(int)imm:X8}u ? 1u : 0u;", //SLTIU handling
+            12 => rt == 0 ? "" : $"{RT} = {RS} & 0x{immU:X4}u;", //ANDI handling
+            13 => rt == 0 ? "" : //ORI handling
                 moved ? $"{RT} = 0x{reloc:X8}u;" :
                 immU == 0 ? $"{RT} = {RS};" :
                 $"{RT} = {RS} | 0x{immU:X4}u;",
-            14 => rt == 0 ? "" : $"{RT} = {RS} ^ 0x{immU:X4}u;",
-            15 => rt == 0 ? "" : $"{RT} = 0x{(uint)immU << 16:X8}u;",
-            32 => rt == 0 ? "" : $"{RT} = (uint)(sbyte)mem.ReadU8({Addr(rs, imm, moved, reloc)});",
-            33 => rt == 0 ? "" : $"{RT} = (uint)(short)mem.ReadU16({Addr(rs, imm, moved, reloc)});",
-            34 => rt == 0 ? "" : $"{RT} = mem.ReadWordLeft({RT}, {Addr(rs, imm, moved, reloc)});",
-            35 => rt == 0 ? "" : $"{RT} = mem.ReadU32({Addr(rs, imm, moved, reloc)});",
-            36 => rt == 0 ? "" : $"{RT} = mem.ReadU8({Addr(rs, imm, moved, reloc)});",
-            37 => rt == 0 ? "" : $"{RT} = mem.ReadU16({Addr(rs, imm, moved, reloc)});",
-            38 => rt == 0 ? "" : $"{RT} = mem.ReadWordRight({RT}, {Addr(rs, imm, moved, reloc)});",
-            40 => $"mem.WriteU8({Addr(rs, imm, moved, reloc)}, (byte){RT});",
-            41 => $"mem.WriteU16({Addr(rs, imm, moved, reloc)}, (ushort){RT});",
-            42 => $"mem.WriteWordLeft({Addr(rs, imm, moved, reloc)}, {RT});",
-            43 => $"mem.WriteU32({Addr(rs, imm, moved, reloc)}, {RT});",
-            46 => $"mem.WriteWordRight({Addr(rs, imm, moved, reloc)}, {RT});",
-            50 =>
+            14 => rt == 0 ? "" : $"{RT} = {RS} ^ 0x{immU:X4}u;", //XORI handling
+            15 => rt == 0 ? "" : $"{RT} = 0x{(uint)immU << 16:X8}u;", //LUI handling
+            32 => rt == 0 ? "" : $"{RT} = (uint)(sbyte)mem.ReadU8({Addr(rs, imm, moved, reloc)});", //LB handling
+            33 => rt == 0 ? "" : $"{RT} = (uint)(short)mem.ReadU16({Addr(rs, imm, moved, reloc)});", //LH handling
+            34 => rt == 0 ? "" : $"{RT} = mem.ReadWordLeft({RT}, {Addr(rs, imm, moved, reloc)});", //LWL handling
+            35 => rt == 0 ? "" : $"{RT} = mem.ReadU32({Addr(rs, imm, moved, reloc)});", //LW handling
+            36 => rt == 0 ? "" : $"{RT} = mem.ReadU8({Addr(rs, imm, moved, reloc)});", //LBU handling
+            37 => rt == 0 ? "" : $"{RT} = mem.ReadU16({Addr(rs, imm, moved, reloc)});", //LHU handling
+            38 => rt == 0 ? "" : $"{RT} = mem.ReadWordRight({RT}, {Addr(rs, imm, moved, reloc)});", //LWR handling
+            40 => $"mem.WriteU8({Addr(rs, imm, moved, reloc)}, (byte){RT});", //SB handling
+            41 => $"mem.WriteU16({Addr(rs, imm, moved, reloc)}, (ushort){RT});", //SH handling
+            42 => $"mem.WriteWordLeft({Addr(rs, imm, moved, reloc)}, {RT});", //SWL handling
+            43 => $"mem.WriteU32({Addr(rs, imm, moved, reloc)}, {RT});", //SW handling
+            46 => $"mem.WriteWordRight({Addr(rs, imm, moved, reloc)}, {RT});", //SWR handling
+            50 => //LWC2 handling
                 $"{{ var _lw = mem.ReadU32({Addr(rs, imm, moved, reloc)}); RecompOne.Runtime.Gte.Write({rt}, _lw); }}",
-            58 when precise && rt is >= 12 and <= 14 =>
+            58 when precise && rt is >= 12 and <= 14 => //SWC2 (precise) handling
                 $"{{ var _sw = RecompOne.Runtime.Gte.Read({rt}); var _ad = {Addr(rs, imm, moved, reloc)}; mem.WriteU32(_ad, _sw); RecompOne.Runtime.Hle.NativeProjection.Store({rt}, _ad, _sw); }}",
-            58 =>
+            58 => //SWC2 handling
                 $"{{ var _sw = RecompOne.Runtime.Gte.Read({rt}); mem.WriteU32({Addr(rs, imm, moved, reloc)}, _sw); }}",
             _ => UnknownInstr(i, $"op=0x{op:X2}")
         };
@@ -233,8 +232,7 @@ public static class InstructionEmitter
         Console.WriteLine($"[Unknown] {desc} word=0x{i.Word:X8} @ 0x{i.Vram:X8}");
         return $"/* UNKOWN OP {desc} word=0x{i.Word:X8} @ 0x{i.Vram:X8} */";
     }
-
-    //it control instructions that emmit their own delay slot, so the it shouldnt write it a second time again, its just a filter to not produce wrongfully
+    
     public static bool SkipDelaySlot(MipsInstruction ctrl)
     {
         var op = ctrl.Word >> 26;
@@ -255,19 +253,28 @@ public static class InstructionEmitter
         var pc = ctrl.Vram;
         string RS = R(rs), RT = R(rt);
         var ind2 = indent + "    ";
+        
+        string? dsLine = null;
+        string DsLine()
+        {
+            return dsLine ??= ds == null ? "" : EmitSingle(ds, ctx.Relocations, ctx.Precise);
+        }
+        bool SlotNonEmpty()
+        {
+            return !string.IsNullOrEmpty(DsLine());
+        }
 
         void Ds()
         {
             if (ds == null) return;
-            //fixes delay slot as branch target bug
-            var line = EmitSingle(ds, ctx.Relocations, ctx.Precise);
+            var line = DsLine();
             if (!string.IsNullOrEmpty(line)) sb.AppendLine(ctx.Trail(ds, $"{indent}{line}"));
         }
 
         void DsInline()
         {
             if (ds == null) return;
-            var line = EmitSingle(ds, ctx.Relocations, ctx.Precise);
+            var line = DsLine();
             if (!string.IsNullOrEmpty(line)) sb.AppendLine(ctx.Trail(ds, $"{ind2}{line}"));
         }
 
@@ -301,7 +308,7 @@ public static class InstructionEmitter
             sb.AppendLine(ctx.Trail(ctrl, $"{indent}}}"));
         }
 
-        if (op is 4 or 5 or 6 or 7)
+        if (op is 4 or 5 or 6 or 7) //BEQ/BNE/BLEZ/BGTZ handling
         {
             var target = ctrl.BranchTarget;
             if (op == 4 && rs == rt)
@@ -332,7 +339,7 @@ public static class InstructionEmitter
             return;
         }
 
-        if (op == 1)
+        if (op == 1) //REGIMM (BLTZ/BGEZ/BLTZAL/BGEZAL) handling
         {
             var rtField = (uint)rt;
             var target = ctrl.BranchTarget;
@@ -343,14 +350,23 @@ public static class InstructionEmitter
                 0x01 or 0x11 => $"(int){RS} >= 0",
                 _ => "false"
             };
-            if (link)
+            if (link) //BLTZAL/BGEZAL handling
             {
-                Ds();
+                var capture = SlotNonEmpty();
+                var condName = $"_c{pc:X8}";
+                if (capture)
+                {
+                    sb.AppendLine(ctx.Trail(ctrl, $"{indent}{{"));
+                    sb.AppendLine(ctx.Trail(ctrl, $"{indent}var {condName} = {cond};"));
+                }
+
                 sb.AppendLine(ctx.Trail(ctrl, $"{indent}c.RA = 0x{pc + 8:X8}u;"));
-                sb.AppendLine(ctx.Trail(ctrl, $"{indent}if ({cond}) {{"));
+                Ds();
+                sb.AppendLine(ctx.Trail(ctrl, $"{indent}if ({(capture ? condName : cond)}) {{"));
                 if (InFunc(target)) sb.AppendLine(ctx.Trail(ctrl, $"{ind2}goto L{target:X8};"));
                 else CallOrDispatch(target, ind2);
                 sb.AppendLine(ctx.Trail(ctrl, $"{indent}}}"));
+                if (capture) sb.AppendLine(ctx.Trail(ctrl, $"{indent}}}"));
             }
             else
             {
@@ -360,16 +376,16 @@ public static class InstructionEmitter
             return;
         }
 
-        if (op == 3)
+        if (op == 3) //JAL handling
         {
             var target = ctrl.JumpTarget;
-            Ds();
             sb.AppendLine(ctx.Trail(ctrl, $"{indent}c.RA = 0x{pc + 8:X8}u;"));
+            Ds();
             CallOrDispatch(target, indent);
             return;
         }
 
-        if (op == 2)
+        if (op == 2) //J handling
         {
             var target = ctrl.JumpTarget;
             Ds();
@@ -385,11 +401,23 @@ public static class InstructionEmitter
 
             return;
         }
-        
-        if (op == 0 && fn == 8)
+
+        if (op == 0 && fn == 8) //JR handling
         {
+            var raReturn = rs == 31 || ctx.RaReturnJrs.Contains(pc);
+            var plainReturn = raReturn && ctx.LinkReturns.Count == 0;
+            var capture = !plainReturn && rs != 0 && SlotNonEmpty();
+            var tgtName = $"_t{pc:X8}";
+            var tgt = capture ? tgtName : RS;
+
+            if (capture)
+            {
+                sb.AppendLine(ctx.Trail(ctrl, $"{indent}{{"));
+                sb.AppendLine(ctx.Trail(ctrl, $"{indent}var {tgtName} = {RS};"));
+            }
+
             Ds();
-            if (rs == 31 || ctx.RaReturnJrs.Contains(pc))
+            if (raReturn)
             {
                 if (ctx.LinkReturns.Count == 0)
                 {
@@ -397,9 +425,9 @@ public static class InstructionEmitter
                 }
                 else
                 {
-                    sb.AppendLine(ctx.Trail(ctrl, $"{indent}switch (c.RA)"));
+                    sb.AppendLine(ctx.Trail(ctrl, $"{indent}switch ({tgt})"));
                     sb.AppendLine(ctx.Trail(ctrl, $"{indent}{{"));
-                    foreach (var entry in ctx.LinkReturns.OrderBy(a => a)) 
+                    foreach (var entry in ctx.LinkReturns.OrderBy(a => a))
                         sb.AppendLine(ctx.Trail(ctrl, $"{indent}    case 0x{entry:X8}u: goto L{entry:X8};"));
                     sb.AppendLine(ctx.Trail(ctrl, $"{indent}    default: return;"));
                     sb.AppendLine(ctx.Trail(ctrl, $"{indent}}}"));
@@ -407,31 +435,43 @@ public static class InstructionEmitter
             }
             else if (ctx.JumpTablesByJr.TryGetValue(pc, out var jtbl))
             {
-                sb.AppendLine(ctx.Trail(ctrl, $"{indent}switch ({RS})"));
+                sb.AppendLine(ctx.Trail(ctrl, $"{indent}switch ({tgt})"));
                 sb.AppendLine(ctx.Trail(ctrl, $"{indent}{{"));
                 foreach (var entry in jtbl.Entries.Distinct())
                     sb.AppendLine(ctx.Trail(ctrl, $"{indent}    case 0x{entry:X8}u: goto L{entry:X8};"));
-                sb.AppendLine(ctx.Trail(ctrl, $"{indent}    default: Dispatcher.Call(c, m, {RS}); return;"));
+                sb.AppendLine(ctx.Trail(ctrl, $"{indent}    default: Dispatcher.Call(c, m, {tgt}); return;"));
                 sb.AppendLine(ctx.Trail(ctrl, $"{indent}}}"));
             }
             else
             {
-                sb.AppendLine(ctx.Trail(ctrl, $"{indent}Dispatcher.Call(c, m, {RS});"));
+                sb.AppendLine(ctx.Trail(ctrl, $"{indent}Dispatcher.Call(c, m, {tgt});"));
                 sb.AppendLine(ctx.Trail(ctrl, $"{indent}return;"));
             }
 
+            if (capture) sb.AppendLine(ctx.Trail(ctrl, $"{indent}}}"));
             return;
         }
 
-        if (op == 0 && fn == 9)
+        if (op == 0 && fn == 9) //JALR handling
         {
-            Ds();
+            var capture = rs != 0 && (SlotNonEmpty() || (rd != 0 && rd == rs));
+            var tgtName = $"_t{pc:X8}";
+            var tgt = capture ? tgtName : RS;
+
+            if (capture)
+            {
+                sb.AppendLine(ctx.Trail(ctrl, $"{indent}{{"));
+                sb.AppendLine(ctx.Trail(ctrl, $"{indent}var {tgtName} = {RS};"));
+            }
+
             if (rd != 0) sb.AppendLine(ctx.Trail(ctrl, $"{indent}{R(rd)} = 0x{pc + 8:X8}u;"));
-            sb.AppendLine(ctx.Trail(ctrl, $"{indent}Dispatcher.Call(c, m, {RS});"));
+            Ds();
+            sb.AppendLine(ctx.Trail(ctrl, $"{indent}Dispatcher.Call(c, m, {tgt});"));
+            if (capture) sb.AppendLine(ctx.Trail(ctrl, $"{indent}}}"));
             return;
         }
 
-        if (op == 18 && ((ctrl.Word >> 21) & 0x1F) == 8)
+        if (op == 18 && ((ctrl.Word >> 21) & 0x1F) == 8) //BC2F/BC2T handling
         {
             var target = ctrl.BranchTarget;
             var cond = rt == 1 ? "RecompOne.Runtime.Gte.GetCondition()" : "!RecompOne.Runtime.Gte.GetCondition()";
@@ -467,7 +507,7 @@ public sealed class FunctionContext
         return (line.Length < CommentColumn ? line.PadRight(CommentColumn) : line + "  ") + body;
     }
 
-    public uint SkipNopPadding(uint addr) //faltru can end up in padding
+    public uint SkipNopPadding(uint addr) //faltrought can end up in padding
     {
         if (AllInstructions.Length == 0) return addr;
         var baseAddr = AllInstructions[0].Vram;
