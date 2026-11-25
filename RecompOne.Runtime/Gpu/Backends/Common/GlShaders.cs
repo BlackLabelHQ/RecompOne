@@ -271,7 +271,13 @@ internal static class GlShaders
                                              ? texture(uRepClut, vec2((float(idx) + 0.5) / uRepClutCount, 0.5))
                                              : fetch(ivec2(clutBase.x + idx, clutBase.y));
                                      } else {
-                                         texel = fetch(ivec2(pageBase.x + uv.x, pageBase.y + uv.y));
+                                         // 15-bit texels: read the sub-texel of the scaled VRAM under this fragment, so
+                                         // what the GPU drew at full scale (render-to-texture) keeps its detail.
+                                         // CPU uploads are replicated per texel, so they sample the same as before.
+                                         vec2 fr = vec2(dFdx(vUV.x) < 0.0 ? vUV.x - float(rawU - 1) : vUV.x - float(rawU),
+                                                        dFdy(vUV.y) < 0.0 ? vUV.y - float(rawV - 1) : vUV.y - float(rawV));
+                                         ivec2 sub = clamp(ivec2(floor(fr * float(uScale))), ivec2(0), ivec2(uScale - 1));
+                                         texel = texelFetch(uVram, (ivec2(pageBase.x + uv.x, pageBase.y + uv.y) & ivec2(1023, 511)) * uScale + sub, 0);
                                      }
 
                                      if (vRepClut != 0 && texMode != 2) {
@@ -547,7 +553,12 @@ internal static class GlShaders
                                                         ? texture2D(uRepClut, vec2((idx + 0.5) / uRepClutCount, 0.5))
                                                         : fetch(vec2(vClutBase.x + idx, vClutBase.y));
                                                 } else {
-                                                    texel = fetch(vec2(vPageBase.x + uv.x, vPageBase.y + uv.y));
+                                                    // 15-bit texels: sample the sub-texel of the scaled VRAM (see PrimFs).
+                                                    vec2 fr = vec2(dFdx(vUV.x) < 0.0 ? vUV.x - (rawU - 1.0) : vUV.x - rawU,
+                                                                   dFdy(vUV.y) < 0.0 ? vUV.y - (rawV - 1.0) : vUV.y - rawV);
+                                                    vec2 sub = clamp(floor(fr * uScale), 0.0, uScale - 1.0);
+                                                    vec2 c = vec2(mod(vPageBase.x + uv.x, 1024.0), mod(vPageBase.y + uv.y, 512.0));
+                                                    texel = texture2D(uVram, (c * uScale + sub + 0.5) / uVramSize);
                                                 }
 
                                                 if (vRepClut > 0.5 && vTexMode < 1.5) {
