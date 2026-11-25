@@ -106,7 +106,7 @@ public sealed class Timers
                 _fired[t] = laps;
             }
 
-            if (repeat) due = Math.Min(due, _resetT[t] + (_fired[t] + 1) * period);
+            if (repeat || _fired[t] == 0) due = Math.Min(due, _resetT[t] + (_fired[t] + 1) * period);
         }
 
         _nextDue = due < double.MaxValue ? due : now + IdleCheck;

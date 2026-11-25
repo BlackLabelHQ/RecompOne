@@ -22,8 +22,7 @@ public static class FunctionEmitter
 
         var name = func.EmittedName;
         const string ind = "        ";
-        const string noInline =
-            "    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]";
+        const string noInline = "    [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]";
 
 
         if (func.IsStub)
